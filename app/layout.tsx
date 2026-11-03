@@ -42,13 +42,13 @@ export const metadata: Metadata = {
     siteName: "Bobololadono",
     locale: "uz_UZ",
     type: "website",
-    images: [{ url: "/logo.jpg" }],
+    images: [{ url: "/logo.png" }],
   },
   twitter: {
     card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/logo.jpg"],
+    images: ["/logo.png"],
   },
 };
 

@@ -6,10 +6,10 @@ export function LogoMark({ size = 32 }: { size?: number }) {
     // ishlatiladi; statik PNG, ulash qulayligi LCP xavfidan ustun.
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/logo.jpg"
+      src="/logo.png"
       alt="Logo mark"
       style={{ height: size, width: "auto", objectFit: "contain" }}
-      className="shrink-0 rounded-sm"
+      className="shrink-0"
     />
   );
 }

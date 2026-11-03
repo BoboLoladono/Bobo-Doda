@@ -457,7 +457,7 @@ export default function LandingPage() {
           width: auto;
           display: block;
           object-fit: contain;
-          filter: drop-shadow(0 4px 10px rgba(255, 122, 26, 0.25));
+          filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.08));
           transition: transform 0.25s var(--ease);
         }
         .nav-brand:hover .nav-brand-icon {
@@ -1509,9 +1509,9 @@ export default function LandingPage() {
                 {/* next/image emas — landing o'z JSX/ranglarini alohida chizadi (CLAUDE.md), statik logotip, sobit o'lcham */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="/logo.jpg"
+                  src="/logo.png"
                   alt="Bobololadono"
-                  className="nav-brand-icon rounded-sm"
+                  className="nav-brand-icon"
                 />
                 <span className="nav-brand-title">Bobololadono</span>
               </Link>
@@ -2189,10 +2189,10 @@ export default function LandingPage() {
                 <div className="footer-logo-title" style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- landing o'z JSX'ini alohida chizadi, statik logotip */}
                   <img
-                    src="/logo.jpg"
+                    src="/logo.png"
                     alt="Bobololadono"
                     height={32}
-                    style={{ height: 32, width: "auto", objectFit: "contain", display: "block", borderRadius: 4 }}
+                    style={{ height: 32, width: "auto", objectFit: "contain", display: "block" }}
                   />
                   <span>Bobololadono</span>
                 </div>
