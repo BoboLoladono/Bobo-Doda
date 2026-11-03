@@ -1499,11 +1499,18 @@ export const proposalsService: ProposalsService = {
       if (!foundProp) {
         foundProp = await proposalsService.get(proposalId);
       }
-      // Real backend orqali shartnoma yaratish
-      const servicesPage = await http<Page<RealService>>(`/services${toQuery({ perPage: 50 })}`).catch(() => null);
-      const activeService =
-        servicesPage?.items?.find((s) => s.sellerId === foundProp?.sellerId) ||
-        servicesPage?.items?.[0];
+      // Real backend orqali shartnoma yaratish: mutaxassisning faol xizmatini aniq qidirish
+      let activeService: RealService | undefined;
+      if (foundProp?.sellerId) {
+        const sellerServices = await http<Page<RealService>>(
+          `/services${toQuery({ seller: foundProp.sellerId, perPage: 10 })}`
+        ).catch(() => null);
+        activeService = sellerServices?.items?.find((s) => s.sellerId === foundProp.sellerId);
+      }
+      if (!activeService && foundProp?.sellerId) {
+        const servicesPage = await http<Page<RealService>>(`/services${toQuery({ perPage: 50 })}`).catch(() => null);
+        activeService = servicesPage?.items?.find((s) => s.sellerId === foundProp?.sellerId);
+      }
 
       if (activeService) {
         const sumMilestones = milestones.reduce((sum, m) => sum + m.amount, 0);
@@ -1540,7 +1547,7 @@ export const proposalsService: ProposalsService = {
       throw new ApiError({
         code: "VALIDATION",
         status: 400,
-        message: "Xizmat topilmadi yoki shartnoma tuzib bo'lmadi",
+        message: "Mutaxassisning faol xizmati topilmadi. Shartnoma tuzish uchun mutaxassisda faol xizmat bo'lishi kerak",
         retryable: false,
       });
     }),

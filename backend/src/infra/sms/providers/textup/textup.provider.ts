@@ -9,7 +9,10 @@ import { normalizePhone } from '@/common/security/phone.util';
 /** SMS so'rovi uchun aniq chegara. */
 const REQUEST_TIMEOUT_MS = 10_000;
 
-type SendAttempt = { kind: 'success'; smsId?: string } | { kind: 'http-error'; status: number } | { kind: 'network-error' };
+type SendAttempt =
+  | { kind: 'success'; smsId?: string }
+  | { kind: 'http-error'; status: number; errorBody?: string }
+  | { kind: 'network-error' };
 
 /**
  * Bosqich 23 (v4) — TextUp SMS API, Bobololadono'ning o'z hisobi uchun.
@@ -92,11 +95,12 @@ export class TextUpProvider implements SmsProvider {
       return { success: false, errorMessage: 'SMS provider bilan bog‘lanib bo‘lmadi' };
     }
     if (attempt.status >= 500) {
-      this.logger.warn({ status: attempt.status }, 'TextUp: provider server xatosi');
+      this.logger.warn({ status: attempt.status, errorBody: attempt.errorBody }, 'TextUp: provider server xatosi');
       return { success: false, errorMessage: `SMS provider HTTP ${attempt.status}` };
     }
-    this.logger.warn({ status: attempt.status }, 'TextUp: xato javob');
-    return { success: false, errorMessage: `SMS provider rad etdi (HTTP ${attempt.status})`, permanent: true };
+    this.logger.warn({ status: attempt.status, errorBody: attempt.errorBody }, 'TextUp: xato javob');
+    const reason = attempt.errorBody ? ` (${attempt.errorBody})` : '';
+    return { success: false, errorMessage: `SMS provider rad etdi (HTTP ${attempt.status})${reason}`, permanent: true };
   }
 
   private async attemptSend(
@@ -139,7 +143,12 @@ export class TextUpProvider implements SmsProvider {
     }
 
     if (!response.ok) {
-      return { kind: 'http-error', status: response.status };
+      let errorBody = '';
+      try {
+        errorBody = await response.text();
+      } catch {}
+      this.logger.warn({ status: response.status, errorBody }, 'TextUp SMS yuborishda xato javob berdi');
+      return { kind: 'http-error', status: response.status, errorBody };
     }
 
     let smsId: string | undefined;

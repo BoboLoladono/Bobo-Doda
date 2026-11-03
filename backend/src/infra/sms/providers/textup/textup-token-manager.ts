@@ -75,8 +75,12 @@ export class TextUpTokenManager {
     }
 
     if (!response.ok) {
-      this.logger.warn({ status: response.status }, 'TextUp login: muvaffaqiyatsiz javob');
-      throw new Error(`TextUp login: HTTP ${response.status}`);
+      let errBody = '';
+      try {
+        errBody = await response.text();
+      } catch {}
+      this.logger.warn({ status: response.status, errBody }, 'TextUp login: muvaffaqiyatsiz javob');
+      throw new Error(`TextUp login: HTTP ${response.status} ${errBody}`.trim());
     }
 
     let parsed: Partial<TextUpLoginResponse>;
@@ -87,16 +91,20 @@ export class TextUpTokenManager {
     }
 
     const accessToken = parsed.accessToken;
-    const userId = parsed.user?.id;
+    const rawUserId = parsed.user?.id;
+    const userId = rawUserId != null ? String(rawUserId) : undefined;
     if (!accessToken || !userId) {
       throw new Error('TextUp login: javobda accessToken/user.id yo‘q');
     }
 
     // Bo'lim 8 — ixtiyoriy hisob-xavfsizlik assertioni: sozlangan
     // TEXTUP_EXPECTED_USER_ID berilgan bo'lsa, runtime user.id bilan
-    // MOS kelishi shart (fail-closed).
-    if (this.config.expectedUserId && this.config.expectedUserId !== userId) {
-      this.logger.error('TextUp: TEXTUP_EXPECTED_USER_ID runtime user.id bilan mos emas — hisob sozlamasi tekshirilsin');
+    // MOS kelishi shart (fail-closed, string/number farqidan xavfsiz).
+    if (this.config.expectedUserId && String(this.config.expectedUserId).trim() !== userId.trim()) {
+      this.logger.error(
+        { expected: this.config.expectedUserId, actual: userId },
+        'TextUp: TEXTUP_EXPECTED_USER_ID runtime user.id bilan mos emas — hisob sozlamasi tekshirilsin',
+      );
       throw new Error('TextUp login: expectedUserId mos emas (fail closed)');
     }
 

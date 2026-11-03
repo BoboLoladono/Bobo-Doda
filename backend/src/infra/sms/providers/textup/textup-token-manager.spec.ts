@@ -115,6 +115,12 @@ describe('TextUpTokenManager', () => {
     await expect(manager.getToken()).resolves.toEqual({ accessToken: 'a', userId: 'expected-1' });
   });
 
+  it('TEXTUP_EXPECTED_USER_ID sozlangan va runtime user.id number bo‘lsa ham mos kelsa — o‘tadi', async () => {
+    global.fetch = jest.fn().mockResolvedValue(loginResponse(200, { accessToken: 'a', user: { id: 82852 as unknown as string } }));
+    const manager = new TextUpTokenManager({ ...CONFIG, expectedUserId: '82852' });
+    await expect(manager.getToken()).resolves.toEqual({ accessToken: 'a', userId: '82852' });
+  });
+
   it('TEXTUP_EXPECTED_USER_ID sozlangan lekin runtime user.id bilan mos kelmasa — fail closed', async () => {
     global.fetch = jest.fn().mockResolvedValue(loginResponse(200, { accessToken: 'a', user: { id: 'DIFFERENT-USER' } }));
     const manager = new TextUpTokenManager({ ...CONFIG, expectedUserId: 'expected-1' });
