@@ -20,8 +20,8 @@ export function renderTextUpText(template: string, params: Record<string, string
       throw new DomainError('INVALID_INPUT', 'OTP SMS uchun "code" parametri yo‘q');
     }
     return params.purpose === 'PASSWORD_RESET'
-      ? `bobololadono saytida parolni tiklash uchun tasdiqlash kodi: ${code}`
-      : `bobololadono saytida ro'yxatdan o'tish uchun tasdiqlash kodi: ${code}`;
+      ? `BOBODODA saytida parolni tiklash uchun tasdiqlash kodi: ${code}`
+      : `BOBODODA saytida ro'yxatdan o'tish uchun tasdiqlash kodi: ${code}`;
   }
   const message = params.message;
   if (!message) {
@@ -32,13 +32,11 @@ export function renderTextUpText(template: string, params: Record<string, string
 
 /**
  * Bo'lim 16 — TextUp `send` so'rovidagi `name` maydoni: ICHKI operatsion
- * yorliq (kampaniya/partiya nomi), SMS matnining O'ZI EMAS — shuning
- * uchun moderatsiya matnidan mustaqil ravishda o'qiladigan "bobololadono ..."
- * shaklida qoladi.
+ * yorliq (kampaniya/partiya nomi).
  */
 export function deriveTextUpSmsName(template: string, params: Record<string, string>): string {
   if (template === OTP_SMS_TEMPLATE) {
-    return params.purpose === 'PASSWORD_RESET' ? 'bobololadono Password Reset OTP' : 'bobololadono Registration OTP';
+    return params.purpose === 'PASSWORD_RESET' ? 'BOBODODA Password Reset OTP' : 'BOBODODA Registration OTP';
   }
   return template;
 }

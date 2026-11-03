@@ -5,16 +5,16 @@ import { DomainError } from '@/common/errors/domain-error';
 describe('renderTextUpText', () => {
   it('purpose=REGISTER (yoki berilmasa) — HAQIQATDA tasdiqlangan ("active") shablon matni', () => {
     expect(renderTextUpText(OTP_SMS_TEMPLATE, { code: '123456', purpose: 'REGISTER' })).toBe(
-      "bobololadono saytida ro'yxatdan o'tish uchun tasdiqlash kodi: 123456",
+      "BOBODODA saytida ro'yxatdan o'tish uchun tasdiqlash kodi: 123456",
     );
     expect(renderTextUpText(OTP_SMS_TEMPLATE, { code: '123456' })).toBe(
-      "bobololadono saytida ro'yxatdan o'tish uchun tasdiqlash kodi: 123456",
+      "BOBODODA saytida ro'yxatdan o'tish uchun tasdiqlash kodi: 123456",
     );
   });
 
   it('purpose=PASSWORD_RESET — HAQIQATDA tasdiqlangan ("active") shablon matni', () => {
     expect(renderTextUpText(OTP_SMS_TEMPLATE, { code: '654321', purpose: 'PASSWORD_RESET' })).toBe(
-      'bobololadono saytida parolni tiklash uchun tasdiqlash kodi: 654321',
+      'BOBODODA saytida parolni tiklash uchun tasdiqlash kodi: 654321',
     );
   });
 
@@ -32,13 +32,13 @@ describe('renderTextUpText', () => {
 });
 
 describe('deriveTextUpSmsName', () => {
-  it('OTP, purpose=REGISTER (yoki berilmasa) — "bobololadono Registration OTP"', () => {
-    expect(deriveTextUpSmsName(OTP_SMS_TEMPLATE, { code: '1', purpose: 'REGISTER' })).toBe('bobololadono Registration OTP');
-    expect(deriveTextUpSmsName(OTP_SMS_TEMPLATE, { code: '1' })).toBe('bobololadono Registration OTP');
+  it('OTP, purpose=REGISTER (yoki berilmasa) — "BOBODODA Registration OTP"', () => {
+    expect(deriveTextUpSmsName(OTP_SMS_TEMPLATE, { code: '1', purpose: 'REGISTER' })).toBe('BOBODODA Registration OTP');
+    expect(deriveTextUpSmsName(OTP_SMS_TEMPLATE, { code: '1' })).toBe('BOBODODA Registration OTP');
   });
 
-  it('OTP, purpose=PASSWORD_RESET — "bobololadono Password Reset OTP"', () => {
-    expect(deriveTextUpSmsName(OTP_SMS_TEMPLATE, { code: '1', purpose: 'PASSWORD_RESET' })).toBe('bobololadono Password Reset OTP');
+  it('OTP, purpose=PASSWORD_RESET — "BOBODODA Password Reset OTP"', () => {
+    expect(deriveTextUpSmsName(OTP_SMS_TEMPLATE, { code: '1', purpose: 'PASSWORD_RESET' })).toBe('BOBODODA Password Reset OTP');
   });
 
   it('boshqa shablon (Outbox) — hodisa turi nomi', () => {
