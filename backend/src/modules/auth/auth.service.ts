@@ -6,6 +6,7 @@ import { HashService } from '@/common/security/hash.service';
 import { RateLimiterService } from '@/common/security/rate-limiter.service';
 import { AuditService } from '@/common/audit/audit.service';
 import { generateOpaqueToken } from '@/common/security/opaque-token.util';
+import { normalizePhone } from '@/common/security/phone.util';
 import {
   ConflictError,
   DomainError,
@@ -160,7 +161,12 @@ export class AuthService {
    * "bu raqam bor/yo'q"ni bilib bo'lmaydi.
    */
   async login(rawPhone: string, password: string, meta?: RequestMeta): Promise<AuthResult> {
-    const phone = rawPhone.trim();
+    let phone = rawPhone.trim();
+    try {
+      phone = normalizePhone(rawPhone);
+    } catch {
+      // Format noto'g'ri bo'lsa xom trim bilan davom etadi (timing-safe dummy hash ishlaydi)
+    }
 
     // Bo'lim 12 — brute-force himoya: IP (telefon haqiqiyligidan qat'i
     // nazar — enumeration signal bermasin) VA telefon bo'yicha, PAROL
@@ -223,8 +229,14 @@ export class AuthService {
    * ichida, mavjudlikdan qat'i nazar), aks holda "cheklovga tegmayapti"
    * o'zi signal bo'lardi.
    */
-  async requestPasswordResetOtp(phone: string, ip?: string): Promise<{ devOtp?: string }> {
-    const user = await this.prisma.user.findUnique({ where: { phone: phone.trim() }, select: { id: true } });
+  async requestPasswordResetOtp(rawPhone: string, ip?: string): Promise<{ devOtp?: string }> {
+    let phone: string;
+    try {
+      phone = normalizePhone(rawPhone);
+    } catch {
+      return this.otp.requestOtp(rawPhone, 'PASSWORD_RESET', { ip, skipDelivery: true });
+    }
+    const user = await this.prisma.user.findUnique({ where: { phone }, select: { id: true } });
     return this.otp.requestOtp(phone, 'PASSWORD_RESET', { ip, skipDelivery: !user });
   }
 

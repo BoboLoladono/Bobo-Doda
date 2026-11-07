@@ -180,6 +180,14 @@ describe('AuthService — parol bilan login (Bosqich 21)', () => {
       expect(hit).toHaveBeenCalledWith('login:phone:+998901234567', expect.any(Number));
     });
 
+    it('login — prefikssiz telefon (901234567) normallashtirilib foydalanuvchi topiladi', async () => {
+      const existing = fakeUser({ roleChosen: true, lastActiveRole: 'BUYER', passwordHash: 'hashed:Passw0rd!' });
+      const { service, findUnique } = buildService({ findUniqueResult: existing });
+      const result = await service.login('901234567', 'Passw0rd!');
+      expect(result.accessToken).toBe('access-token');
+      expect(findUnique).toHaveBeenCalledWith({ where: { phone: '+998901234567' } });
+    });
+
     it('noto‘g‘ri parol — INVALID_CREDENTIALS', async () => {
       const existing = fakeUser({ passwordHash: 'hashed:Passw0rd!' });
       const { service } = buildService({ findUniqueResult: existing });
@@ -270,6 +278,24 @@ describe('AuthService — parol bilan login (Bosqich 21)', () => {
       await service.requestPasswordResetOtp('+998900000000');
       expect(otp.requestOtp).toHaveBeenCalledWith('+998900000000', 'PASSWORD_RESET', {
         ip: undefined,
+        skipDelivery: true,
+      });
+    });
+
+    it('requestPasswordResetOtp — prefikssiz telefon (901234567) normallashtirilib izlanadi va skipDelivery=false bo‘ladi', async () => {
+      const { service, otp } = buildService({ findUniqueResult: fakeUser() });
+      await service.requestPasswordResetOtp('901234567', '1.2.3.4');
+      expect(otp.requestOtp).toHaveBeenCalledWith('+998901234567', 'PASSWORD_RESET', {
+        ip: '1.2.3.4',
+        skipDelivery: false,
+      });
+    });
+
+    it('requestPasswordResetOtp — noto‘g‘ri formatdagi telefon uchun ham OtpService ga skipDelivery=true bilan uzatiladi', async () => {
+      const { service, otp } = buildService({ findUniqueResult: null });
+      await service.requestPasswordResetOtp('invalid-phone', '1.2.3.4');
+      expect(otp.requestOtp).toHaveBeenCalledWith('invalid-phone', 'PASSWORD_RESET', {
+        ip: '1.2.3.4',
         skipDelivery: true,
       });
     });
