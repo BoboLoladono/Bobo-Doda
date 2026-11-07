@@ -334,7 +334,9 @@ export class JobsService {
         where: { id: jobId },
         data: { proposalsCount: { increment: 1 } },
       });
-    } catch {}
+    } catch {
+      // Mock rejimida yoki e'lon o'chirilgan bo'lsa xatoni e'tiborsiz qoldirish
+    }
 
     return proposal;
   }
@@ -343,7 +345,7 @@ export class JobsService {
     if (!this.redis?.client) return [];
     try {
       const raw = await this.redis.client.lrange(`proposals:job:${jobId}`, 0, -1);
-      return raw.map((r) => JSON.parse(r));
+      return raw.map((r) => JSON.parse(r) as unknown as Record<string, unknown>);
     } catch {
       return [];
     }
@@ -353,7 +355,7 @@ export class JobsService {
     if (!this.redis?.client) return [];
     try {
       const raw = await this.redis.client.lrange(`proposals:seller:${sellerId}`, 0, -1);
-      return raw.map((r) => JSON.parse(r));
+      return raw.map((r) => JSON.parse(r) as unknown as Record<string, unknown>);
     } catch {
       return [];
     }
@@ -363,7 +365,7 @@ export class JobsService {
     if (!this.redis?.client) return null;
     try {
       const raw = await this.redis.client.get(`proposal:${proposalId}`);
-      return raw ? JSON.parse(raw) : null;
+      return raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
     } catch {
       return null;
     }
@@ -378,7 +380,7 @@ export class JobsService {
       if (!raw) {
         return { id: proposalId, status: 'qaytarib_olingan' };
       }
-      const prop = JSON.parse(raw);
+      const prop = JSON.parse(raw) as unknown as { id: string; jobId: string; sellerId: string; status: string; [key: string]: unknown };
       if (prop.sellerId !== sellerId) {
         throw new DomainError('FORBIDDEN', 'Bu taklif sizga tegishli emas');
       }
@@ -388,7 +390,7 @@ export class JobsService {
       // Update in proposals:job:${jobId}
       const jobListRaw = await this.redis.client.lrange(`proposals:job:${prop.jobId}`, 0, -1);
       const updatedJobList = jobListRaw.map((item) => {
-        const p = JSON.parse(item);
+        const p = JSON.parse(item) as unknown as { id: string; status: string; [key: string]: unknown };
         if (p.id === proposalId) p.status = 'qaytarib_olingan';
         return JSON.stringify(p);
       });
@@ -400,7 +402,7 @@ export class JobsService {
       // Update in proposals:seller:${sellerId}
       const sellerListRaw = await this.redis.client.lrange(`proposals:seller:${sellerId}`, 0, -1);
       const updatedSellerList = sellerListRaw.map((item) => {
-        const p = JSON.parse(item);
+        const p = JSON.parse(item) as unknown as { id: string; status: string; [key: string]: unknown };
         if (p.id === proposalId) p.status = 'qaytarib_olingan';
         return JSON.stringify(p);
       });
@@ -415,7 +417,9 @@ export class JobsService {
           where: { id: prop.jobId },
           data: { proposalsCount: { decrement: 1 } },
         });
-      } catch {}
+      } catch {
+        // E'lon topilmasa yoki Prisma yangilanmasa davom etadi
+      }
 
       return prop;
     } catch (err) {
@@ -432,14 +436,14 @@ export class JobsService {
       const raw = await this.redis.client.get(`proposal:${proposalId}`);
       if (!raw) return { id: proposalId, status: 'yollandi' };
 
-      const prop = JSON.parse(raw);
+      const prop = JSON.parse(raw) as unknown as { id: string; jobId: string; sellerId: string; status: string; [key: string]: unknown };
       prop.status = 'yollandi';
       await this.redis.client.set(`proposal:${proposalId}`, JSON.stringify(prop));
 
       // Update in proposals:job:${jobId}
       const jobListRaw = await this.redis.client.lrange(`proposals:job:${prop.jobId}`, 0, -1);
       const updatedJobList = jobListRaw.map((item) => {
-        const p = JSON.parse(item);
+        const p = JSON.parse(item) as unknown as { id: string; status: string; [key: string]: unknown };
         if (p.id === proposalId) p.status = 'yollandi';
         return JSON.stringify(p);
       });
@@ -451,7 +455,7 @@ export class JobsService {
       // Update in proposals:seller:${sellerId}
       const sellerListRaw = await this.redis.client.lrange(`proposals:seller:${prop.sellerId}`, 0, -1);
       const updatedSellerList = sellerListRaw.map((item) => {
-        const p = JSON.parse(item);
+        const p = JSON.parse(item) as unknown as { id: string; status: string; [key: string]: unknown };
         if (p.id === proposalId) p.status = 'yollandi';
         return JSON.stringify(p);
       });

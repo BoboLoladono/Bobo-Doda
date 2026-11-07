@@ -78,7 +78,9 @@ export class TextUpTokenManager {
       let errBody = '';
       try {
         errBody = await response.text();
-      } catch {}
+      } catch {
+        // Matn o'qishda xato bo'lsa bo'sh qoladi
+      }
       this.logger.warn({ status: response.status, errBody }, 'TextUp login: muvaffaqiyatsiz javob');
       throw new Error(`TextUp login: HTTP ${response.status} ${errBody}`.trim());
     }

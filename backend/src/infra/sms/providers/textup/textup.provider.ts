@@ -146,7 +146,9 @@ export class TextUpProvider implements SmsProvider {
       let errorBody = '';
       try {
         errorBody = await response.text();
-      } catch {}
+      } catch {
+        // Matn o'qishda xato bo'lsa bo'sh qoladi
+      }
       this.logger.warn({ status: response.status, errorBody }, 'TextUp SMS yuborishda xato javob berdi');
       return { kind: 'http-error', status: response.status, errorBody };
     }

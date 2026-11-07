@@ -194,7 +194,7 @@ export default function TakliflarimPage() {
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <h3 className="font-heading text-sm font-bold text-ink hover:text-primary transition-colors">
-                      {job?.title ?? (proposal as any).jobTitle ?? "Ish e'loni"}
+                      {job?.title ?? (proposal as unknown as { jobTitle?: string }).jobTitle ?? "Ish e'loni"}
                     </h3>
                     <ProposalStatusBadge status={proposal.status} />
                   </div>
