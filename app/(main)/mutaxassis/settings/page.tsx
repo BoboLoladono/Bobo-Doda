@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Avatar } from "@/components/ui/Avatar";
 import { BackButton } from "@/components/ui/BackButton";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -26,6 +25,8 @@ import { AccountControls } from "@/components/shared/AccountControls";
 import { AccountSecurity } from "@/components/shared/AccountSecurity";
 import { CATEGORIES } from "@/lib/category-fields";
 import { authService, paymentsService, servicesService, usersService } from "@/lib/api";
+import { processAvatarImage } from "@/lib/avatar-image";
+import { initials } from "@/lib/format";
 import type {
   AccountPreferences,
   LanguageLevel,
@@ -101,6 +102,11 @@ export default function SozlamalarPage() {
     bio?: string;
     location?: string;
   }>({});
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
 const DEFAULT_PREFERENCES: AccountPreferences = {
   proposals: true,
   contracts: true,
@@ -132,6 +138,9 @@ const DEFAULT_PREFERENCES: AccountPreferences = {
         if (user) {
           setCurrentUser(user);
           setFullName(user.fullName);
+          setAvatarUrl(user.avatarUrl || profile.avatarUrl || "");
+        } else if (profile.avatarUrl) {
+          setAvatarUrl(profile.avatarUrl);
         }
         setHeadline(profile.headline || "");
         setBio(profile.bio || "");
@@ -299,6 +308,41 @@ const DEFAULT_PREFERENCES: AccountPreferences = {
       toast(t("settings.saved"));
     } catch {
       toast(t("common.error"), "error");
+    }
+  }
+
+  async function handleAvatarSelect(files: FileList | null) {
+    if (!files || !files[0]) return;
+    setAvatarError("");
+    setAvatarUploading(true);
+    try {
+      const processed = await processAvatarImage(files[0], 320);
+      setAvatarUrl(processed);
+      await usersService.updateAvatar(processed);
+      setCurrentUser((prev) => (prev ? { ...prev, avatarUrl: processed } : null));
+      toast("Profil rasmi muvaffaqiyatli yangilandi");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Rasmni yuklashda xatolik yuz berdi";
+      setAvatarError(msg);
+      toast(msg, "error");
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  }
+
+  async function handleAvatarRemove() {
+    setAvatarError("");
+    setAvatarUploading(true);
+    try {
+      setAvatarUrl("");
+      await usersService.updateAvatar("");
+      setCurrentUser((prev) => (prev ? { ...prev, avatarUrl: undefined } : null));
+      toast("Profil rasmi o'chirildi");
+    } catch {
+      toast("Rasmni o'chirishda xatolik yuz berdi", "error");
+    } finally {
+      setAvatarUploading(false);
     }
   }
 
@@ -578,7 +622,7 @@ const DEFAULT_PREFERENCES: AccountPreferences = {
           {/* TAB 1: Profil ma'lumotlari */}
           {activeTab === "profile" && (
             <Card padding="lg">
-              <div className="flex items-start justify-between border-b border-line pb-4">
+              <div className="border-b border-line pb-6">
                 <div>
                   <h2 className="font-heading text-lg font-bold text-ink">
                     {t("settings.tabProfile")}
@@ -587,7 +631,115 @@ const DEFAULT_PREFERENCES: AccountPreferences = {
                     {t("profile.publicNote")}
                   </p>
                 </div>
-                <Avatar name={fullName || "?"} size="md" />
+
+                {/* Upwork-style interactive avatar uploader */}
+                <div className="mt-5 flex flex-col sm:flex-row items-center gap-5 p-4 rounded-2xl border border-line bg-surface/60">
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={avatarUploading}
+                      aria-label="Profil rasmini o'zgartirish"
+                      className="group relative block h-24 w-24 rounded-full overflow-hidden border-2 border-line hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm cursor-pointer"
+                    >
+                      {avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={avatarUrl}
+                          alt={fullName || "Profil rasmi"}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center bg-primary/10 font-heading text-2xl font-black text-primary-deep">
+                          {initials(fullName || "?")}
+                        </span>
+                      )}
+
+                      {/* Hover camera overlay */}
+                      <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                          <circle cx="12" cy="13" r="4" />
+                        </svg>
+                        <span className="text-[10px] font-semibold mt-1">O&apos;zgartirish</span>
+                      </div>
+
+                      {/* Loading spinner */}
+                      {avatarUploading && (
+                        <div className="absolute inset-0 bg-ink/60 flex items-center justify-center">
+                          <div className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Camera badge button */}
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={avatarUploading}
+                      aria-label="Rasm yuklash"
+                      className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border border-line bg-card text-ink shadow-sm hover:bg-card-hover hover:text-primary transition-colors cursor-pointer"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                        <circle cx="12" cy="13" r="4" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-1 flex-1">
+                    <span className="text-sm font-semibold text-ink">
+                      Profil fotosurati
+                    </span>
+                    <p className="text-xs text-muted max-w-sm">
+                      Mijozlar ishonchini oshirish uchun yuzingiz aniq ko&apos;ringan sifatli fotosurat yuklang. (JPG, PNG yoki WebP, 10 MB gacha)
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={avatarUploading}
+                        onClick={() => avatarInputRef.current?.click()}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="17 8 12 3 7 8" />
+                          <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                        {avatarUrl ? "Rasmni almashtirish" : "Rasm yuklash"}
+                      </Button>
+                      {avatarUrl && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={avatarUploading}
+                          className="text-danger hover:bg-danger/10 hover:text-danger"
+                          onClick={handleAvatarRemove}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                          O&apos;chirish
+                        </Button>
+                      )}
+                    </div>
+                    {avatarError && (
+                      <p className="mt-1 text-xs text-danger" role="alert">
+                        {avatarError}
+                      </p>
+                    )}
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      onChange={(e) => handleAvatarSelect(e.target.files)}
+                    />
+                  </div>
+                </div>
               </div>
 
               <form onSubmit={handleProfileSubmit} className="mt-6 flex flex-col gap-5" noValidate>

@@ -363,6 +363,7 @@ export const usersService: UsersService = {
             if (parsed.location) profile.location = parsed.location;
             if (Array.isArray(parsed.languages)) profile.languages = parsed.languages;
             if (Array.isArray(parsed.portfolio)) profile.portfolio = parsed.portfolio;
+            if (parsed.avatarUrl) profile.avatarUrl = parsed.avatarUrl;
           }
           const storedAvail = localStorage.getItem(`bbd_avail_${me.id}`);
           if (storedAvail !== null) {
@@ -375,7 +376,12 @@ export const usersService: UsersService = {
   updateName: (fullName) => call(async () => void (await http("/me/profile", { method: "PATCH", body: { fullName } }))),
   updateUserProfile: (data) =>
     call(async () => {
-      if (data.fullName) await http("/me/profile", { method: "PATCH", body: { fullName: data.fullName } }).catch(() => {});
+      const patchBody: Record<string, unknown> = {};
+      if (data.fullName) patchBody.fullName = data.fullName;
+      if (data.avatarUrl !== undefined) patchBody.avatarKey = data.avatarUrl || null;
+      if (Object.keys(patchBody).length > 0) {
+        await http("/me/profile", { method: "PATCH", body: patchBody }).catch(() => {});
+      }
       if (typeof window !== "undefined") {
         try {
           const me = await http<RealMe>("/me").catch(() => null);
@@ -384,6 +390,7 @@ export const usersService: UsersService = {
           const existing = JSON.parse(localStorage.getItem(key) || "{}");
           const merged = { ...existing, ...data };
           localStorage.setItem(key, JSON.stringify(merged));
+          window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT, { detail: { key: "profile", data } }));
         } catch {}
       }
     }),
@@ -391,8 +398,11 @@ export const usersService: UsersService = {
     call(async () => void (await http("/me/profile", { method: "PATCH", body: { fullName: input.fullName } }))),
   updateSellerProfile: (input) =>
     call(async () => {
-      if (input.fullName) {
-        await http("/me/profile", { method: "PATCH", body: { fullName: input.fullName } }).catch(() => {});
+      const patchBody: Record<string, unknown> = {};
+      if (input.fullName) patchBody.fullName = input.fullName;
+      if (input.avatarUrl !== undefined) patchBody.avatarKey = input.avatarUrl || null;
+      if (Object.keys(patchBody).length > 0) {
+        await http("/me/profile", { method: "PATCH", body: patchBody }).catch(() => {});
       }
       if (typeof window !== "undefined") {
         try {
@@ -401,7 +411,29 @@ export const usersService: UsersService = {
           const existing = JSON.parse(localStorage.getItem(`bbd_seller_profile_${uid}`) || "{}");
           const merged = { ...existing, ...input };
           localStorage.setItem(`bbd_seller_profile_${uid}`, JSON.stringify(merged));
+          window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT, { detail: { key: "profile", input } }));
         } catch {}
+      }
+    }),
+  updateAvatar: (avatarUrl: string) =>
+    call(async () => {
+      await http("/me/profile", {
+        method: "PATCH",
+        body: { avatarKey: avatarUrl || null },
+      });
+      if (typeof window !== "undefined") {
+        try {
+          const me = await http<RealMe>("/me").catch(() => null);
+          const uid = me?.id ?? "me";
+          const buyerKey = `bbd_buyer_profile_${uid}`;
+          const bExisting = JSON.parse(localStorage.getItem(buyerKey) || "{}");
+          localStorage.setItem(buyerKey, JSON.stringify({ ...bExisting, avatarUrl }));
+
+          const sellerKey = `bbd_seller_profile_${uid}`;
+          const sExisting = JSON.parse(localStorage.getItem(sellerKey) || "{}");
+          localStorage.setItem(sellerKey, JSON.stringify({ ...sExisting, avatarUrl }));
+        } catch {}
+        window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT, { detail: { key: "avatar", avatarUrl } }));
       }
     }),
   setAvailability: (available: boolean) =>

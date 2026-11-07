@@ -44,6 +44,7 @@ export interface PortfolioItem {
 
 export interface SellerProfile {
   userId: string;
+  avatarUrl?: string;
   /** kasbiy sarlavha (Upwork/Fiverr uslubidagi tagline) */
   headline: string;
   bio: string;

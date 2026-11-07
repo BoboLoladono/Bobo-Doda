@@ -18,6 +18,7 @@ export function TopNav({ base }: TopNavProps) {
   const router = useRouter();
   const { t } = useT();
   const [name, setName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
   const [menuOpen, setMenuOpen] = useState(false);
 
   async function handleLogout() {
@@ -28,7 +29,10 @@ export function TopNav({ base }: TopNavProps) {
   useEffect(() => {
     function refresh() {
       usersService.getCurrent().then((user) => {
-        if (user) setName(user.fullName);
+        if (user) {
+          setName(user.fullName);
+          setAvatarUrl(user.avatarUrl);
+        }
       }).catch(() => {});
     }
     refresh();
@@ -124,7 +128,7 @@ export function TopNav({ base }: TopNavProps) {
               aria-label={t("nav.settings") || "Sozlamalar"}
               className="rounded-full shrink-0"
             >
-              <Avatar name={name || "?"} size="sm" />
+              <Avatar name={name || "?"} src={avatarUrl} size="sm" />
             </Link>
             <button
               type="button"

@@ -469,7 +469,11 @@ export default function XaridorMutaxassislarPage() {
                         {/* Header: Avatar, Name, Badges, Bookmark */}
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-start gap-3 min-w-0">
-                            <Avatar name={spec.user.fullName} size="md" />
+                            <Avatar
+                              name={spec.user.fullName}
+                              src={spec.user.avatarUrl || spec.profile.avatarUrl}
+                              size="md"
+                            />
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <Link
@@ -744,7 +748,11 @@ export default function XaridorMutaxassislarPage() {
                         {spec && (
                           <div className="flex items-center gap-2 pt-2 border-t border-line/60 mt-1 pointer-events-auto relative z-20">
                             <Link href={`/bozor/mutaxassis/${spec.user.id}`} className="flex items-center gap-2 group/spec">
-                              <Avatar name={spec.user.fullName} size="sm" />
+                              <Avatar
+                                name={spec.user.fullName}
+                                src={spec.user.avatarUrl || spec.profile.avatarUrl}
+                                size="sm"
+                              />
                               <div className="min-w-0">
                                 <p className="text-xs font-semibold text-ink group-hover/spec:text-primary transition-colors truncate">
                                   {spec.user.fullName}

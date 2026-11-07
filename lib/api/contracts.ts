@@ -139,7 +139,9 @@ export interface UsersService {
     location?: string;
     languages?: Model.ProfileLanguage[];
     portfolio?: Model.PortfolioItem[];
+    avatarUrl?: string;
   }): Promise<void>;
+  updateAvatar(avatarUrl: string): Promise<void>;
   setAvailability(available: boolean): Promise<void>;
   getPreferences(): Promise<Model.AccountPreferences>;
   savePreferences(preferences: Model.AccountPreferences): Promise<void>;

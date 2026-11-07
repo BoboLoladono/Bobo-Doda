@@ -758,7 +758,11 @@ export default function BozorPage() {
                       <div className="flex flex-col gap-3">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-start gap-3 min-w-0">
-                            <Avatar name={spec.user.fullName} size="md" />
+                            <Avatar
+                              name={spec.user.fullName}
+                              src={spec.user.avatarUrl || spec.profile.avatarUrl}
+                              size="md"
+                            />
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <h3 className="font-heading text-sm font-bold text-ink truncate">

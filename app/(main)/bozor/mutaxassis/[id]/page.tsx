@@ -119,7 +119,7 @@ export default function MutaxassisProfiliPage() {
           {/* Header Card */}
           <Card padding="lg">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-              <Avatar name={user.fullName} size="lg" />
+              <Avatar name={user.fullName} src={user.avatarUrl || profile.avatarUrl} size="lg" />
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-3">
                   <h1 className="font-heading text-2xl font-extrabold text-ink">

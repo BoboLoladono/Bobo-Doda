@@ -32,15 +32,23 @@ export class MeService {
     };
   }
 
-  /** `PATCH /me/profile` — hozircha faqat `fullName` (bo'lim 3: telefon/avatar alohida oqim talab qiladi). */
+  /** `PATCH /me/profile` — `fullName` va `avatarKey` yangilash. */
   async updateProfile(
     userId: string,
     dto: UpdateProfileDto,
     activeRole: MeResponseDto['activeRole'],
   ): Promise<MeResponseDto> {
+    const data: { fullName?: string; avatarKey?: string | null; profileDone?: boolean } = {};
+    if (dto.fullName !== undefined) {
+      data.fullName = dto.fullName;
+      data.profileDone = true;
+    }
+    if (dto.avatarKey !== undefined) {
+      data.avatarKey = dto.avatarKey && dto.avatarKey.trim() !== '' ? dto.avatarKey : null;
+    }
     const user = await this.prisma.user.update({
       where: { id: userId },
-      data: { fullName: dto.fullName, profileDone: true },
+      data,
     });
     return {
       id: user.id,

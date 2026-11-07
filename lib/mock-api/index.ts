@@ -1155,6 +1155,7 @@ export async function updateSellerProfile(data: {
   location?: string;
   languages?: ProfileLanguage[];
   portfolio?: PortfolioItem[];
+  avatarUrl?: string;
 }): Promise<void> {
   await delay(400);
   const session = getSession();
@@ -1163,7 +1164,11 @@ export async function updateSellerProfile(data: {
   const users = read<User[]>(KEYS.users, []);
   const idx = users.findIndex((u) => u.id === session.userId);
   if (idx >= 0) {
-    users[idx] = { ...users[idx], fullName: text(data.fullName, LIMITS.name) };
+    users[idx] = {
+      ...users[idx],
+      fullName: text(data.fullName, LIMITS.name),
+      ...(data.avatarUrl !== undefined ? { avatarUrl: data.avatarUrl } : {}),
+    };
     write(KEYS.users, users);
   }
 
@@ -3837,6 +3842,10 @@ export async function updateUserName(fullName: string): Promise<void> {
   const clean = text(fullName, LIMITS.name);
   if (!clean) throw new Error("INVALID_NAME");
   return updateUserProfile({ fullName: clean });
+}
+
+export async function updateAvatar(avatarUrl: string): Promise<void> {
+  return updateUserProfile({ avatarUrl });
 }
 
 export async function changePassword(

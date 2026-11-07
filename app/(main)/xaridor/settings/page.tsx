@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/Toast";
 import { CardManager } from "@/components/shared/cards";
 import { AccountSecurity } from "@/components/shared/AccountSecurity";
 import { authService, paymentsService, usersService } from "@/lib/api";
+import { processAvatarImage } from "@/lib/avatar-image";
 import type { AccountPreferences, PaymentCard, User } from "@/lib/types";
 import { useT, type Lang } from "@/lib/i18n";
 import { initials } from "@/lib/format";
@@ -121,31 +122,34 @@ export default function XaridorSozlamalarPage() {
     }
   }, []);
 
-  // Avatar upload handler (under 2MB, png/jpeg/webp)
-  function handleAvatarChange(files: FileList | null) {
+  // Avatar upload handler with client-side center-crop and compression
+  async function handleAvatarChange(files: FileList | null) {
     if (!files || !files[0]) return;
     setAvatarError("");
-    const file = files[0];
-    const maxBytes = 2 * 1024 * 1024;
-    const validTypes = ["image/png", "image/jpeg", "image/webp"];
-
-    if (!validTypes.includes(file.type)) {
-      setAvatarError(t("upload.rejected"));
-      return;
+    try {
+      const processed = await processAvatarImage(files[0], 320);
+      setAvatarUrl(processed);
+      await usersService.updateAvatar(processed);
+      setCurrentUser((prev) => (prev ? { ...prev, avatarUrl: processed } : null));
+      toast(t("bset.savedSuccess"));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t("upload.rejected");
+      setAvatarError(msg);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
-    if (file.size > maxBytes) {
-      setAvatarError(t("upload.rejected"));
-      return;
-    }
+  }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setAvatarUrl(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  async function handleAvatarRemove() {
+    setAvatarError("");
+    try {
+      setAvatarUrl("");
+      await usersService.updateAvatar("");
+      setCurrentUser((prev) => (prev ? { ...prev, avatarUrl: undefined } : null));
+      toast(t("bset.savedSuccess"));
+    } catch {
+      toast(t("common.error"), "error");
+    }
   }
 
   // Profile save
@@ -500,7 +504,7 @@ export default function XaridorSozlamalarPage() {
                           variant="ghost"
                           size="sm"
                           className="text-danger hover:bg-danger/10 hover:text-danger"
-                          onClick={() => setAvatarUrl("")}
+                          onClick={handleAvatarRemove}
                         >
                           {t("bset.removeAvatar")}
                         </Button>

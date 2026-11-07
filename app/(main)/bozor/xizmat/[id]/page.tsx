@@ -263,7 +263,11 @@ export default function XizmatTafsilotiPage() {
                 href={`/bozor/mutaxassis/${specialist.user.id}`}
                 className="group flex items-center gap-3"
               >
-                <Avatar name={specialist.user.fullName} size="md" />
+                <Avatar
+                  name={specialist.user.fullName}
+                  src={specialist.user.avatarUrl || specialist.profile.avatarUrl}
+                  size="md"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <p className="font-semibold text-sm text-ink group-hover:text-primary transition-colors truncate">
