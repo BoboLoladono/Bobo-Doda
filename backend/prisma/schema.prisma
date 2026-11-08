@@ -535,6 +535,7 @@ model User {
   sellerApplications SellerApplication[]
   services           Service[]
   jobs               Job[]
+  jobProposals       JobProposal[]
   contractsAsBuyer   Contract[]          @relation("ContractsAsBuyer")
   contractsAsSeller  Contract[]          @relation("ContractsAsSeller")
   payments           Payment[]
@@ -973,6 +974,7 @@ model Service {
 
 /// Xaridor e'loni (Job posting) — Bosqich 22
 model Job {
+  proposals JobProposal[]
   id                 String    @id @db.Uuid
   buyerId            String    @db.Uuid
   buyer              User      @relation(fields: [buyerId], references: [id])
@@ -1808,4 +1810,21 @@ model FinancialAnomaly {
   @@index([severity, detectedAt])
   @@index([entityType, entityId])
   @@map("financial_anomalies")
+}
+
+/// Durable proposal source of truth. Redis is never the authoritative job store.
+model JobProposal {
+  id String @id
+  jobId String @db.Uuid
+  job Job @relation(fields: [jobId], references: [id])
+  sellerId String @db.Uuid
+  seller User @relation(fields: [sellerId], references: [id])
+  status String @default("korib_chiqilmoqda")
+  payload Json
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  @@unique([jobId, sellerId])
+  @@index([sellerId, createdAt])
+  @@map("job_proposals")
 }

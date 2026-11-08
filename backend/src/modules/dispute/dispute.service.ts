@@ -1,3 +1,4 @@
+import { parseDisputeAwards, type DisputeAwardInput } from './dispute-award.util';
 import { Injectable } from '@nestjs/common';
 import { Prisma, type Dispute, type DisputeEvidence, type DisputeReason, type DisputeStatus, type Refund } from '@prisma/client';
 import { PrismaService } from '@/infra/prisma/prisma.service';
@@ -5,7 +6,6 @@ import { IdFactory } from '@/common/id/id.factory';
 import { DomainError, InvalidTransitionError, NotFoundError } from '@/common/errors/domain-error';
 import { AuditService, type AuditActor } from '@/common/audit/audit.service';
 import { OutboxService } from '@/common/outbox/outbox.service';
-import { somToTiyin } from '@/common/money/money.util';
 import { buildPage, type Page } from '@/common/pagination/page-query.dto';
 import { LedgerService } from '@/modules/ledger/ledger.service';
 import { RefundService } from '@/modules/refund/refund.service';
@@ -79,6 +79,15 @@ export class DisputeService {
         }
 
         const preSettlement = freshContract.status === 'ACTIVE';
+        if (preSettlement) {
+          const refund = await tx.refund.findFirst({
+            where: { contractId, status: { in: ['PENDING', 'PROCESSING', 'SUCCEEDED'] } },
+            select: { id: true },
+          });
+          if (refund) {
+            throw new DomainError('CONTRACT_REFUND_IN_PROGRESS', 'Shartnoma uchun refund allaqachon boshlangan');
+          }
+        }
         const disputedAmount = preSettlement
           ? freshContract.agreedAmount
           : await this.ledger.getSettlementSellerNet(tx, contractId);
@@ -358,13 +367,17 @@ export class DisputeService {
   async resolve(
     disputeId: string,
     staffId: string,
-    buyerAwardAmountSom: number,
-    sellerAwardAmountSom: number,
+    buyerAwardAmountSom: number | undefined,
+    sellerAwardAmountSom: number | undefined,
     resolutionReason: string,
     actor: AuditActor,
+    exactAwards?: Pick<DisputeAwardInput, 'buyerAwardAmountTiyin' | 'sellerAwardAmountTiyin'>,
   ): Promise<{ dispute: Dispute; refund: Refund | null }> {
-    const buyerAward = buyerAwardAmountSom === 0 ? 0n : somToTiyin(buyerAwardAmountSom);
-    const sellerAward = sellerAwardAmountSom === 0 ? 0n : somToTiyin(sellerAwardAmountSom);
+    const { buyerAward, sellerAward } = parseDisputeAwards({
+      buyerAwardAmount: buyerAwardAmountSom,
+      sellerAwardAmount: sellerAwardAmountSom,
+      ...exactAwards,
+    });
 
     const result = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM disputes WHERE id = ${disputeId}::uuid FOR UPDATE`;
@@ -382,6 +395,14 @@ export class DisputeService {
 
       await tx.$queryRaw`SELECT id FROM contracts WHERE id = ${dispute.contractId}::uuid FOR UPDATE`;
       const contract = await tx.contract.findUniqueOrThrow({ where: { id: dispute.contractId } });
+      // Opening an unfunded dispute is allowed for support, but an award must
+      // never manufacture seller credit from an escrow that was never funded.
+      if (dispute.preSettlement && buyerAward + sellerAward > 0n) {
+        const funding = await tx.payment.findFirst({ where: { contractId: contract.id, status: 'SUCCEEDED' } });
+        if (!funding || !(await this.ledger.findFundingTransaction(tx, funding.id))) {
+          throw new DomainError('CONTRACT_NOT_FUNDED', 'Moliyaviy qaror uchun shartnoma avval to‘lanishi shart');
+        }
+      }
 
       const resolutionType =
         sellerAward === 0n ? 'BUYER_FULL_REFUND' : buyerAward === 0n ? 'SELLER_FULL_RELEASE' : 'SPLIT';

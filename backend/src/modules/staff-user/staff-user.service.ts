@@ -122,22 +122,33 @@ export class StaffUserService {
   async reactivate(userId: string, actor: AuditActor): Promise<void> {
     const existing = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { status: true },
+      select: { status: true, statusChangedAt: true },
     });
-    const cas = await this.prisma.user.updateMany({
-      where: { id: userId, status: { in: ['SUSPENDED', 'BLOCKED'] } },
-      data: { status: 'ACTIVE', statusReason: null, suspendedUntil: null, statusChangedAt: new Date() },
-    });
-    if (cas.count === 0) {
-      throw new DomainError('INVALID_TRANSITION', 'Bu hisob allaqachon faol');
-    }
-    await this.audit.record({
-      actor,
-      action: 'USER_REACTIVATED',
-      resourceType: 'USER',
-      resourceId: userId,
-      previousState: { status: existing.status },
-      newState: { status: 'ACTIVE' },
+    await this.prisma.$transaction(async (tx) => {
+      const cas = await tx.user.updateMany({
+        where: { id: userId, status: { in: ['SUSPENDED', 'BLOCKED'] } },
+        data: { status: 'ACTIVE', statusReason: null, suspendedUntil: null, statusChangedAt: new Date() },
+      });
+      if (cas.count === 0) {
+        throw new DomainError('INVALID_TRANSITION', 'Bu hisob allaqachon faol');
+      }
+      if (existing.statusChangedAt) {
+        await tx.refreshToken.updateMany({
+          where: { userId, revokedAt: { gte: existing.statusChangedAt }, expiresAt: { gt: new Date() } },
+          data: { revokedAt: null },
+        });
+      }
+      await this.audit.record(
+        {
+          actor,
+          action: 'USER_REACTIVATED',
+          resourceType: 'USER',
+          resourceId: userId,
+          previousState: { status: existing.status },
+          newState: { status: 'ACTIVE' },
+        },
+        tx,
+      );
     });
   }
 }

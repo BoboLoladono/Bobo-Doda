@@ -16,7 +16,7 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   function Select(
-    { label, error, options, placeholder, id, className = "", ...rest },
+    { label, error, options, placeholder, id, className = "", "aria-describedby": describedBy, ...rest },
     ref
   ) {
     const autoId = useId();
@@ -37,7 +37,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           id={inputId}
           aria-invalid={!!error}
-          aria-describedby={error ? messageId : undefined}
+          aria-describedby={[describedBy, error ? messageId : undefined].filter(Boolean).join(" ") || undefined}
           className={`h-10 w-full appearance-none rounded-input border bg-card pl-3 pr-9 text-sm text-ink transition-colors duration-150 focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
             error ? "border-danger" : "border-field"
           } ${className}`}

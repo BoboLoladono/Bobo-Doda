@@ -2,6 +2,8 @@
 
 import { forwardRef, useState, useId, type InputHTMLAttributes } from "react";
 
+import { useT } from "@/lib/i18n";
+
 export interface PasswordInputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"> {
   label?: string;
@@ -11,9 +13,10 @@ export interface PasswordInputProps
 
 export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
   function PasswordInput(
-    { label, error, hint, id, className = "", autoComplete = "current-password", ...rest },
+    { label, error, hint, id, className = "", "aria-describedby": describedBy, autoComplete = "current-password", ...rest },
     ref
   ) {
+    const { t } = useT();
     const autoId = useId();
     const inputId = id ?? autoId;
     const messageId = `${inputId}-msg`;
@@ -33,7 +36,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
             type={visible ? "text" : "password"}
             autoComplete={autoComplete}
             aria-invalid={!!error}
-            aria-describedby={error || hint ? messageId : undefined}
+            aria-describedby={[describedBy, error || hint ? messageId : undefined].filter(Boolean).join(" ") || undefined}
             className={`h-10 w-full rounded-input border bg-card pl-3 pr-11 text-sm text-ink placeholder:text-faint transition-colors duration-150 focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
               error ? "border-danger" : "border-field"
             } ${className}`}
@@ -45,8 +48,8 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
             disabled={rest.disabled}
             aria-controls={inputId}
             onClick={() => setVisible((prev) => !prev)}
-            aria-label={visible ? "Parolni yashirish" : "Parolni ko‘rsatish"}
-            title={visible ? "Parolni yashirish" : "Parolni ko‘rsatish"}
+            aria-label={visible ? t("auth.hidePassword") : t("auth.showPassword")}
+            title={visible ? t("auth.hidePassword") : t("auth.showPassword")}
             className="absolute right-1 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-input text-muted hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 transition-colors disabled:opacity-40 disabled:pointer-events-none touch-manipulation"
           >
             {visible ? (

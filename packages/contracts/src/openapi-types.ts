@@ -228,6 +228,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MeController_listSessions"];
+        put?: never;
+        post?: never;
+        delete: operations["MeController_revokeAllSessions"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/change-password": {
         parameters: {
             query?: never;
@@ -255,22 +271,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete: operations["MeController_revokeSession"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/me/sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["MeController_revokeAllSessions"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2036,6 +2036,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/proposals/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["JobsController_listMyProposals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/proposals/{proposalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["JobsController_getProposal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/proposals/{proposalId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["JobsController_withdrawProposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/proposals/{proposalId}/hire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["JobsController_hireProposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{id}/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["JobsController_listProposals"];
+        put?: never;
+        post: operations["JobsController_createProposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{id}": {
         parameters: {
             query?: never;
@@ -2066,6 +2146,54 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["JobsController_close"];
+        trace?: never;
+    };
+    "/api/v1/staff/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffJobController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/jobs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffJobController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/jobs/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffJobController_close"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -2185,7 +2313,8 @@ export interface components {
             createdAt: string;
         };
         UpdateProfileDto: {
-            fullName: string;
+            fullName?: string;
+            avatarKey?: Record<string, never> | null;
         };
         ChooseRoleDto: {
             /**
@@ -2193,6 +2322,19 @@ export interface components {
              * @enum {string}
              */
             role: "SELLER" | "BUYER";
+        };
+        SessionDto: {
+            id: string;
+            /** @enum {string|null} */
+            activeRole?: "SELLER" | "BUYER" | null;
+            userAgent?: Record<string, never> | null;
+            ip?: Record<string, never> | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** @description Shu so‘rovni yuborgan tokenning o‘zi shu sessiyagami */
+            current: boolean;
         };
         ChangePasswordDto: {
             currentPassword: string;
@@ -2347,6 +2489,10 @@ export interface components {
             id: string;
             sellerId: string;
             categoryId: string;
+            /** @description Kategoriya nomi */
+            categoryName?: string;
+            /** @description Kategoriya slug */
+            categorySlug?: string;
             title: string;
             description: string;
             lang: string;
@@ -2413,6 +2559,8 @@ export interface components {
         };
         CreateContractDto: {
             serviceId: string;
+            /** @description Kelishilgan summa (butun so‘m) */
+            agreedAmount?: number;
             /** @description ISO 8601 — kelajakda bo‘lishi shart */
             deadline: string;
             milestones: components["schemas"]["CreateMilestoneInputDto"][];
@@ -2523,6 +2671,11 @@ export interface components {
             accountOwnerId?: Record<string, never>;
             /** @description Ishorali butun so‘m — musbat=kredit, manfiy=debit */
             amount: number;
+            /**
+             * @description Exact signed integer tiyin, decimal string; 100 tiyin = 1 UZS
+             * @example 12345
+             */
+            amountTiyin: string;
             currency: string;
             /** Format: date-time */
             createdAt: string;
@@ -2543,6 +2696,8 @@ export interface components {
             currency: string;
             /** @description Butun so‘m — SELLER_PAYABLE hisobidagi joriy qoldiq */
             available: number;
+            /** @description Exact signed integer tiyin as a decimal string; 100 tiyin = 1 UZS */
+            availableTiyin: string;
         };
         CreateRefundDto: {
             contractId: string;
@@ -2558,6 +2713,11 @@ export interface components {
             status: "PENDING" | "PROCESSING" | "SUCCEEDED" | "FAILED";
             /** @description Butun so‘m */
             amount: number;
+            /**
+             * @description Exact signed integer tiyin, decimal string; 100 tiyin = 1 UZS
+             * @example 12345
+             */
+            amountTiyin: string;
             currency: string;
             reason: string;
             failureReason?: Record<string, never>;
@@ -2581,6 +2741,11 @@ export interface components {
             status: "PENDING" | "PROCESSING" | "SUCCEEDED" | "FAILED";
             /** @description Butun so‘m */
             amount: number;
+            /**
+             * @description Exact signed integer tiyin, decimal string; 100 tiyin = 1 UZS
+             * @example 12345
+             */
+            amountTiyin: string;
             currency: string;
             reason: string;
             failureReason?: Record<string, never>;
@@ -2602,6 +2767,11 @@ export interface components {
             status: "PENDING" | "PROCESSING" | "SUCCEEDED" | "FAILED";
             /** @description Butun so‘m */
             amount: number;
+            /**
+             * @description Exact signed integer tiyin, decimal string; 100 tiyin = 1 UZS
+             * @example 12345
+             */
+            amountTiyin: string;
             currency: string;
             destinationReference: string;
             failureReason?: Record<string, never>;
@@ -2618,6 +2788,11 @@ export interface components {
             status: "PENDING" | "PROCESSING" | "SUCCEEDED" | "FAILED";
             /** @description Butun so‘m */
             amount: number;
+            /**
+             * @description Exact signed integer tiyin, decimal string; 100 tiyin = 1 UZS
+             * @example 12345
+             */
+            amountTiyin: string;
             currency: string;
             destinationReference: string;
             failureReason?: Record<string, never>;
@@ -2649,6 +2824,10 @@ export interface components {
             disputedAmount: number;
             /** @description Butun so‘m */
             heldAmount: number;
+            /** @description Exact integer tiyin as a decimal string; 100 tiyin = 1 UZS */
+            disputedAmountTiyin: string;
+            /** @description Exact integer tiyin as a decimal string; 100 tiyin = 1 UZS */
+            heldAmountTiyin: string;
             currency: string;
             /** @enum {string} */
             resolutionType?: "BUYER_FULL_REFUND" | "SELLER_FULL_RELEASE" | "SPLIT";
@@ -2656,6 +2835,10 @@ export interface components {
             buyerAwardAmount?: Record<string, never>;
             /** @description Butun so‘m */
             sellerAwardAmount?: Record<string, never>;
+            /** @description Exact integer tiyin as a decimal string; null until allocated */
+            buyerAwardAmountTiyin?: Record<string, never> | null;
+            /** @description Exact integer tiyin as a decimal string; null until allocated */
+            sellerAwardAmountTiyin?: Record<string, never> | null;
             resolutionReason?: Record<string, never>;
             /** Format: date-time */
             openedAt: string;
@@ -2698,6 +2881,10 @@ export interface components {
             disputedAmount: number;
             /** @description Butun so‘m */
             heldAmount: number;
+            /** @description Exact integer tiyin as a decimal string; 100 tiyin = 1 UZS */
+            disputedAmountTiyin: string;
+            /** @description Exact integer tiyin as a decimal string; 100 tiyin = 1 UZS */
+            heldAmountTiyin: string;
             currency: string;
             /** @enum {string} */
             resolutionType?: "BUYER_FULL_REFUND" | "SELLER_FULL_RELEASE" | "SPLIT";
@@ -2705,6 +2892,10 @@ export interface components {
             buyerAwardAmount?: Record<string, never>;
             /** @description Butun so‘m */
             sellerAwardAmount?: Record<string, never>;
+            /** @description Exact integer tiyin as a decimal string; null until allocated */
+            buyerAwardAmountTiyin?: Record<string, never> | null;
+            /** @description Exact integer tiyin as a decimal string; null until allocated */
+            sellerAwardAmountTiyin?: Record<string, never> | null;
             resolutionReason?: Record<string, never>;
             /** Format: date-time */
             openedAt: string;
@@ -2724,10 +2915,20 @@ export interface components {
             resolutionReason: string;
         };
         ResolveDisputeDto: {
-            /** @description Butun so‘m */
-            buyerAwardAmount: number;
-            /** @description Butun so‘m */
-            sellerAwardAmount: number;
+            /** @description Legacy whole so‘m; provide both fields, without tiyin fields */
+            buyerAwardAmount?: number;
+            /** @description Legacy whole so‘m; provide both fields, without tiyin fields */
+            sellerAwardAmount?: number;
+            /**
+             * @description Exact nonnegative integer tiyin string; provide both tiyin fields without legacy fields
+             * @example 95
+             */
+            buyerAwardAmountTiyin?: string;
+            /**
+             * @description Exact nonnegative integer tiyin string; provide both tiyin fields without legacy fields
+             * @example 0
+             */
+            sellerAwardAmountTiyin?: string;
             resolutionReason: string;
         };
         AcknowledgeAnomalyDto: {
@@ -2891,6 +3092,14 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        CreateProposalDto: {
+            /** @description Taklif summasi (kamida 1 000 so‘m) */
+            bidAmount: number;
+            coverLetter: string;
+            screeningAnswers?: Record<string, never>[];
+            attachedImages?: string[];
+            estimatedDeliveryDays?: number;
+        };
         JobResponseDto: {
             id: string;
             buyerId: string;
@@ -2924,9 +3133,9 @@ export interface components {
             category: string;
             title: string;
             description: string;
-            /** @description Minimal byudjet (butun so‘m, kamida 50 000) */
+            /** @description Minimal byudjet (butun so‘m, kamida 1 000) */
             budgetMin: number;
-            /** @description Maksimal byudjet (butun so‘m, kamida 50 000) */
+            /** @description Maksimal byudjet (butun so‘m, kamida 1 000) */
             budgetMax: number;
             skillsRequired?: string[];
             /** @description Maksimal 3 ta savol */
@@ -3246,6 +3455,42 @@ export interface operations {
             };
         };
     };
+    MeController_listSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDto"][];
+                };
+            };
+        };
+    };
+    MeController_revokeAllSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     MeController_changePassword: {
         parameters: {
             query?: never;
@@ -3274,23 +3519,6 @@ export interface operations {
             path: {
                 id: string;
             };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    MeController_revokeAllSessions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -5972,6 +6200,122 @@ export interface operations {
             };
         };
     };
+    JobsController_listMyProposals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    JobsController_getProposal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    JobsController_withdrawProposal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    JobsController_hireProposal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    JobsController_listProposals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    JobsController_createProposal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProposalDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     JobsController_get: {
         parameters: {
             query?: never;
@@ -6015,6 +6359,71 @@ export interface operations {
         };
     };
     JobsController_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponseDto"];
+                };
+            };
+        };
+    };
+    StaffJobController_list: {
+        parameters: {
+            query: {
+                page: string;
+                perPage: string;
+                status: string;
+                category: string;
+                search: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StaffJobController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponseDto"];
+                };
+            };
+        };
+    };
+    StaffJobController_close: {
         parameters: {
             query?: never;
             header?: never;

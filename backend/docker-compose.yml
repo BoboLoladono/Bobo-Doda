@@ -29,7 +29,7 @@ services:
       DB_APP_PASSWORD: app
       DB_MIGRATOR_PASSWORD: migrator
     ports:
-      - '5432:5432'
+      - '127.0.0.1:5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
       # A4 — `bobololadono_migrator` / `bobololadono_app` rollarini birinchi init'da
@@ -50,7 +50,7 @@ services:
     image: redis:7-alpine
     command: ['redis-server', '--appendonly', 'yes']
     ports:
-      - '6379:6379'
+      - '127.0.0.1:6379:6379'
     volumes:
       - redisdata:/data
     healthcheck:
@@ -66,8 +66,8 @@ services:
       MINIO_ROOT_USER: bobololadono
       MINIO_ROOT_PASSWORD: bobololadono-secret
     ports:
-      - '9000:9000'
-      - '9001:9001'
+      - '127.0.0.1:9000:9000'
+      - '127.0.0.1:9001:9001'
     volumes:
       - miniodata:/data
     healthcheck:

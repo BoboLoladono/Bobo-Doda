@@ -98,7 +98,7 @@ export default function MutaxassisDashboardPage() {
   const matchingJobs = openJobs.filter((j) => matchesProfile(j, profile));
   const totalEarnings = (milestones ?? [])
     .filter((m) => m.status === "qabul_qilindi")
-    .reduce((sum, m) => sum + sellerNet(m.amount), 0);
+    .reduce((sum, m) => sum + sellerNet(m.amount, m.platformFeeRateBps), 0);
 
   const awaitingResponseProposals = (proposals ?? []).filter(
     (p) => p.status === "yuborilgan" || p.status === "korib_chiqilmoqda" || p.status === "suhbat"

@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { PrismaClient } from '@prisma/client';
 import Redis from 'ioredis';
+import { assertIsolatedTestInfra } from './test-safety';
 
 /**
  * E2E infratuzilma manzillari.
@@ -32,6 +33,7 @@ export const hostOf = (url: string): string =>
 
 /** Infra yetib bo'lmasa test o'zini o'tkazib yuboradi (lokal, xizmatlarsiz). */
 export async function pgReachable(): Promise<boolean> {
+  assertIsolatedTestInfra(E2E_SUPERUSER_URL, E2E_REDIS_URL);
   const client = new PrismaClient({ datasourceUrl: withConnectTimeout(E2E_SUPERUSER_URL, 3) });
   try {
     await client.$queryRawUnsafe('SELECT 1');
@@ -54,7 +56,7 @@ export async function requireInfraOrSkip(label: string): Promise<boolean> {
   if (await pgReachable()) return true;
   if (process.env.CI_REQUIRE_E2E === 'true') {
     throw new Error(
-      `[${label}] CI_REQUIRE_E2E=true — Postgres infra KUTILGAN edi, topilmadi: ${E2E_SUPERUSER_URL}`,
+      `[${label}] CI_REQUIRE_E2E=true — Postgres infra KUTILGAN edi, topilmadi: ${hostOf(E2E_SUPERUSER_URL)}`,
     );
   }
   process.stderr.write(`[${label}] Postgres yetib bo'lmadi — suite o'tkazib yuborildi\n`);
@@ -73,6 +75,7 @@ export async function requireInfraOrSkip(label: string): Promise<boolean> {
  * `beforeAll`'i shu funksiyani `provisionDb()` bilan BIRGA chaqiradi.
  */
 export async function flushRedis(): Promise<void> {
+  assertIsolatedTestInfra(E2E_SUPERUSER_URL, E2E_REDIS_URL);
   const client = new Redis(E2E_REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 1 });
   try {
     await client.connect();
@@ -84,6 +87,7 @@ export async function flushRedis(): Promise<void> {
 
 /** Toza DB yaratadi (qayta ishga tushirishga chidamli). Superuser URL qaytaradi. */
 export async function recreateDatabase(name: string): Promise<string> {
+  assertIsolatedTestInfra(E2E_SUPERUSER_URL, E2E_REDIS_URL, name);
   const admin = new PrismaClient({ datasourceUrl: E2E_SUPERUSER_URL });
   try {
     await admin.$executeRawUnsafe(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
@@ -95,6 +99,7 @@ export async function recreateDatabase(name: string): Promise<string> {
 }
 
 export async function dropDatabase(name: string): Promise<void> {
+  assertIsolatedTestInfra(E2E_SUPERUSER_URL, E2E_REDIS_URL, name);
   const admin = new PrismaClient({ datasourceUrl: E2E_SUPERUSER_URL });
   await admin.$executeRawUnsafe(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`).catch(() => undefined);
   await admin.$disconnect();

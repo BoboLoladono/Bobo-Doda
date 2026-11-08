@@ -54,9 +54,18 @@ export class RefreshTokenService {
     /** NULL — hali rol tanlanmagan (onboarding sessiyasi). */
     activeRole: Role | null;
     meta?: RequestMeta;
+    expectedPasswordHash?: string;
   }): Promise<IssuedRefreshToken> {
     const raw = generateOpaqueToken();
-    const record = await this.prisma.refreshToken.create({
+    const record = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${params.userId}::uuid FOR UPDATE`;
+      if (params.expectedPasswordHash !== undefined) {
+        const user = await tx.user.findUnique({ where: { id: params.userId }, select: { passwordHash: true } });
+        if (!user || user.passwordHash !== params.expectedPasswordHash) {
+          throw new UnauthenticatedError('Parol o‘zgargan — qaytadan kiring', 'INVALID_CREDENTIALS');
+        }
+      }
+      return tx.refreshToken.create({
       data: {
         id: this.ids.next(),
         userId: params.userId,
@@ -67,6 +76,7 @@ export class RefreshTokenService {
         ip: params.meta?.ip,
         expiresAt: this.newExpiry(),
       },
+      });
     });
     return { raw, record };
   }
@@ -78,30 +88,6 @@ export class RefreshTokenService {
       throw new UnauthenticatedError('Sessiya topilmadi', 'NO_SESSION');
     }
     if (existing.revokedAt) {
-      const timeSinceRevocation = Date.now() - existing.revokedAt.getTime();
-      if (timeSinceRevocation < 15_000 && existing.replacedById) {
-        const replaced = await this.prisma.refreshToken.findUnique({
-          where: { id: existing.replacedById },
-        });
-        if (replaced && !replaced.revokedAt && replaced.expiresAt.getTime() > Date.now()) {
-          const nextId = this.ids.next();
-          const nextRaw = generateOpaqueToken();
-          const record = await this.prisma.refreshToken.create({
-            data: {
-              id: nextId,
-              userId: existing.userId,
-              tokenHash: hashOpaqueToken(nextRaw),
-              familyId: existing.familyId,
-              activeRole: existing.activeRole,
-              userAgent: meta?.userAgent,
-              ip: meta?.ip,
-              expiresAt: this.newExpiry(),
-            },
-          });
-          return { raw: nextRaw, record };
-        }
-      }
-
       await this.revokeFamily(existing.familyId);
       throw new UnauthenticatedError(
         'Token qayta ishlatildi — barcha sessiyalar tugatildi',
@@ -115,11 +101,16 @@ export class RefreshTokenService {
     const nextId = this.ids.next();
     const nextRaw = generateOpaqueToken();
     const record = await this.prisma.$transaction(async (tx) => {
+      // Same parent lock as every revocation: a new descendant cannot be
+      // inserted behind a logout/password-reset statement's MVCC snapshot.
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${existing.userId}::uuid FOR UPDATE`;
+      const fresh = await tx.refreshToken.findUnique({ where: { id: existing.id } });
+      if (!fresh || fresh.revokedAt || fresh.expiresAt.getTime() <= Date.now()) return null;
       const cas = await tx.refreshToken.updateMany({
         where: { id: existing.id, revokedAt: null },
         data: { revokedAt: new Date(), replacedById: nextId },
       });
-      if (cas.count === 0) return null; // Parallel so'rov bizdan oldin g'olib chiqdi.
+      if (cas.count === 0) return null;
       return tx.refreshToken.create({
         data: {
           id: nextId,
@@ -146,41 +137,47 @@ export class RefreshTokenService {
 
   /** Butun oila (barcha qurilma/avlod) — kompromess gumon qilinganda. */
   async revokeFamily(familyId: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: { familyId, revokedAt: null },
-      data: { revokedAt: new Date() },
+    const owner = await this.prisma.refreshToken.findFirst({ where: { familyId }, select: { userId: true } });
+    if (!owner) return;
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${owner.userId}::uuid FOR UPDATE`;
+      await tx.refreshToken.updateMany({
+        where: { familyId, revokedAt: null }, data: { revokedAt: new Date() },
+      });
     });
   }
 
   /** Bitta sessiya — FAQAT egasi (`userId` bilan query-scoping — ADR-04 ownership). */
   async revokeOwned(id: string, userId: string): Promise<boolean> {
-    const res = await this.prisma.refreshToken.updateMany({
-      where: { id, userId, revokedAt: null },
-      data: { revokedAt: new Date() },
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
+      const existing = await tx.refreshToken.findFirst({ where: { id, userId }, select: { familyId: true } });
+      if (!existing) return false;
+      await tx.refreshToken.updateMany({
+        where: { userId, familyId: existing.familyId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return true;
     });
-    return res.count > 0;
   }
 
   /** Logout — joriy cookie'dagi tokenning oilasini (shu qurilma) bekor qiladi. */
   async revokeByRawToken(rawToken: string, userId?: string): Promise<void> {
-    const where: { tokenHash: string; revokedAt: null; userId?: string } = {
-      tokenHash: hashOpaqueToken(rawToken),
-      revokedAt: null,
-    };
-    if (userId) {
-      where.userId = userId;
-    }
-    await this.prisma.refreshToken.updateMany({
-      where,
-      data: { revokedAt: new Date() },
+    const existing = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: hashOpaqueToken(rawToken) },
+      select: { userId: true, familyId: true },
     });
+    if (!existing || (userId && existing.userId !== userId)) return;
+    await this.revokeFamily(existing.familyId);
   }
 
   /** "Hamma qurilmadan chiqish". */
   async revokeAllForUser(userId: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
+      await tx.refreshToken.updateMany({
+        where: { userId, revokedAt: null }, data: { revokedAt: new Date() },
+      });
     });
   }
 

@@ -106,6 +106,9 @@ export class LedgerService {
     currency: string,
   ): Promise<LedgerAccount> {
     const where = { type_ownerType_ownerId_currency: { type, ownerType: 'USER' as const, ownerId: userId, currency } };
+    const existing = await tx.ledgerAccount.findUnique({ where });
+    if (existing) return existing;
+
     const savepoint = `ledger_acct_${this.ids.next().replace(/-/g, '')}`;
     await tx.$executeRawUnsafe(`SAVEPOINT "${savepoint}"`);
     try {
@@ -115,8 +118,8 @@ export class LedgerService {
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === PRISMA_UNIQUE_VIOLATION) {
         await tx.$executeRawUnsafe(`ROLLBACK TO SAVEPOINT "${savepoint}"`);
-        const existing = await tx.ledgerAccount.findUnique({ where });
-        if (existing) return existing;
+        const created = await tx.ledgerAccount.findUnique({ where });
+        if (created) return created;
       }
       throw err;
     }

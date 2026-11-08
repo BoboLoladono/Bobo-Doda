@@ -1,3 +1,10 @@
+> **Current integration warning (2026-11-08):** this adapter is hybrid. Server
+> rejection must propagate for marketplace, identity and financial operations;
+> browser mock state is not a durable backend. Unsupported hiring, card binding,
+> payout initiation, KYC and account deletion explicitly fail. See
+> [re-audit evidence](../../docs/REAUDIT.md) for current boundaries. Historical
+> integration notes below do not establish production readiness.
+
 # `lib/api` — Frontend API chegarasi (backend-ready)
 
 UI faqat shu paketdan import qiladi. Hozirgi implementatsiya brauzer ichidagi

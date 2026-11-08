@@ -50,3 +50,12 @@ process.env.DATABASE_MIGRATION_URL = `postgresql://bobololadono_migrator:migrato
 process.env.REDIS_URL = process.env.E2E_REDIS_URL ?? 'redis://127.0.0.1:6379';
 process.env.DEV_EXPOSE_OTP = 'false';
 process.env.SMS_PROVIDER = 'CONSOLE';
+
+// Never inherit real payment/provider credentials or authentication secrets.
+process.env.JWT_ACCESS_SECRET = 'isolated-e2e-access-secret-at-least-32-characters';
+process.env.JWT_STAFF_ACCESS_SECRET = 'isolated-e2e-staff-secret-at-least-32-characters';
+process.env.STAFF_TOTP_ENCRYPTION_KEY = '22'.repeat(32);
+process.env.PAYMENT_PROVIDER = 'TEST';
+process.env.PAYOUT_PROVIDER = 'TEST';
+process.env.PAYMENTS_ENABLED = 'true';
+process.env.PAYOUTS_ENABLED = 'true';

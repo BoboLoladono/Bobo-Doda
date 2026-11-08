@@ -1,7 +1,6 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '@/infra/prisma/prisma.service';
-import { RedisService } from '@/infra/redis/redis.service';
 import { IdFactory } from '@/common/id/id.factory';
 import { DomainError, ForbiddenError, NotFoundError } from '@/common/errors/domain-error';
 import { somToTiyin } from '@/common/money/money.util';
@@ -19,7 +18,6 @@ export class JobsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ids: IdFactory,
-    @Optional() private readonly redis?: RedisService,
   ) {}
 
   async create(buyerId: string, dto: CreateJobDto): Promise<JobWithRelations> {
@@ -130,8 +128,8 @@ export class JobsService {
   }
 
   async listMine(buyerId: string, page = 1, perPage = 50): Promise<Page<JobWithRelations>> {
-    const p = Math.max(1, page);
-    const pp = Math.min(100, Math.max(1, perPage));
+    const p = Number.isSafeInteger(page) && page > 0 ? page : 1;
+    const pp = Number.isSafeInteger(perPage) && perPage > 0 ? Math.min(100, perPage) : 50;
     const skip = (p - 1) * pp;
 
     const where: Prisma.JobWhereInput = { buyerId };
@@ -261,213 +259,104 @@ export class JobsService {
   }
 
   async closeAsAdmin(id: string, reason: string, actor: AuditActor): Promise<JobWithRelations> {
-    await this.getByIdOrThrow(id);
-    const updated = await this.prisma.job.update({
-      where: { id },
-      data: { status: JobStatus.CLOSED },
-      include: {
-        buyer: { select: { id: true, fullName: true } },
-        category: { select: { id: true, slug: true } },
-      },
-    });
-
-    try {
-      await this.prisma.auditLog.create({
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.job.update({
+        where: { id }, data: { status: JobStatus.CLOSED },
+        include: { buyer: { select: { id: true, fullName: true } }, category: { select: { id: true, slug: true } } },
+      });
+      await tx.auditLog.create({
         data: {
-          id: this.ids.next(),
-          actorType: actor.type,
-          actorId: actor.id,
-          actorName: actor.name || 'Admin',
-          action: "JOB_CLOSED_BY_ADMIN",
-          resourceType: "JOB",
-          resourceId: id,
-          newState: { status: "CLOSED", reason },
+          id: this.ids.next(), actorType: actor.type, actorId: actor.id, actorName: actor.name || 'Admin',
+          action: 'JOB_CLOSED_BY_ADMIN', resourceType: 'JOB', resourceId: id,
+          newState: { status: 'CLOSED', reason },
         },
       });
-    } catch {
-      // Audit log creation shouldn't fail the operation
-    }
-
-    return updated;
+      return updated;
+    });
   }
 
   async createProposal(jobId: string, sellerId: string, dto: CreateProposalDto): Promise<Record<string, unknown>> {
-    const job = await this.getByIdOrThrow(jobId);
-    if (job.status !== JobStatus.OPEN) {
-      throw new DomainError('INVALID_INPUT', "Yopilgan ishga taklif yuborib bo'lmaydi");
-    }
-
-    const seller = await this.prisma.user.findUnique({
-      where: { id: sellerId },
-      select: { id: true, fullName: true, avatarKey: true },
+    return this.prisma.$transaction(async (tx) => {
+      // Serialize seller quota checks across different jobs and job close/submit races.
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${sellerId}::uuid FOR UPDATE`;
+      await tx.$queryRaw`SELECT id FROM jobs WHERE id = ${jobId}::uuid FOR UPDATE`;
+      const job = await tx.job.findUnique({ where: { id: jobId } });
+      if (!job) throw new NotFoundError("E'lon topilmadi");
+      if (job.buyerId === sellerId) throw new ForbiddenError("O'z e'loningizga taklif yubora olmaysiz");
+      if (job.status !== JobStatus.OPEN) throw new DomainError('INVALID_INPUT', "Yopilgan ishga taklif yuborib bo'lmaydi");
+      const seller = await tx.user.findUnique({ where: { id: sellerId }, select: { fullName: true, avatarKey: true } });
+      if (!seller) throw new NotFoundError('Foydalanuvchi topilmadi');
+      // Calendar day is defined in the marketplace's Uzbekistan timezone (UTC+5).
+      const now = new Date();
+      const dayStart = new Date(Math.floor((now.getTime() + 5 * 3600_000) / 86400_000) * 86400_000 - 5 * 3600_000);
+      const count = await tx.jobProposal.count({ where: { sellerId, createdAt: { gte: dayStart } } });
+      if (count >= 2) throw new DomainError('INVALID_INPUT', 'Bir kunda ko‘pi bilan 2 ta ariza topshirish mumkin');
+      const existing = await tx.jobProposal.findUnique({ where: { jobId_sellerId: { jobId, sellerId } } });
+      if (existing) throw new DomainError('DUPLICATE', 'Bu ishga allaqachon ariza topshirilgan');
+      const proposal = {
+        id: `prop_${this.ids.next()}`, jobId, jobTitle: job.title, sellerId,
+        sellerName: seller.fullName, sellerAvatar: seller.avatarKey,
+        bidAmount: dto.bidAmount, coverLetter: dto.coverLetter.trim(),
+        screeningAnswers: (dto.screeningAnswers || []).map(({ question, answer }) => ({ question, answer })), attachedImages: dto.attachedImages || [],
+        status: 'korib_chiqilmoqda', createdAt: now.toISOString(),
+        ...(dto.estimatedDeliveryDays === undefined ? {} : { estimatedDeliveryDays: dto.estimatedDeliveryDays }),
+      };
+      await tx.jobProposal.create({ data: {
+        id: proposal.id, jobId, sellerId, payload: proposal, createdAt: now,
+      } });
+      await tx.job.update({ where: { id: jobId }, data: { proposalsCount: { increment: 1 } } });
+      return proposal;
     });
-
-    const proposalId = `prop_${this.ids.next()}`;
-    const proposal: Record<string, unknown> = {
-      id: proposalId,
-      jobId,
-      jobTitle: job.title,
-      sellerId,
-      sellerName: seller?.fullName || 'Mutaxassis',
-      sellerAvatar: seller?.avatarKey || null,
-      bidAmount: dto.bidAmount,
-      coverLetter: dto.coverLetter.trim(),
-      screeningAnswers: dto.screeningAnswers || [],
-      attachedImages: dto.attachedImages || [],
-      status: 'korib_chiqilmoqda',
-      createdAt: new Date().toISOString(),
-      estimatedDeliveryDays: dto.estimatedDeliveryDays,
-    };
-
-    if (this.redis?.client) {
-      try {
-        await this.redis.client.rpush(`proposals:job:${jobId}`, JSON.stringify(proposal));
-        await this.redis.client.rpush(`proposals:seller:${sellerId}`, JSON.stringify(proposal));
-        await this.redis.client.set(`proposal:${proposalId}`, JSON.stringify(proposal));
-      } catch {
-        // Redis fallback if offline
-      }
-    }
-
-    try {
-      await this.prisma.job.update({
-        where: { id: jobId },
-        data: { proposalsCount: { increment: 1 } },
-      });
-    } catch {
-      // Mock rejimida yoki e'lon o'chirilgan bo'lsa xatoni e'tiborsiz qoldirish
-    }
-
-    return proposal;
   }
 
-  async listProposalsForJob(jobId: string): Promise<Record<string, unknown>[]> {
-    if (!this.redis?.client) return [];
-    try {
-      const raw = await this.redis.client.lrange(`proposals:job:${jobId}`, 0, -1);
-      return raw.map((r) => JSON.parse(r) as unknown as Record<string, unknown>);
-    } catch {
-      return [];
-    }
+  private proposalResponse(row: { payload: Prisma.JsonValue; status: string }): Record<string, unknown> {
+    return { ...(row.payload as Record<string, unknown>), status: row.status };
+  }
+
+  async listProposalsForJob(jobId: string, buyerId: string): Promise<Record<string, unknown>[]> {
+    const job = await this.getByIdOrThrow(jobId);
+    if (job.buyerId !== buyerId) throw new ForbiddenError();
+    const rows = await this.prisma.jobProposal.findMany({ where: { jobId }, orderBy: { createdAt: 'desc' } });
+    return rows.map((row) => this.proposalResponse(row));
   }
 
   async listMyProposals(sellerId: string): Promise<Record<string, unknown>[]> {
-    if (!this.redis?.client) return [];
-    try {
-      const raw = await this.redis.client.lrange(`proposals:seller:${sellerId}`, 0, -1);
-      return raw.map((r) => JSON.parse(r) as unknown as Record<string, unknown>);
-    } catch {
-      return [];
-    }
+    const rows = await this.prisma.jobProposal.findMany({ where: { sellerId }, orderBy: { createdAt: 'desc' } });
+    return rows.map((row) => this.proposalResponse(row));
   }
 
-  async getProposal(proposalId: string): Promise<Record<string, unknown> | null> {
-    if (!this.redis?.client) return null;
-    try {
-      const raw = await this.redis.client.get(`proposal:${proposalId}`);
-      return raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
-    } catch {
-      return null;
-    }
+  async getProposal(proposalId: string, userId: string): Promise<Record<string, unknown>> {
+    const row = await this.prisma.jobProposal.findUnique({ where: { id: proposalId }, include: { job: true } });
+    if (!row) throw new NotFoundError('Taklif topilmadi');
+    if (row.sellerId !== userId && row.job.buyerId !== userId) throw new ForbiddenError();
+    return this.proposalResponse(row);
   }
 
   async withdrawProposal(proposalId: string, sellerId: string): Promise<Record<string, unknown>> {
-    if (!this.redis?.client) {
-      return { id: proposalId, status: 'qaytarib_olingan' };
-    }
-    try {
-      const raw = await this.redis.client.get(`proposal:${proposalId}`);
-      if (!raw) {
-        return { id: proposalId, status: 'qaytarib_olingan' };
-      }
-      const prop = JSON.parse(raw) as unknown as { id: string; jobId: string; sellerId: string; status: string; [key: string]: unknown };
-      if (prop.sellerId !== sellerId) {
-        throw new DomainError('FORBIDDEN', 'Bu taklif sizga tegishli emas');
-      }
-      prop.status = 'qaytarib_olingan';
-      await this.redis.client.set(`proposal:${proposalId}`, JSON.stringify(prop));
-
-      // Update in proposals:job:${jobId}
-      const jobListRaw = await this.redis.client.lrange(`proposals:job:${prop.jobId}`, 0, -1);
-      const updatedJobList = jobListRaw.map((item) => {
-        const p = JSON.parse(item) as unknown as { id: string; status: string; [key: string]: unknown };
-        if (p.id === proposalId) p.status = 'qaytarib_olingan';
-        return JSON.stringify(p);
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM job_proposals WHERE id = ${proposalId} FOR UPDATE`;
+      const row = await tx.jobProposal.findUnique({ where: { id: proposalId } });
+      if (!row) throw new NotFoundError('Taklif topilmadi');
+      if (row.sellerId !== sellerId) throw new ForbiddenError();
+      // Conditional update makes retries idempotent and prevents double decrement.
+      const changed = await tx.jobProposal.updateMany({
+        where: { id: proposalId, sellerId, status: 'korib_chiqilmoqda' }, data: { status: 'qaytarib_olingan' },
       });
-      await this.redis.client.del(`proposals:job:${prop.jobId}`);
-      if (updatedJobList.length > 0) {
-        await this.redis.client.rpush(`proposals:job:${prop.jobId}`, ...updatedJobList);
+      if (changed.count) {
+        await tx.job.update({ where: { id: row.jobId }, data: { proposalsCount: { decrement: 1 } } });
+      } else if (row.status !== 'qaytarib_olingan') {
+        throw new DomainError('INVALID_INPUT', 'Bu holatdagi taklifni qaytarib bo‘lmaydi');
       }
-
-      // Update in proposals:seller:${sellerId}
-      const sellerListRaw = await this.redis.client.lrange(`proposals:seller:${sellerId}`, 0, -1);
-      const updatedSellerList = sellerListRaw.map((item) => {
-        const p = JSON.parse(item) as unknown as { id: string; status: string; [key: string]: unknown };
-        if (p.id === proposalId) p.status = 'qaytarib_olingan';
-        return JSON.stringify(p);
-      });
-      await this.redis.client.del(`proposals:seller:${sellerId}`);
-      if (updatedSellerList.length > 0) {
-        await this.redis.client.rpush(`proposals:seller:${sellerId}`, ...updatedSellerList);
-      }
-
-      // Decrement job proposalsCount
-      try {
-        await this.prisma.job.update({
-          where: { id: prop.jobId },
-          data: { proposalsCount: { decrement: 1 } },
-        });
-      } catch {
-        // E'lon topilmasa yoki Prisma yangilanmasa davom etadi
-      }
-
-      return prop;
-    } catch (err) {
-      if (err instanceof DomainError) throw err;
-      return { id: proposalId, status: 'qaytarib_olingan' };
-    }
+      return this.proposalResponse({ ...row, status: 'qaytarib_olingan' });
+    });
   }
 
-  async hireProposal(proposalId: string): Promise<Record<string, unknown>> {
-    if (!this.redis?.client) {
-      return { id: proposalId, status: 'yollandi' };
-    }
-    try {
-      const raw = await this.redis.client.get(`proposal:${proposalId}`);
-      if (!raw) return { id: proposalId, status: 'yollandi' };
-
-      const prop = JSON.parse(raw) as unknown as { id: string; jobId: string; sellerId: string; status: string; [key: string]: unknown };
-      prop.status = 'yollandi';
-      await this.redis.client.set(`proposal:${proposalId}`, JSON.stringify(prop));
-
-      // Update in proposals:job:${jobId}
-      const jobListRaw = await this.redis.client.lrange(`proposals:job:${prop.jobId}`, 0, -1);
-      const updatedJobList = jobListRaw.map((item) => {
-        const p = JSON.parse(item) as unknown as { id: string; status: string; [key: string]: unknown };
-        if (p.id === proposalId) p.status = 'yollandi';
-        return JSON.stringify(p);
-      });
-      await this.redis.client.del(`proposals:job:${prop.jobId}`);
-      if (updatedJobList.length > 0) {
-        await this.redis.client.rpush(`proposals:job:${prop.jobId}`, ...updatedJobList);
-      }
-
-      // Update in proposals:seller:${sellerId}
-      const sellerListRaw = await this.redis.client.lrange(`proposals:seller:${prop.sellerId}`, 0, -1);
-      const updatedSellerList = sellerListRaw.map((item) => {
-        const p = JSON.parse(item) as unknown as { id: string; status: string; [key: string]: unknown };
-        if (p.id === proposalId) p.status = 'yollandi';
-        return JSON.stringify(p);
-      });
-      await this.redis.client.del(`proposals:seller:${prop.sellerId}`);
-      if (updatedSellerList.length > 0) {
-        await this.redis.client.rpush(`proposals:seller:${prop.sellerId}`, ...updatedSellerList);
-      }
-
-      return prop;
-    } catch {
-      return { id: proposalId, status: 'yollandi' };
-    }
+  async hireProposal(proposalId: string, buyerId: string): Promise<Record<string, unknown>> {
+    const row = await this.prisma.jobProposal.findUnique({ where: { id: proposalId }, include: { job: true } });
+    if (!row) throw new NotFoundError('Taklif topilmadi');
+    if (row.job.buyerId !== buyerId) throw new ForbiddenError();
+    // The contract schema supports service purchases only. Never claim a hire
+    // succeeded until a job contract and same-day exclusion can commit atomically.
+    throw new DomainError('NOT_READY', 'Ish arizasidan shartnoma yaratish hali mavjud emas');
   }
 }
-

@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/i18n";
+
 export interface PaginationProps {
   page: number;
   totalPages: number;
@@ -31,6 +33,7 @@ export function Pagination({
   labels,
   className = "",
 }: PaginationProps) {
+  const { t } = useT();
   if (totalPages <= 1) return null;
   const prev = labels?.prev ?? "Previous";
   const next = labels?.next ?? "Next";
@@ -40,7 +43,7 @@ export function Pagination({
     "inline-flex h-9 min-w-9 items-center justify-center rounded-btn border border-line px-2.5 text-sm transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
-    <nav aria-label={labels?.nav ?? "Pagination"} className={`flex items-center justify-center gap-1.5 ${className}`}>
+    <nav aria-label={labels?.nav ?? t("a11y.pagination")} className={`flex items-center justify-center gap-1.5 ${className}`}>
       <button
         type="button"
         className={`${btn} text-muted hover:text-ink`}

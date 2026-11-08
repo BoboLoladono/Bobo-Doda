@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagge
 import { Role } from '@prisma/client';
 import { Roles } from '@/modules/auth/decorators/roles.decorator';
 import { RolesGuard } from '@/modules/auth/guards/roles.guard';
+import { AccountStatusGuard } from '@/common/guards/account-status.guard';
 import { CurrentUser } from '@/modules/auth/decorators/current-user.decorator';
 import type { AccessTokenPayload } from '@/modules/auth/types/token-payload';
 import { AuditService } from '@/common/audit/audit.service';
@@ -22,7 +23,7 @@ import { OPEN_DISPUTE_ENDPOINT, OPEN_DISPUTE_STALE_AFTER_MS } from './dispute.co
 @ApiBearerAuth()
 @ApiTags('me-disputes')
 @Controller('me/contracts/:contractId/disputes')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, AccountStatusGuard)
 @Roles(Role.BUYER, Role.SELLER)
 export class OpenDisputeController {
   constructor(

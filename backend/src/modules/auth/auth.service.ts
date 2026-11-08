@@ -217,6 +217,7 @@ export class AuthService {
       profileDone: user.profileDone,
       isNewUser: false,
       meta,
+      expectedPasswordHash: user.passwordHash!,
     });
   }
 
@@ -315,6 +316,9 @@ export class AuthService {
   async refresh(rawRefreshToken: string, meta?: RequestMeta): Promise<AuthResult> {
     const { raw, record } = await this.refreshTokens.rotate(rawRefreshToken, meta);
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: record.userId } });
+    if (user.status === 'BLOCKED') {
+      throw new ForbiddenError('Hisob bloklangan', 'ACCOUNT_BLOCKED');
+    }
     const accessToken = this.tokens.signAccessToken({
       sub: record.userId,
       activeRole: record.activeRole,
@@ -345,29 +349,51 @@ export class AuthService {
       throw new DomainError('BAD_STATE', "Siz allaqachon rol tanlagansiz. Rolni o'zgartirish mumkin emas");
     }
 
-    const updated = await this.prisma.user.update({
-      where: { id: current.sub },
-      data: { roles: { push: role }, roleChosen: true, lastActiveRole: role },
+    const claimed = await this.prisma.user.updateMany({
+      where: { id: current.sub, roleChosen: false },
+      data: { roles: [role], roleChosen: true, lastActiveRole: role },
     });
+    if (claimed.count !== 1) {
+      throw new DomainError('BAD_STATE', "Siz allaqachon rol tanlagansiz. Rolni o'zgartirish mumkin emas");
+    }
 
     // Onboarding (rol-tanlanmagan) sessiyasini yopamiz — endi kerak emas.
     await this.refreshTokens.revokeFamily(current.familyId);
 
-    return this.issueSession(updated.id, role, {
+    return this.issueSession(user.id, role, {
       roleChosen: true,
-      profileDone: updated.profileDone,
+      profileDone: user.profileDone,
       isNewUser: false,
       meta: undefined,
     });
   }
 
   /** `POST /me/roles/switch` — foydalanuvchi ALLAQACHON ega bo'lgan rolga. Eski sessiya BEKOR QILINMAYDI (parallel kabinet). */
+  async switchRole(current: AccessTokenPayload, role: Role, meta?: RequestMeta): Promise<AuthResult> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: current.sub } });
+    if (!user.roles.includes(role)) {
+      throw new ForbiddenError("Bu rolga ega emassiz", 'NOT_ALLOWED');
+    }
+
+    await this.prisma.user.update({
+      where: { id: current.sub },
+      data: { lastActiveRole: role },
+    });
+
+    return this.issueSession(user.id, role, {
+      roleChosen: true,
+      profileDone: user.profileDone,
+      isNewUser: false,
+      meta,
+    });
+  }
+
   private async issueSession(
     userId: string,
     activeRole: Role | null,
-    opts: { roleChosen: boolean; profileDone: boolean; isNewUser: boolean; meta?: RequestMeta },
+    opts: { roleChosen: boolean; profileDone: boolean; isNewUser: boolean; meta?: RequestMeta; expectedPasswordHash?: string },
   ): Promise<AuthResult> {
-    const { raw, record } = await this.refreshTokens.issue({ userId, activeRole, meta: opts.meta });
+    const { raw, record } = await this.refreshTokens.issue({ userId, activeRole, meta: opts.meta, expectedPasswordHash: opts.expectedPasswordHash });
     const accessToken = this.tokens.signAccessToken({
       sub: userId,
       activeRole: record.activeRole,

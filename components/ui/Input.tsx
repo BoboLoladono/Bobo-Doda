@@ -2,6 +2,8 @@
 
 import { forwardRef, useId, useState, type InputHTMLAttributes } from "react";
 
+import { useT } from "@/lib/i18n";
+
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
@@ -10,9 +12,10 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, error, hint, id, className = "", type, disablePasswordToggle, ...rest },
+  { label, error, hint, id, className = "", "aria-describedby": describedBy, type, disablePasswordToggle, ...rest },
   ref
 ) {
+  const { t } = useT();
   const autoId = useId();
   const inputId = id ?? autoId;
   /* Xato/izoh matni maydon bilan BOG'LANADI — aks holda skrinrider
@@ -36,7 +39,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           id={inputId}
           type={resolvedType}
           aria-invalid={!!error}
-          aria-describedby={error || hint ? messageId : undefined}
+          aria-describedby={[describedBy, error || hint ? messageId : undefined].filter(Boolean).join(" ") || undefined}
           className={`h-10 w-full rounded-input border bg-card px-3 text-sm text-ink placeholder:text-faint transition-colors duration-150 focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
             error ? "border-danger" : "border-field"
           } ${isPassword ? "pr-11" : ""} ${className}`}
@@ -49,8 +52,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             disabled={rest.disabled}
             aria-controls={inputId}
             onClick={() => setShowPassword((prev) => !prev)}
-            aria-label={showPassword ? "Parolni yashirish" : "Parolni ko‘rsatish"}
-            title={showPassword ? "Parolni yashirish" : "Parolni ko‘rsatish"}
+            aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
+            title={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
             className="absolute right-1 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-input text-muted hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 transition-colors disabled:opacity-40 disabled:pointer-events-none touch-manipulation"
           >
             {showPassword ? (

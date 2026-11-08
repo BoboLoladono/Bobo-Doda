@@ -10,7 +10,6 @@ import type {
   MilestonesService,
   NotificationsService,
   OffersService,
-  PaymentDTO,
   PaymentsService,
   ProposalsService,
   ReviewsService,
@@ -40,7 +39,7 @@ import {
   roleToUz,
 } from "./mappers";
 import type * as Model from "@/lib/types";
-import { detectCardType, cardExpiry, MIN_JOB_BUDGET, isTestService } from "@/lib/validate";
+import { MIN_JOB_BUDGET, isTestService } from "@/lib/validate";
 import {
   getMessages,
   getAllMessages,
@@ -54,7 +53,6 @@ import {
   getOffer,
   getSentOffers,
   getIncomingOffers,
-  acceptOffer,
   withdrawOffer,
   declineOffer,
 } from "@/lib/mock-api";
@@ -73,6 +71,20 @@ type RealAuthSession = components["schemas"]["AuthSessionDto"];
 type Page<T> = { items: T[]; page: number; perPage: number; total: number; totalPages: number };
 
 const call = <T>(operation: () => Promise<T>) => withNormalizedErrors(operation);
+
+/** Fetch every page; reject failures instead of reporting partial financial totals. */
+async function allPages<T>(path: string): Promise<T[]> {
+  const items: T[] = [];
+  let page = 1;
+  let totalPages = 1;
+  do {
+    const result = await http<Page<T>>(`${path}${toQuery({ page, perPage: 100 })}`);
+    items.push(...result.items);
+    totalPages = result.totalPages;
+    page += 1;
+  } while (page <= totalPages);
+  return items;
+}
 
 /** Bosqich 17 — real backendda hali qamrab olinmagan operatsiya: `client.ts`
     ATAYLAB shu kodni tashlaydi, `errors.ts#LEGACY_CODES` uni `FEATURE_DISABLED`
@@ -137,60 +149,8 @@ function idBySlug(categories: RealCategory[], slug: string): string | undefined 
    shu sabab bu yerdagi noaniqlik xavfsiz (eng yomoni: sotuvchi "topshirish"
    tugmasini erta ko'radi-yu, server uni rad etadi).
    ------------------------------------------------------------------------ */
-async function hydrateContract(c: RealContract, role: Model.UserRole | null): Promise<Model.Contract> {
-  let funded = false;
-  let fundedAt: string | undefined;
-  let buyerName: string | undefined;
-
-  if (typeof window !== "undefined") {
-    try {
-      const stored = localStorage.getItem(`bbd_buyer_profile_${c.buyerId}`);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.companyName || parsed.fullName) buyerName = parsed.companyName || parsed.fullName;
-      }
-    } catch {}
-  }
-  if (typeof c.isFunded === "boolean") {
-    funded = Boolean(c.isFunded);
-    fundedAt = c.fundedAt ? asStr(c.fundedAt) : undefined;
-  } else if (role === "mutaxassis") {
-    if (typeof window !== "undefined") {
-      try {
-        const customContracts = JSON.parse(localStorage.getItem("bbd_custom_contracts") || "[]");
-        const match = customContracts.find((x: Model.Contract) => x.id === c.id);
-        if (match?.fundedAt) {
-          funded = true;
-          fundedAt = match.fundedAt;
-        }
-        if (!funded) {
-          const customPayments = JSON.parse(localStorage.getItem("bbd_custom_payments") || "[]");
-          const pMatch = customPayments.find((p: PaymentDTO) => p.contractId === c.id && p.status === "SUCCEEDED");
-          if (pMatch) {
-            funded = true;
-            fundedAt = pMatch.createdAt;
-          }
-        }
-      } catch {}
-    }
-    if (!funded) {
-      const hasWorkProgression = c.milestones.some((m) => m.status === "APPROVED");
-      if (hasWorkProgression) {
-        funded = true;
-        fundedAt = c.updatedAt;
-      }
-    }
-  } else {
-    try {
-      const page = await http<Page<RealPayment>>(`/me/payments${toQuery({ contractId: c.id, perPage: 5 })}`);
-      const succeeded = page.items.find((p) => p.status === "SUCCEEDED");
-      funded = !!succeeded;
-      fundedAt = succeeded ? asStr(succeeded.succeededAt) : undefined;
-    } catch {
-      /* xaridor bo'lmasa yoki so'rov muvaffaqiyatsiz bo'lsa — unfunded deb qoladi */
-    }
-  }
-  return mapContract(c, { funded, fundedAt, buyerName });
+async function hydrateContract(c: RealContract): Promise<Model.Contract> {
+  return mapContract(c, { funded: c.isFunded === true, fundedAt: c.fundedAt ? asStr(c.fundedAt) : undefined });
 }
 
 /* ==========================================================================
@@ -257,39 +217,12 @@ export const authService: AuthService = {
     ),
   chooseRole: (role) =>
     call(async () => {
-      try {
-        let res: RealAuthSession;
-        try {
-          res = await http<RealAuthSession>("/me/roles/choose", { method: "POST", body: { role: roleToReal(role) } });
-        } catch {
-          res = await http<RealAuthSession>("/me/roles/switch", { method: "POST", body: { role: roleToReal(role) } });
-        }
-        setAccessToken(res.accessToken);
-        const session: Model.Session = {
-          userId: decodeJwtSub(res.accessToken),
-          role: roleToUz(res.activeRole),
-          profileDone: res.profileDone,
-          verified: true,
-        };
-        sessionStore.write(session);
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT, { detail: { key: "role", role } }));
-        }
-        return session;
-      } catch {
-        const current = sessionStore.read();
-        const session: Model.Session = {
-          userId: current?.userId ?? "me",
-          role,
-          profileDone: true,
-          verified: true,
-        };
-        sessionStore.write(session);
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT, { detail: { key: "role", role } }));
-        }
-        return session;
-      }
+      // Only a server-issued token may change the authenticated UI snapshot.
+      const endpoint = sessionStore.read()?.role ? "/me/roles/switch" : "/me/roles/choose";
+      const res = await http<RealAuthSession>(endpoint, {
+        method: "POST", body: { role: roleToReal(role) },
+      });
+      return writeSession(res);
     }),
   refresh: () => call(refreshSession),
   logout: async () => {
@@ -375,7 +308,7 @@ export const usersService: UsersService = {
       if (data.fullName) patchBody.fullName = data.fullName;
       if (data.avatarUrl !== undefined) patchBody.avatarKey = data.avatarUrl || null;
       if (Object.keys(patchBody).length > 0) {
-        await http("/me/profile", { method: "PATCH", body: patchBody }).catch(() => {});
+        await http("/me/profile", { method: "PATCH", body: patchBody });
       }
       if (typeof window !== "undefined") {
         try {
@@ -397,7 +330,7 @@ export const usersService: UsersService = {
       if (input.fullName) patchBody.fullName = input.fullName;
       if (input.avatarUrl !== undefined) patchBody.avatarKey = input.avatarUrl || null;
       if (Object.keys(patchBody).length > 0) {
-        await http("/me/profile", { method: "PATCH", body: patchBody }).catch(() => {});
+        await http("/me/profile", { method: "PATCH", body: patchBody });
       }
       if (typeof window !== "undefined") {
         try {
@@ -489,10 +422,8 @@ export const usersService: UsersService = {
         platform: "Bobololadono",
       };
     }),
-  deleteAccount: () =>
-    call(async () => {
-      authService.logout();
-    }),
+  // Logout is not account deletion. Fail explicitly until deletion is supported.
+  deleteAccount: () => disabled(),
 };
 
 /* ==========================================================================
@@ -741,256 +672,73 @@ export const savedService: SavedService = {
    SERVICES — sotuvchi CRUD + ochiq katalog. Mutaxassis yaratgan xizmatlar
    buyer (xaridor) bozorida darhol ko'rinishi uchun lokal sintez bilan ta'minlangan.
    ========================================================================== */
-const CUSTOM_SERVICES_KEY = "bbd_custom_services";
-
-function getLocalCustomServices(): Model.Service[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(CUSTOM_SERVICES_KEY);
-    return raw ? (JSON.parse(raw) as Model.Service[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveLocalCustomService(service: Model.Service): void {
-  if (typeof window === "undefined") return;
-  try {
-    const current = getLocalCustomServices().filter((s) => s.id !== service.id);
-    localStorage.setItem(CUSTOM_SERVICES_KEY, JSON.stringify([service, ...current]));
-  } catch {}
-}
-
-function updateLocalCustomService(id: string, patch: Partial<Model.Service>): void {
-  if (typeof window === "undefined") return;
-  try {
-    const current = getLocalCustomServices();
-    const updated = current.map((s) => (s.id === id ? { ...s, ...patch } : s));
-    localStorage.setItem(CUSTOM_SERVICES_KEY, JSON.stringify(updated));
-  } catch {}
-}
-
 export const servicesService: ServicesService = {
-  listMine: () =>
-    call(async () => {
-      const categories = await getCategories();
-      let remoteItems: Model.Service[] = [];
-      try {
-        const page = await http<Page<RealService>>(`/seller/services${toQuery({ perPage: 100 })}`);
-        remoteItems = page.items.map((s) => mapService(s, slugById(categories, s.categoryId)));
-      } catch {}
-      const myId = sessionStore.read()?.userId;
-      const localItems = getLocalCustomServices().filter((s) => !myId || s.sellerId === myId || s.sellerId === "me");
-      const map = new Map<string, Model.Service>();
-      for (const s of remoteItems) map.set(s.id, s);
-      for (const s of localItems) {
-        if (!map.has(s.id)) map.set(s.id, s);
-      }
-      return Array.from(map.values());
-    }),
-  listPublic: () =>
-    call(async () => {
-      const categories = await getCategories();
-      let remoteItems: Model.Service[] = [];
-      try {
-        const page = await http<Page<RealPublicService>>(`/services${toQuery({ perPage: 100 })}`);
-        remoteItems = page.items
-          .map((s) => mapPublicService(s, slugById(categories, s.categoryId)))
-          .filter((s) => !isTestService(s));
-      } catch {}
-      return remoteItems;
-    }),
-  get: (id) =>
-    call(async () => {
-      const categories = await getCategories();
+  listMine: () => call(async () => {
+    const categories = await getCategories();
+    const items = await allPages<RealService>("/seller/services");
+    return items.map((s) => mapService(s, slugById(categories, s.categoryId)));
+  }),
+  listPublic: () => call(async () => {
+    const categories = await getCategories();
+    const items = await allPages<RealPublicService>("/services");
+    return items.map((s) => mapPublicService(s, slugById(categories, s.categoryId))).filter((s) => !isTestService(s));
+  }),
+  get: (id) => call(async () => {
+    const categories = await getCategories();
+    try {
       if (currentRole() === "mutaxassis") {
         try {
           const dto = await http<RealService>(`/seller/services/${id}`);
-          const mapped = mapService(dto, slugById(categories, dto.categoryId));
-          saveLocalCustomService(mapped);
-          return mapped;
-        } catch (e) {
-          if (!(e instanceof ApiError && e.code === "NOT_FOUND")) {
-            const local = getLocalCustomServices().find((s) => s.id === id);
-            if (local) {
-              return {
-                ...local,
-                status: local.status === "archived" || local.status === "paused" ? local.status : "active",
-              };
-            }
-            return null;
-          }
+          return mapService(dto, slugById(categories, dto.categoryId));
+        } catch (error) {
+          if (!(error instanceof ApiError && error.code === "NOT_FOUND")) throw error;
         }
       }
-      try {
-        const dto = await http<RealPublicService>(`/services/${id}`);
-        return mapPublicService(dto, slugById(categories, dto.categoryId));
-      } catch (e) {
-        const local = getLocalCustomServices().find((s) => s.id === id);
-        if (local) {
-          return {
-            ...local,
-            status: local.status === "archived" || local.status === "paused" ? local.status : "active",
-          };
-        }
-        if (e instanceof ApiError && e.code === "NOT_FOUND") return null;
-        throw e;
-      }
-    }),
-  create: (input) =>
-    call(async () => {
-      let created: Model.Service | null = null;
-      const me = sessionStore.read();
-      const myId = me?.userId || "me";
-      try {
-        let categories = await getCategories();
-        let categoryId = idBySlug(categories, input.category);
-        if (!categoryId) {
-          categories = await getCategories(true);
-          categoryId = idBySlug(categories, input.category);
-        }
-        if (!categoryId) {
-          throw new ApiError({
-            code: "VALIDATION",
-            message: "CATEGORY_NOT_FOUND",
-            status: 422,
-            fieldErrors: { category: "Kategoriya topilmadi" },
-            retryable: false,
-          });
-        }
-        const dto = await http<RealService>("/seller/services", {
-          method: "POST",
-          body: {
-            categoryId,
-            title: input.title,
-            description: input.description,
-            price: input.price,
-            deliveryDays: input.deliveryDays,
-          },
-        });
-        created = mapService(dto, input.category);
-        // Avto-tasdiqlash: yaratilgach, avtomatik ravishda submit qilinadi
-        try {
-          const submitted = await http<RealService>(`/seller/services/${dto.id}/submit`, { method: "POST" });
-          created = mapService(submitted, input.category);
-        } catch {}
-      } catch (err) {
-        const isApi = err instanceof ApiError;
-        if (isApi && (err.code === "VALIDATION" || err.status === 422)) {
-          throw err;
-        }
-        created = {
-          id: `srv_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
-          sellerId: myId,
-          category: input.category,
-          title: input.title,
-          description: input.description,
-          fields: {},
-          price: input.price,
-          currency: "UZS",
-          deliveryDays: input.deliveryDays,
-          revisionsIncluded: 3,
-          images: [],
-          status: "active",
-          createdAt: new Date().toISOString(),
-        };
-      }
-      if (created) {
-        saveLocalCustomService(created);
-        return created;
-      }
-      throw new Error("SERVICE_CREATE_FAILED");
-    }),
-  update: (id, input) =>
-    call(async () => {
-      updateLocalCustomService(id, {
-        ...(input.title !== undefined ? { title: input.title } : {}),
-        ...(input.description !== undefined ? { description: input.description } : {}),
-        ...(input.price !== undefined ? { price: input.price } : {}),
-        ...(input.deliveryDays !== undefined ? { deliveryDays: input.deliveryDays } : {}),
-        ...(input.category !== undefined ? { category: input.category } : {}),
-      });
-      try {
-        const categories = await getCategories();
-        const body: Record<string, unknown> = {};
-        if (input.title !== undefined) body.title = input.title;
-        if (input.description !== undefined) body.description = input.description;
-        if (input.price !== undefined) body.price = input.price;
-        if (input.deliveryDays !== undefined) body.deliveryDays = input.deliveryDays;
-        if (input.category !== undefined) {
-          const categoryId = idBySlug(categories, input.category);
-          if (categoryId) body.categoryId = categoryId;
-        }
-        const dto = await http<RealService>(`/seller/services/${id}`, { method: "PATCH", body });
-        const mapped = mapService(dto, slugById(categories, dto.categoryId));
-        saveLocalCustomService(mapped);
-        return mapped;
-      } catch (err) {
-        const isApi = err instanceof ApiError;
-        if (isApi && (err.code === "VALIDATION" || err.status === 422)) {
-          throw err;
-        }
-        const local = getLocalCustomServices().find((s) => s.id === id);
-        if (local) return local;
-        throw err;
-      }
-    }),
-  /* Real backendda "o'chirish" yo'q — eng yaqin ekvivalent arxivlash */
-  remove: (id) =>
-    call(async () => {
-      updateLocalCustomService(id, { status: "archived" });
-      try {
-        await http(`/seller/services/${id}/archive`, { method: "POST" });
-      } catch {}
-    }),
-  submit: (id) =>
-    call(async () => {
-      updateLocalCustomService(id, { status: "active" });
-      let res: Model.Service | null = null;
-      try {
-        const categories = await getCategories();
-        const dto = await http<RealService>(`/seller/services/${id}/submit`, { method: "POST" });
-        res = mapService(dto, slugById(categories, dto.categoryId));
-      } catch (err) {
-        const isApi = err instanceof ApiError;
-        if (isApi && (err.status === 403 || err.status === 422)) throw err;
-      }
-      const local = getLocalCustomServices().find((s) => s.id === id);
-      const activeService = res
-        ? { ...res, status: "active" as const }
-        : local
-          ? { ...local, status: "active" as const }
-          : ({ id, status: "active" } as Model.Service);
-      saveLocalCustomService(activeService);
-      return activeService;
-    }),
-  pause: (id) =>
-    call(async () => {
-      updateLocalCustomService(id, { status: "paused" });
-      try {
-        const categories = await getCategories();
-        const dto = await http<RealService>(`/seller/services/${id}/pause`, { method: "POST" });
-        return mapService(dto, slugById(categories, dto.categoryId));
-      } catch (err) {
-        const local = getLocalCustomServices().find((s) => s.id === id);
-        if (local) return local;
-        throw err;
-      }
-    }),
-  resume: (id) =>
-    call(async () => {
-      updateLocalCustomService(id, { status: "active" });
-      try {
-        const categories = await getCategories();
-        const dto = await http<RealService>(`/seller/services/${id}/resume`, { method: "POST" });
-        return mapService(dto, slugById(categories, dto.categoryId));
-      } catch (err) {
-        const local = getLocalCustomServices().find((s) => s.id === id);
-        if (local) return local;
-        throw err;
-      }
-    }),
+      const dto = await http<RealPublicService>(`/services/${id}`);
+      return mapPublicService(dto, slugById(categories, dto.categoryId));
+    } catch (error) {
+      if (error instanceof ApiError && error.code === "NOT_FOUND") return null;
+      throw error;
+    }
+  }),
+  create: (input) => call(async () => {
+    const categories = await getCategories();
+    const categoryId = idBySlug(categories, input.category);
+    if (!categoryId) throw new Error("INVALID_CATEGORY");
+    const dto = await http<RealService>("/seller/services", {
+      method: "POST", body: { categoryId, title: input.title, description: input.description,
+        price: input.price, deliveryDays: input.deliveryDays },
+    });
+    // Creation preserves DRAFT. Publishing is a separate, explicit wizard action.
+    return mapService(dto, input.category);
+  }),
+  update: (id, input) => call(async () => {
+    const categories = await getCategories();
+    const body: Record<string, unknown> = {};
+    for (const key of ["title", "description", "price", "deliveryDays"] as const) {
+      if (input[key] !== undefined) body[key] = input[key];
+    }
+    if (input.category !== undefined) {
+      const categoryId = idBySlug(categories, input.category);
+      if (!categoryId) throw new Error("INVALID_CATEGORY");
+      body.categoryId = categoryId;
+    }
+    const dto = await http<RealService>(`/seller/services/${id}`, { method: "PATCH", body });
+    return mapService(dto, slugById(categories, dto.categoryId));
+  }),
+  remove: (id) => call(async () => { await http(`/seller/services/${id}/archive`, { method: "POST" }); }),
+  submit: (id) => changeServiceStatus(id, "submit"),
+  pause: (id) => changeServiceStatus(id, "pause"),
+  resume: (id) => changeServiceStatus(id, "resume"),
 };
+
+async function changeServiceStatus(id: string, action: "submit" | "pause" | "resume"): Promise<Model.Service> {
+  return call(async () => {
+    const categories = await getCategories();
+    const dto = await http<RealService>(`/seller/services/${id}/${action}`, { method: "POST" });
+    return mapService(dto, slugById(categories, dto.categoryId));
+  });
+}
 
 interface RealJob {
   id: string;
@@ -1039,489 +787,46 @@ function mapJob(dto: RealJob): Model.Job {
 }
 
 /* Job/Proposal/Offer — ish e'lonlari va takliflar xizmatlari */
-function getLocalJobs(): Model.Job[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const stored = localStorage.getItem("bbd_public_jobs");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-    return [];
-  } catch {
-    return [];
-  }
-}
-
-function saveLocalJob(job: Model.Job): void {
-  if (typeof window === "undefined") return;
-  try {
-    const all = getLocalJobs();
-    const filtered = all.filter((j) => j.id !== job.id);
-    const next = [job, ...filtered];
-    try {
-      localStorage.setItem("bbd_public_jobs", JSON.stringify(next));
-    } catch {
-      // Agar kvota oshsa (katta base64 fayllar sababli), faqat yengil metadata qoldirib qayta uriniladi
-      const slim = next.map((j) => ({
-        ...j,
-        attachedImages: (j.attachedImages || []).filter((img) => !img.startsWith("data:") || img.length < 50000),
-      }));
-      try {
-        localStorage.setItem("bbd_public_jobs", JSON.stringify(slim));
-      } catch {}
-    }
-  } catch {}
-}
-
 export const jobsService: JobsService = {
-  list: () =>
-    call(async () => {
-      try {
-        const res = await http<Page<RealJob> | RealJob[]>("/jobs");
-        const items = Array.isArray(res) ? res : res?.items;
-        if (Array.isArray(items)) {
-          return items.map(mapJob);
-        }
-      } catch {}
-      return getLocalJobs();
-    }),
-  get: (id: string) =>
-    call(async () => {
-      try {
-        const dto = await http<RealJob>(`/jobs/${id}`);
-        if (dto) {
-          const mapped = mapJob(dto);
-          saveLocalJob(mapped);
-          return mapped;
-        }
-      } catch (e) {
-        if (e instanceof ApiError && e.code === "NOT_FOUND") return null;
-      }
-      const all = getLocalJobs();
-      return all.find((j) => j.id === id) ?? null;
-    }),
-  listMine: () =>
-    call(async () => {
-      try {
-        const res = await http<Page<RealJob> | RealJob[]>("/jobs/mine");
-        const items = Array.isArray(res) ? res : res?.items;
-        if (Array.isArray(items)) {
-          return items.map(mapJob);
-        }
-      } catch {}
-
-      const local = getLocalJobs();
-      let uid: string | undefined;
-      if (typeof window !== "undefined") {
-        try {
-          const me = await http<RealMe>("/me").catch(() => null);
-          uid = me?.id ?? sessionStore.read()?.userId ?? "me";
-        } catch {
-          uid = sessionStore.read()?.userId ?? "me";
-        }
-      }
-
-      return local.filter((j) => !uid || j.buyerId === uid || j.buyerId === "me");
-    }),
-  create: (input) =>
-    call(async () => {
-      const min = Number(input.budgetMin);
-      const max = Number(input.budgetMax);
-      if (!min || Number.isNaN(min) || min < MIN_JOB_BUDGET) {
-        throw new ApiError({
-          code: "VALIDATION",
-          status: 400,
-          message: `Minimal byudjet kamida ${MIN_JOB_BUDGET} so'm bo'lishi kerak`,
-          retryable: false,
-          fieldErrors: { budgetMin: `Minimal byudjet kamida ${MIN_JOB_BUDGET} so'm bo'lishi kerak` },
-        });
-      }
-      if (!max || Number.isNaN(max) || max < min) {
-        throw new ApiError({
-          code: "VALIDATION",
-          status: 400,
-          message: "Minimal byudjet maksimal byudjetdan katta bo'lishi mumkin emas",
-          retryable: false,
-          fieldErrors: { budgetMin: "Minimal byudjet maksimal byudjetdan katta bo'lishi mumkin emas" },
-        });
-      }
-      let created: Model.Job | null = null;
-      try {
-        const dto = await http<RealJob>("/jobs", {
-          method: "POST",
-          body: {
-            title: input.title,
-            description: input.description,
-            category: input.category,
-            budgetMin: min,
-            budgetMax: max,
-            skillsRequired: input.skillsRequired,
-            screeningQuestions: input.screeningQuestions,
-            deadline: input.deadline,
-            attachedImages: (input.attachedImages || []).slice(0, 5),
-          },
-        });
-        created = mapJob(dto);
-      } catch (err) {
-        if (
-          err instanceof ApiError &&
-          (err.status === 400 || err.status === 422 || err.code === "VALIDATION")
-        ) {
-          throw err;
-        }
-      }
-
-      if (!created) {
-        const me = await http<RealMe>("/me").catch(() => null);
-        const uid = me?.id ?? sessionStore.read()?.userId ?? "me";
-        created = {
-          id: `job_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
-          buyerId: uid,
-          buyerName: asStr(me?.fullName) || "Ish beruvchi",
-          buyerRating: 5.0,
-          title: input.title,
-          description: input.description,
-          category: input.category,
-          budgetMin: input.budgetMin,
-          budgetMax: input.budgetMax,
-          currency: "UZS",
-          skillsRequired: input.skillsRequired || [],
-          screeningQuestions: input.screeningQuestions || [],
-          proposalsCount: 0,
-          postedAt: new Date().toISOString(),
-          status: "ochiq",
-          deadline: input.deadline,
-          attachedImages: input.attachedImages || [],
-        };
-      }
-
-      saveLocalJob(created);
-      return created;
-    }),
-  close: (id: string) =>
-    call(async () => {
-      try {
-        const dto = await http<RealJob>(`/jobs/${id}/close`, { method: "PATCH" });
-        if (dto) {
-          const mapped = mapJob(dto);
-          saveLocalJob(mapped);
-          return mapped;
-        }
-      } catch {}
-      const all = getLocalJobs();
-      const found = all.find((j) => j.id === id);
-      if (found) {
-        found.status = "yopilgan";
-        saveLocalJob(found);
-        return found;
-      }
-      throw new Error("JOB_NOT_FOUND");
-    }),
+  list: () => call(async () => (await allPages<RealJob>("/jobs")).map(mapJob)),
+  listMine: () => call(async () => (await allPages<RealJob>("/jobs/mine")).map(mapJob)),
+  get: (id) => call(async () => {
+    try { return mapJob(await http<RealJob>(`/jobs/${id}`)); }
+    catch (error) {
+      if (error instanceof ApiError && error.code === "NOT_FOUND") return null;
+      throw error;
+    }
+  }),
+  create: (input) => call(async () => {
+    if (!Number.isSafeInteger(input.budgetMin) || input.budgetMin < MIN_JOB_BUDGET ||
+        !Number.isSafeInteger(input.budgetMax) || input.budgetMax < input.budgetMin) {
+      throw new ApiError({ code: "VALIDATION", status: 422, message: "INVALID_BUDGET", retryable: false });
+    }
+    return mapJob(await http<RealJob>("/jobs", {
+      method: "POST", body: { ...input, attachedImages: (input.attachedImages || []).slice(0, 5) },
+    }));
+  }),
+  close: (id) => call(async () => mapJob(await http<RealJob>(`/jobs/${id}/close`, { method: "PATCH" }))),
 };
 
 export const proposalsService: ProposalsService = {
-  listMine: () =>
-    call(async () => {
-      try {
-        const remote = await http<Model.Proposal[]>("/jobs/proposals/mine");
-        if (Array.isArray(remote) && remote.length > 0) return remote;
-      } catch {}
-      if (typeof window !== "undefined") {
-        try {
-          const me = await http<RealMe>("/me").catch(() => null);
-          const uid = me?.id ?? sessionStore.read()?.userId ?? "me";
-          const all: Model.Proposal[] = JSON.parse(localStorage.getItem("bbd_my_proposals") || "[]");
-          return all.filter((p) => p.sellerId === uid || p.sellerId === "me");
-        } catch {}
-      }
-      return [];
-    }),
-  get: (id: string) =>
-    call(async () => {
-      try {
-        const remote = await http<Model.Proposal>(`/jobs/proposals/${id}`);
-        if (remote && remote.id) return remote;
-      } catch {}
-      if (typeof window !== "undefined") {
-        try {
-          const all: Model.Proposal[] = JSON.parse(localStorage.getItem("bbd_my_proposals") || "[]");
-          const found = all.find((p) => p.id === id);
-          if (found) return found;
-
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith("bbd_proposals_")) {
-              const jobProps: Model.Proposal[] = JSON.parse(localStorage.getItem(key) || "[]");
-              const jFound = jobProps.find((p) => p.id === id);
-              if (jFound) return jFound;
-            }
-          }
-        } catch {}
-      }
-      return null;
-    }),
-  listForJob: (jobId: string) =>
-    call(async () => {
-      try {
-        const remote = await http<Model.Proposal[]>(`/jobs/${jobId}/proposals`);
-        if (Array.isArray(remote) && remote.length > 0) return remote;
-      } catch {}
-      if (typeof window !== "undefined") {
-        try {
-          const stored = localStorage.getItem(`bbd_proposals_${jobId}`);
-          if (stored) return JSON.parse(stored);
-        } catch {}
-      }
-      return [];
-    }),
-  create: (input) =>
-    call(async () => {
-      if (input.bidAmount < 1_000) {
-        throw new Error("MIN_BID_1000");
-      }
-
-      // BIZNES QOIDASI 1 & 2:
-      // - Bir kunda ko'pi bilan 2 ta ishga ariza topshirish mumkin.
-      // - Agar ishchi bir kunga tasdiqlangan (yollandi) ishga ega bo'lsa, shu kun uchun yangi ariza topshira olmaydi.
-      const todayDate = new Date().toISOString().slice(0, 10);
-      const myProposals = await proposalsService.listMine().catch(() => []);
-
-      const hiredToday = myProposals.some(
-        (p) => p.status === "yollandi" && p.createdAt?.slice(0, 10) === todayDate
-      );
-      if (hiredToday) {
-        throw new ApiError({
-          code: "VALIDATION",
-          status: 422,
-          message: "Siz bugungi kun uchun ishga tasdiqlangansiz (yollangansiz). Ushbu kunga boshqa yangi ariza topshirib bo'lmaydi.",
-          retryable: false,
-        });
-      }
-
-      const todayActiveProps = myProposals.filter(
-        (p) => p.status !== "qaytarib_olingan" && p.createdAt?.slice(0, 10) === todayDate
-      );
-      if (todayActiveProps.length >= 2) {
-        throw new ApiError({
-          code: "VALIDATION",
-          status: 422,
-          message: "Kunlik arizalar limiti tugadi: bir kunda ko'pi bilan 2 ta ishga ariza topshirish mumkin.",
-          retryable: false,
-        });
-      }
-
-      let proposal: Model.Proposal | null = null;
-      try {
-        const res = await http<Model.Proposal>(`/jobs/${input.jobId}/proposals`, {
-          method: "POST",
-          body: {
-            bidAmount: input.bidAmount,
-            coverLetter: input.coverLetter,
-            screeningAnswers: input.screeningAnswers || [],
-            attachedImages: (input.attachedImages || []).slice(0, 5),
-            estimatedDeliveryDays: input.estimatedDeliveryDays,
-          },
-        });
-        if (res && res.id) proposal = res;
-      } catch {}
-
-      if (!proposal) {
-        const me = await http<RealMe>("/me").catch(() => null);
-        const uid = me?.id ?? sessionStore.read()?.userId ?? "me";
-        proposal = {
-          id: `prop_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
-          jobId: input.jobId,
-          sellerId: uid,
-          bidAmount: input.bidAmount,
-          coverLetter: input.coverLetter,
-          screeningAnswers: input.screeningAnswers || [],
-          attachedImages: input.attachedImages || [],
-          status: "korib_chiqilmoqda",
-          createdAt: new Date().toISOString(),
-          estimatedDeliveryDays: input.estimatedDeliveryDays,
-        };
-      }
-
-      if (typeof window !== "undefined") {
-        try {
-          const jobKey = `bbd_proposals_${input.jobId}`;
-          const existingJobProps: Model.Proposal[] = JSON.parse(localStorage.getItem(jobKey) || "[]");
-          const next = [proposal, ...existingJobProps.filter((p) => p.id !== proposal!.id)];
-          localStorage.setItem(jobKey, JSON.stringify(next));
-
-          const myKey = "bbd_my_proposals";
-          const existingMyProps: Model.Proposal[] = JSON.parse(localStorage.getItem(myKey) || "[]");
-          const nextMy = [proposal, ...existingMyProps.filter((p) => p.id !== proposal!.id)];
-          localStorage.setItem(myKey, JSON.stringify(nextMy));
-
-          const allJobs = getLocalJobs();
-          const job = allJobs.find((j) => j.id === input.jobId);
-          if (job) {
-            job.proposalsCount = (job.proposalsCount || 0) + 1;
-            saveLocalJob(job);
-          }
-        } catch {}
-      }
-      return proposal;
-    }),
-  setStatus: (id, status) =>
-    call(async () => {
-      if (typeof window !== "undefined") {
-        try {
-          let updated: Model.Proposal | null = null;
-          const myKey = "bbd_my_proposals";
-          const existingMyProps: Model.Proposal[] = JSON.parse(localStorage.getItem(myKey) || "[]");
-          const found = existingMyProps.find((p) => p.id === id);
-          if (found) {
-            found.status = status;
-            localStorage.setItem(myKey, JSON.stringify(existingMyProps));
-            updated = found;
-          }
-
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith("bbd_proposals_")) {
-              const jobProps: Model.Proposal[] = JSON.parse(localStorage.getItem(key) || "[]");
-              const jFound = jobProps.find((p) => p.id === id);
-              if (jFound) {
-                jFound.status = status;
-                localStorage.setItem(key, JSON.stringify(jobProps));
-                if (!updated) updated = jFound;
-              }
-            }
-          }
-          if (updated) return updated;
-        } catch {}
-      }
-      return { id, status } as Model.Proposal;
-    }),
-  hire: (proposalId, milestones) =>
-    call(async () => {
-      let foundProp: Model.Proposal | null = null;
-      if (typeof window !== "undefined") {
-        try {
-          const myKey = "bbd_my_proposals";
-          const existingMyProps: Model.Proposal[] = JSON.parse(localStorage.getItem(myKey) || "[]");
-          foundProp = existingMyProps.find((p) => p.id === proposalId) ?? null;
-          if (foundProp) {
-            foundProp.status = "yollandi";
-            // BIZNES QOIDASI: Agar ishchi bir kunga tasdiqlangan (hired) bo'lsa,
-            // shu kun uchun boshqa barcha arizalari bekor qilinadi.
-            const hireDay = foundProp.createdAt ? foundProp.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
-            for (const p of existingMyProps) {
-              if (p.id !== proposalId && p.createdAt?.slice(0, 10) === hireDay) {
-                p.status = "rad_etildi";
-              }
-            }
-            localStorage.setItem(myKey, JSON.stringify(existingMyProps));
-          }
-
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith("bbd_proposals_")) {
-              const jobProps: Model.Proposal[] = JSON.parse(localStorage.getItem(key) || "[]");
-              const jFound = jobProps.find((p) => p.id === proposalId);
-              if (jFound) {
-                jFound.status = "yollandi";
-                localStorage.setItem(key, JSON.stringify(jobProps));
-                if (!foundProp) foundProp = jFound;
-              }
-            }
-          }
-        } catch {}
-      }
-      if (!foundProp) {
-        foundProp = await proposalsService.get(proposalId);
-      }
-      // Real backend orqali shartnoma yaratish: mutaxassisning faol xizmatini aniq qidirish
-      let activeService: RealService | undefined;
-      if (foundProp?.sellerId) {
-        const sellerServices = await http<Page<RealService>>(
-          `/services${toQuery({ seller: foundProp.sellerId, perPage: 10 })}`
-        ).catch(() => null);
-        activeService = sellerServices?.items?.find((s) => s.sellerId === foundProp.sellerId);
-      }
-      if (!activeService && foundProp?.sellerId) {
-        const servicesPage = await http<Page<RealService>>(`/services${toQuery({ perPage: 50 })}`).catch(() => null);
-        activeService = servicesPage?.items?.find((s) => s.sellerId === foundProp?.sellerId);
-      }
-
-      if (activeService) {
-        const sumMilestones = milestones.reduce((sum, m) => sum + m.amount, 0);
-        const adaptedMilestones = milestones.map((m) => ({
-          title: m.title || "Ish bosqichi",
-          description: m.description || "",
-          amount: m.amount,
-          dueAt: m.dueDate ? new Date(m.dueDate).toISOString() : new Date(Date.now() + 7 * 86400000).toISOString(),
-        }));
-
-        const deadline = new Date(Date.now() + 14 * 86400000).toISOString();
-        const realContract = await contractsService.create(
-          {
-            serviceId: activeService.id,
-            agreedAmount: sumMilestones,
-            deadline,
-            milestones: adaptedMilestones,
-          },
-          `hire_${proposalId}`
-        );
-        if (realContract) {
-          try {
-            await http(`/jobs/proposals/${proposalId}/hire`, { method: "POST" });
-          } catch {}
-          if (foundProp?.jobId) {
-            try {
-              await jobsService.close(foundProp.jobId);
-            } catch {}
-          }
-          return realContract;
-        }
-      }
-
-      throw new ApiError({
-        code: "VALIDATION",
-        status: 400,
-        message: "Mutaxassisning faol xizmati topilmadi. Shartnoma tuzish uchun mutaxassisda faol xizmat bo'lishi kerak",
-        retryable: false,
-      });
-    }),
-  withdraw: (id) =>
-    call(async () => {
-      let updated: Model.Proposal | null = null;
-      try {
-        const remote = await http<Model.Proposal>(`/jobs/proposals/${id}/withdraw`, { method: "POST" });
-        if (remote && remote.id) updated = remote;
-      } catch {}
-
-      if (typeof window !== "undefined") {
-        try {
-          const myKey = "bbd_my_proposals";
-          const existingMyProps: Model.Proposal[] = JSON.parse(localStorage.getItem(myKey) || "[]");
-          const found = existingMyProps.find((p) => p.id === id);
-          if (found) {
-            found.status = "qaytarib_olingan";
-            localStorage.setItem(myKey, JSON.stringify(existingMyProps));
-            if (!updated) updated = found;
-          }
-
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith("bbd_proposals_")) {
-              const jobProps: Model.Proposal[] = JSON.parse(localStorage.getItem(key) || "[]");
-              const jFound = jobProps.find((p) => p.id === id);
-              if (jFound) {
-                jFound.status = "qaytarib_olingan";
-                localStorage.setItem(key, JSON.stringify(jobProps));
-                if (!updated) updated = jFound;
-              }
-            }
-          }
-        } catch {}
-      }
-      if (updated) return updated;
-      return { id, status: "qaytarib_olingan" } as Model.Proposal;
-    }),
+  listMine: () => call(() => http<Model.Proposal[]>("/jobs/proposals/mine")),
+  get: (id) => call(async () => {
+    try { return await http<Model.Proposal>(`/jobs/proposals/${id}`); }
+    catch (error) {
+      if (error instanceof ApiError && error.code === "NOT_FOUND") return null;
+      throw error;
+    }
+  }),
+  listForJob: (jobId) => call(() => http<Model.Proposal[]>(`/jobs/${jobId}/proposals`)),
+  create: ({ jobId, ...input }) => call(() => http<Model.Proposal>(`/jobs/${jobId}/proposals`, {
+    method: "POST", body: { ...input, attachedImages: input.attachedImages.slice(0, 5) },
+  })),
+  // Backend has no atomic proposal-to-contract workflow. Do not mark a proposal
+  // hired before creating an unrelated service contract, or fabricate a contract.
+  setStatus: () => disabled(),
+  hire: () => disabled(),
+  withdraw: (id) => call(() => http<Model.Proposal>(`/jobs/proposals/${id}/withdraw`, { method: "POST" })),
 };
 
 export const offersService: OffersService = {
@@ -1529,20 +834,8 @@ export const offersService: OffersService = {
   create: (data) => call(() => createOffer(data)),
   listSent: () => call(() => getSentOffers()),
   listIncoming: () => call(() => getIncomingOffers()),
-  accept: (id) =>
-    call(async () => {
-      const contract = await acceptOffer(id);
-      if (typeof window !== "undefined") {
-        try {
-          const stored = localStorage.getItem("bbd_custom_contracts") || "[]";
-          const allCnt = JSON.parse(stored);
-          if (!allCnt.some((c: Model.Contract) => c.id === contract.id)) {
-            localStorage.setItem("bbd_custom_contracts", JSON.stringify([contract, ...allCnt]));
-          }
-        } catch {}
-      }
-      return contract;
-    }),
+  // Mock offers cannot create durable, authorized financial contracts.
+  accept: () => disabled(),
   withdraw: (id) => call(() => withdrawOffer(id)),
   decline: (id) => call(() => declineOffer(id)),
 };
@@ -1555,8 +848,8 @@ export const contractsService: ContractsService = {
     call(async () => {
       const role = currentRole();
       const base = role === "mutaxassis" ? "/seller/contracts" : "/me/contracts";
-      const page = await http<Page<RealContract>>(`${base}${toQuery({ perPage: 100 })}`);
-      return Promise.all(page.items.map((c) => hydrateContract(c, role)));
+      const items = await allPages<RealContract>(base);
+      return Promise.all(items.map((c) => hydrateContract(c)));
     }),
   get: (id) =>
     call(async () => {
@@ -1564,7 +857,7 @@ export const contractsService: ContractsService = {
       const base = role === "mutaxassis" ? "/seller/contracts" : "/me/contracts";
       try {
         const c = await http<RealContract>(`${base}/${id}`);
-        return await hydrateContract(c, role);
+        return await hydrateContract(c);
       } catch (e) {
         if (e instanceof ApiError && e.code === "NOT_FOUND") return null;
         throw e;
@@ -1573,22 +866,22 @@ export const contractsService: ContractsService = {
   create: (input, idempotencyKey) =>
     call(async () => {
       const c = await http<RealContract>("/contracts", { method: "POST", body: input, idempotencyKey });
-      return hydrateContract(c, "xaridor");
+      return hydrateContract(c);
     }),
   accept: (id) =>
     call(async () => {
       const c = await http<RealContract>(`/seller/contracts/${id}/accept`, { method: "POST" });
-      return hydrateContract(c, "mutaxassis");
+      return hydrateContract(c);
     }),
   reject: (id) =>
     call(async () => {
       const c = await http<RealContract>(`/seller/contracts/${id}/reject`, { method: "POST" });
-      return hydrateContract(c, "mutaxassis");
+      return hydrateContract(c);
     }),
   cancel: (id) =>
     call(async () => {
       const c = await http<RealContract>(`/me/contracts/${id}/cancel`, { method: "POST" });
-      return hydrateContract(c, "xaridor");
+      return hydrateContract(c);
     }),
   /* Ikki tomonlama "yopish so'rovi" oqimi real backendda yo'q — yakunlanish
      FAQAT oxirgi bosqich tasdiqlanganda avtomatik sodir bo'ladi. */
@@ -1603,21 +896,21 @@ export const milestonesService: MilestonesService = {
       const role = currentRole();
       const base = role === "mutaxassis" ? "/seller/contracts" : "/me/contracts";
       const c = await http<RealContract>(`${base}/${contractId}`);
-      const hydrated = await hydrateContract(c, role);
+      const hydrated = await hydrateContract(c);
       return c.milestones
         .slice()
         .sort((a, b) => a.position - b.position)
-        .map((m) => mapMilestone(m, !!hydrated.fundedAt));
+        .map((m) => mapMilestone(m, !!hydrated.fundedAt, c.platformFeeRateBps));
     }),
   listMine: () =>
     call(async () => {
       const role = currentRole();
       const base = role === "mutaxassis" ? "/seller/contracts" : "/me/contracts";
       const results: Model.Milestone[] = [];
-      const page = await http<Page<RealContract>>(`${base}${toQuery({ perPage: 100 })}`);
-      for (const c of page.items) {
-        const hydrated = await hydrateContract(c, role);
-        for (const m of c.milestones) results.push(mapMilestone(m, !!hydrated.fundedAt));
+      const items = await allPages<RealContract>(base);
+      for (const c of items) {
+        const hydrated = await hydrateContract(c);
+        for (const m of c.milestones) results.push(mapMilestone(m, !!hydrated.fundedAt, c.platformFeeRateBps));
       }
       return results;
     }),
@@ -1667,178 +960,38 @@ export const paymentsService: PaymentsService = {
       const res = await http<{ currency: string; available: number }>("/seller/balance");
       return res.available;
     }),
-  getCards: () =>
-    call(async () => {
-      if (typeof window !== "undefined") {
-        try {
-          const session = sessionStore.read();
-          const uid = session?.userId || "me";
-          const stored = localStorage.getItem(`bbd_cards_${uid}`);
-          if (stored) return JSON.parse(stored);
-          const fallback = localStorage.getItem("bbd_cards_me");
-          if (fallback) return JSON.parse(fallback);
-        } catch {}
-      }
-      return [];
-    }),
-  addCard: (data) =>
-    call(async () => {
-      const rawNumber = data.number.replace(/\D/g, "");
-      if (rawNumber.length !== 16) throw new Error("INVALID_CARD");
-      const cardType = detectCardType(rawNumber);
-      if (!cardType) throw new Error("INVALID_CARD");
-      cardExpiry(data.expiry);
-      if (!data.holderName?.trim()) throw new Error("INVALID_HOLDER");
-
-      const session = sessionStore.read();
-      const uid = session?.userId || "me";
-
-      const card: Model.PaymentCard = {
-        id: `card_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
-        userId: uid,
-        type: cardType,
-        last4: rawNumber.slice(-4),
-        holderName: data.holderName.trim().toUpperCase(),
-        expiry: data.expiry,
-        createdAt: new Date().toISOString(),
-      };
-
-      if (typeof window !== "undefined") {
-        const key = `bbd_cards_${uid}`;
-        let existing: Model.PaymentCard[] = [];
-        try {
-          existing = JSON.parse(localStorage.getItem(key) || "[]");
-        } catch {
-          existing = [];
-        }
-        if (existing.some((c) => c.last4 === card.last4 && c.type === card.type)) {
-          throw new Error("CARD_EXISTS");
-        }
-        if (existing.length >= 5) {
-          throw new Error("CARD_LIMIT");
-        }
-        const updated = [card, ...existing];
-        try {
-          localStorage.setItem(key, JSON.stringify(updated));
-          if (uid !== "me") {
-            localStorage.setItem("bbd_cards_me", JSON.stringify(updated));
-          }
-        } catch {}
-      }
-      return card;
-    }),
-  removeCard: (id) =>
-    call(async () => {
-      if (typeof window !== "undefined") {
-        try {
-          const session = sessionStore.read();
-          const uid = session?.userId || "me";
-          const key = `bbd_cards_${uid}`;
-          const existing: Model.PaymentCard[] = JSON.parse(localStorage.getItem(key) || "[]");
-          const updated = existing.filter((c) => c.id !== id);
-          localStorage.setItem(key, JSON.stringify(updated));
-          if (uid !== "me") {
-            localStorage.setItem("bbd_cards_me", JSON.stringify(updated));
-          }
-        } catch {}
-      }
-    }),
-  withdrawEarnings: (destination, amount) =>
-    call(async () => {
-      let cardDetails = "Plastik karta";
-      if (typeof destination === "string") {
-        cardDetails = destination;
-      } else if (typeof destination === "object" && destination.type === "card") {
-        cardDetails = destination.cardId;
-      } else if (typeof destination === "object" && destination.type === "bank_account") {
-        cardDetails = `Bank: ${destination.bankAccount.accountNumber} (MFO: ${destination.bankAccount.mfo})`;
-      }
-
-      let userName = "Mutaxassis";
-      try {
-        const me = await http<RealMe>("/me");
-        if (me && typeof me.fullName === "string") userName = me.fullName;
-      } catch {}
-
-      const reqAmount = Math.round(Number(amount)) || 0;
-      if (reqAmount <= 0) {
-        throw new ApiError({
-          code: "VALIDATION",
-          status: 400,
-          message: "Summa 0 dan katta bo'lishi kerak",
-          retryable: false,
-        });
-      }
-
-      const idempotencyKey =
-        typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `wd_${Date.now()}`;
-
-      const res = await http<RealPayout>("/seller/payouts", {
-        method: "POST",
-        body: {
-          amount: reqAmount,
-          destinationReference: cardDetails,
-        },
-        idempotencyKey,
-      });
-
-      return mapPayout(res, userName);
-    }),
+  // No tokenized card binding or verified destination API exists. Local card
+  // metadata cannot authorize a payout and must not masquerade as a bound card.
+  getCards: () => call(async () => []),
+  addCard: () => disabled(),
+  removeCard: () => disabled(),
+  withdrawEarnings: () => disabled(),
   withdrawBalance: () => disabled(),
-  getWithdrawnTotal: () =>
-    call(async () => {
-      if (currentRole() === "mutaxassis") {
-        try {
-          const page = await http<Page<RealPayout>>("/seller/payouts?page=1&perPage=100");
-          return page.items
-            .filter((p) => p.status === "SUCCEEDED")
-            .reduce((sum, p) => sum + p.amount, 0);
-        } catch {}
-      }
-      return 0;
-    }),
-  getPendingWithdrawalTotal: () =>
-    call(async () => {
-      if (currentRole() === "mutaxassis") {
-        try {
-          const page = await http<Page<RealPayout>>("/seller/payouts?page=1&perPage=100");
-          return page.items
-            .filter((p) => p.status === "PENDING" || p.status === "PROCESSING")
-            .reduce((sum, p) => sum + p.amount, 0);
-        } catch {}
-      }
-      return 0;
-    }),
-  listMyWithdrawalRequests: () =>
-    call(async () => {
-      if (currentRole() === "mutaxassis") {
-        try {
-          let userName = "Mutaxassis";
-          try {
-            const me = await http<RealMe>("/me");
-            if (me && typeof me.fullName === "string") userName = me.fullName;
-          } catch {}
-          const page = await http<Page<RealPayout>>("/seller/payouts?page=1&perPage=100");
-          return page.items.map((p) => mapPayout(p, userName));
-        } catch {}
-      }
-      return [];
-    }),
+  getWithdrawnTotal: () => call(async () => {
+    if (currentRole() !== "mutaxassis") return 0;
+    return (await allPages<RealPayout>("/seller/payouts"))
+      .filter((p) => p.status === "SUCCEEDED").reduce((sum, p) => sum + p.amount, 0);
+  }),
+  getPendingWithdrawalTotal: () => call(async () => {
+    if (currentRole() !== "mutaxassis") return 0;
+    return (await allPages<RealPayout>("/seller/payouts"))
+      .filter((p) => p.status === "PENDING" || p.status === "PROCESSING").reduce((sum, p) => sum + p.amount, 0);
+  }),
+  listMyWithdrawalRequests: () => call(async () => {
+    if (currentRole() !== "mutaxassis") return [];
+    const me = await http<RealMe>("/me");
+    return (await allPages<RealPayout>("/seller/payouts")).map((p) => mapPayout(p, asStr(me.fullName)));
+  }),
   createContractPayment: (contractId, idempotencyKey) =>
     call(async () => {
       return mapPayment(
         await http<RealPayment>(`/me/contracts/${contractId}/payment`, { method: "POST", idempotencyKey })
       );
     }),
-  getContractPayment: (contractId) =>
-    call(async () => {
-      try {
-        const page = await http<Page<RealPayment>>(`/me/payments${toQuery({ contractId, perPage: 1 })}`);
-        const latest = page.items[0];
-        if (latest) return mapPayment(latest);
-      } catch {}
-      return null;
-    }),
+  getContractPayment: (contractId) => call(async () => {
+    const page = await http<Page<RealPayment>>(`/me/payments${toQuery({ contractId, perPage: 1 })}`);
+    return page.items[0] ? mapPayment(page.items[0]) : null;
+  }),
 };
 
 /* Xabarlar/chat — in-memory + localStorage store */
@@ -1868,27 +1021,12 @@ export const reviewsService: ReviewsService = {
    DISPUTES — real backend oqimi.
    ========================================================================== */
 export const disputesService: DisputesService = {
-  listMine: () =>
-    call(async () => {
-      try {
-        const page = await http<Page<RealDispute>>(`/me/disputes${toQuery({ perPage: 100 })}`);
-        return page.items.map(mapDispute);
-      } catch {
-        if (typeof window !== "undefined") {
-          try {
-            const raw = localStorage.getItem("sb2_disputes");
-            if (raw) return JSON.parse(raw);
-          } catch {}
-        }
-        return [];
-      }
-    }),
-  getForContract: (contractId) =>
-    call(async () => {
-      const page = await http<Page<RealDispute>>(`/me/disputes${toQuery({ perPage: 100 })}`);
-      const match = page.items.find((d) => d.contractId === contractId);
-      return match ? mapDispute(match) : null;
-    }),
+  listMine: () => call(async () => (await allPages<RealDispute>("/me/disputes")).map(mapDispute)),
+  getForContract: (contractId) => call(async () => {
+    const items = await allPages<RealDispute>("/me/disputes");
+    const match = items.find((d) => d.contractId === contractId);
+    return match ? mapDispute(match) : null;
+  }),
   open: (contractId, input) =>
     call(async () => {
       const d = await http<RealDispute>(`/me/contracts/${contractId}/disputes`, {
@@ -1900,8 +1038,8 @@ export const disputesService: DisputesService = {
     }),
   withdraw: (contractId) =>
     call(async () => {
-      const page = await http<Page<RealDispute>>(`/me/disputes${toQuery({ perPage: 100 })}`);
-      const match = page.items.find((d) => d.contractId === contractId);
+      const items = await allPages<RealDispute>("/me/disputes");
+      const match = items.find((d) => d.contractId === contractId);
       if (!match) throw new Error("DISPUTE_NOT_FOUND");
       await http(`/me/disputes/${match.id}/cancel`, { method: "POST" });
     }),
@@ -1933,78 +1071,10 @@ export const sellerApplicationService: SellerApplicationService = {
 
 /* KYC — real backendda yo'q, shuning uchun /me/seller-application va localStorage orqali ishlaydi */
 export const verificationService: VerificationService = {
-  getMine: () =>
-    call(async () => {
-      try {
-        const app = await http<RealSellerApplication>("/me/seller-application");
-        if (app) {
-          const statusMap: Record<string, Model.VerificationRecord["status"]> = {
-            PENDING: "korib_chiqilmoqda",
-            APPROVED: "tasdiqlangan",
-            REJECTED: "rad_etilgan",
-          };
-          const descStr = typeof app.description === "string" ? app.description : "";
-          const passportMatch = descStr.match(/Pasport\/ID:\s*([^|\]]+)/);
-          const innMatch = descStr.match(/STIR\/INN:\s*([^|\]]+)/);
-          const companyMatch = descStr.match(/Yuridik:\s*([^|\]]+)/);
-          return {
-            userId: app.userId,
-            country: "UZ",
-            documentType: "passport",
-            legalName: app.legalName || "Foydalanuvchi",
-            birthDate: "1995-01-01",
-            documents: [],
-            status: statusMap[app.status] ?? "korib_chiqilmoqda",
-            submittedAt: app.createdAt,
-            rejectionReason: app.rejectionReason,
-            passportNumber: passportMatch ? passportMatch[1].trim() : undefined,
-            inn: innMatch ? innMatch[1].trim() : undefined,
-            companyDetails: companyMatch ? companyMatch[1].trim() : undefined,
-          };
-        }
-      } catch {}
-
-      if (typeof window !== "undefined") {
-        try {
-          const me = await http<RealMe>("/me").catch(() => null);
-          const uid = me?.id ?? "me";
-          const stored = localStorage.getItem(`bbd_verification_${uid}`);
-          if (stored) return JSON.parse(stored);
-        } catch {}
-      }
-      return null;
-    }),
-  submit: (input) =>
-    call(async () => {
-      const me = await http<RealMe>("/me").catch(() => null);
-      const uid = me?.id ?? "me";
-      try {
-        await http("/me/seller-application", {
-          method: "POST",
-          body: {
-            legalName: input.legalName,
-            displayName: input.legalName,
-            description: `Hujjat turi: ${input.documentType}, Davlat: ${input.country}`,
-            passportNumber: input.passportNumber,
-            inn: input.inn,
-            companyDetails: input.companyDetails,
-          },
-        });
-      } catch {}
-
-      const record: Model.VerificationRecord = {
-        ...input,
-        userId: uid,
-        status: "korib_chiqilmoqda",
-        submittedAt: new Date().toISOString(),
-      };
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(`bbd_verification_${uid}`, JSON.stringify(record));
-        } catch {}
-      }
-      return record;
-    }),
+  // A seller application is not identity verification. Neither invented birth
+  // dates nor local document snapshots establish a verified identity.
+  getMine: () => disabled(),
+  submit: () => disabled(),
 };
 
 /* Support ticketlar — Help Center uchun chiptalar boshqaruvi */
@@ -2035,45 +1105,30 @@ export const supportService: SupportService = {
   create: (input) =>
     call(async () => {
       const session = sessionStore.read();
-      const uid = session?.userId || "me";
-      const key = `bbd_support_${uid}`;
+      if (!session?.userId) throw new Error("NO_SESSION");
+      const uid = session.userId;
+      const categoryMap: Record<string, Model.SupportRequestCategory> = {
+        tolov: "tolov_escrow", shartnoma: "loyiha", nizo: "loyiha",
+        hisob: "hisob", texnik: "texnik", boshqa: "boshqa",
+      };
+      // A local history entry is not evidence that support received a request.
+      await supportRequestService.submit({
+        category: categoryMap[input.topic] ?? "boshqa",
+        contactName: "Foydalanuvchi", contactInfo: `ID: ${uid}`, userId: uid,
+        source: "help_center", route: typeof window !== "undefined" ? window.location.pathname : "/yordam",
+        message: `${input.subject}\n\n${input.message}`,
+      });
       const ticket: Model.SupportTicket = {
-        id: `ticket_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
-        userId: uid,
-        topic: input.topic,
-        subject: input.subject,
-        message: input.message,
-        status: "ochiq",
-        createdAt: new Date().toISOString(),
+        id: crypto.randomUUID(), userId: uid, topic: input.topic,
+        subject: input.subject, message: input.message, status: "ochiq", createdAt: new Date().toISOString(),
       };
       if (typeof window !== "undefined") {
         try {
+          const key = `bbd_support_${uid}`;
           const existing: Model.SupportTicket[] = JSON.parse(localStorage.getItem(key) || "[]");
           localStorage.setItem(key, JSON.stringify([ticket, ...existing]));
-        } catch {}
+        } catch { /* Delivery succeeded; optional browser history must not trigger duplicate submission. */ }
       }
-      const categoryMap: Record<string, string> = {
-        tolov: "tolov_escrow",
-        shartnoma: "loyiha",
-        nizo: "loyiha",
-        hisob: "hisob",
-        texnik: "texnik",
-        boshqa: "boshqa",
-      };
-      void fetch("/api/support", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          category: categoryMap[input.topic] ?? "boshqa",
-          contactName: "Foydalanuvchi",
-          contactInfo: `ID: ${uid}`,
-          userId: uid,
-          source: "help_center",
-          route: typeof window !== "undefined" ? window.location.pathname : "/yordam",
-          message: `${input.subject}\n\n${input.message}`,
-        }),
-      }).catch(() => {});
-
       return ticket;
     }),
 };

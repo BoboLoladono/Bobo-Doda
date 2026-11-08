@@ -55,6 +55,7 @@ describe('JobsService', () => {
       } as unknown,
     } as unknown as PrismaService;
 
+    prisma.$transaction = jest.fn((fn: (tx: Partial<PrismaService>) => unknown) => fn(prisma)) as never;
     service = new JobsService(prisma as PrismaService, ids as IdFactory);
   });
 
@@ -180,6 +181,13 @@ describe('JobsService', () => {
       );
       expect(res.status).toBe(JobStatus.CLOSED);
       expect(prisma.job?.update).toHaveBeenCalled();
+      expect(prisma.auditLog?.create).toHaveBeenCalled();
+    });
+
+    it('fails the transaction when mandatory audit logging fails', async () => {
+      (prisma.auditLog?.create as jest.Mock).mockRejectedValue(new Error('audit unavailable'));
+      await expect(service.closeAsAdmin(mockJob.id, 'Reason', { id: 'staff-1', type: 'STAFF', name: 'Admin' }))
+        .rejects.toThrow('audit unavailable');
     });
   });
 });

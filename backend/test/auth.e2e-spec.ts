@@ -460,6 +460,7 @@ describe('Auth (e2e, real Postgres + Redis + BullMQ)', () => {
   // ── FORGOT PASSWORD ────────────────────────────────────────────────────────
 
   t('FORGOT: mavjud foydalanuvchi → 1 ta SMS → verify → yangi parol → eski parol ISHLAMAYDI, yangisi ISHLAYDI, eski sessiyalar bekor', async () => {
+    await flushIpCounter();
     const { phone, refreshCookie } = await registerFresh();
     const callsBefore = sms.calls;
 

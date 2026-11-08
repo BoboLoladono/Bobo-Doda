@@ -1,5 +1,3 @@
-import { getPlatformSettings } from "@/lib/platform-settings";
-
 /* Platforma xizmat haqi — YAGONA MANBA.
  *
  * Qoida: xaridor BEPUL. Xizmat haqi faqat mutaxassisdan, faqat QABUL QILINGAN
@@ -8,31 +6,21 @@ import { getPlatformSettings } from "@/lib/platform-settings";
 
 export const PLATFORM_FEE_PERCENT = 5;
 
-/** Dinamik komissiya foizi (admin sozlamalaridan o'qiladi, fallback 5) */
+/** Public default for quotes only. Existing contracts use their server snapshot. */
 export function getPlatformFeePercent(): number {
-  if (typeof window !== "undefined") {
-    try {
-      const s = getPlatformSettings();
-      if (typeof s.platformCommissionPercent === "number" && s.platformCommissionPercent >= 0) {
-        return s.platformCommissionPercent;
-      }
-    } catch {
-      // ignore
-    }
-  }
   return PLATFORM_FEE_PERCENT;
 }
 
 /** Bitta bosqich (yoki jami) summasidan ushlanadigan xizmat haqi.
-    Butun songa yaxlitlanadi — UZS'da tiyin ishlatilmaydi. */
-export function platformFee(gross: number): number {
-  if (!Number.isFinite(gross) || gross <= 0) return 0;
-  return Math.round((gross * getPlatformFeePercent()) / 100);
+    Tiyingacha pastga yaxlitlanadi, server fee qoidasi bilan bir xil. */
+export function platformFee(gross: number, rateBps = PLATFORM_FEE_PERCENT * 100): number {
+  if (!Number.isFinite(gross) || gross <= 0 || !Number.isInteger(rateBps) || rateBps < 0 || rateBps > 10_000) return 0;
+  return Math.floor((gross * rateBps) / 100) / 100;
 }
 
 /** Mutaxassis qo'liga tegadigan sof summa. */
-export function sellerNet(gross: number): number {
-  if (!Number.isFinite(gross) || gross <= 0) return 0;
-  return gross - platformFee(gross);
+export function sellerNet(gross: number, rateBps = PLATFORM_FEE_PERCENT * 100): number {
+  if (!Number.isFinite(gross) || gross <= 0 || !Number.isInteger(rateBps) || rateBps < 0 || rateBps > 10_000) return 0;
+  return gross - platformFee(gross, rateBps);
 }
 

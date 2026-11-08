@@ -17,7 +17,7 @@ import { ReceiptModal } from "@/components/shared/ReceiptModal";
 import { contractsService, milestonesService, paymentsService } from "@/lib/api";
 import type { Contract, Milestone, WithdrawalRequest } from "@/lib/types";
 import { formatDate, formatMonth, formatMoney } from "@/lib/format";
-import { PLATFORM_FEE_PERCENT, sellerNet } from "@/lib/fees";
+import { sellerNet } from "@/lib/fees";
 import { useT } from "@/lib/i18n";
 
 const PENDING_STATUSES = ["mablaglangan", "topshirildi", "ozgartirish_soraldi"];
@@ -46,26 +46,16 @@ export default function DaromadPage() {
       milestonesService.listMine(),
       contractsService.list(),
       paymentsService.getBalance(),
-      paymentsService.listMyWithdrawalRequests().catch(() => []),
+      paymentsService.listMyWithdrawalRequests(),
     ])
       .then(([milestoneList, contractList, availableBalance, withdrawals]) => {
         setMilestones(milestoneList);
         setContracts(contractList);
         setMyWithdrawals(withdrawals);
 
-        const paidMilestones = (milestoneList ?? []).filter((m) => m.status === "qabul_qilindi");
-        const totalPaidNet = paidMilestones.reduce((sum, m) => sum + sellerNet(m.amount), 0);
-        const base = typeof availableBalance === "number" && availableBalance > 0 ? availableBalance : totalPaidNet;
-
-        const pendingWithdrawalSum = withdrawals
-          .filter((w) => w.status === "kutilmoqda" || w.status === "korib_chiqilmoqda")
-          .reduce((sum, w) => sum + w.amount, 0);
-        const approvedWithdrawalSum = withdrawals
-          .filter((w) => w.status === "tasdiqlangan")
-          .reduce((sum, w) => sum + w.amount, 0);
-
-        const netAvailable = Math.max(0, base - pendingWithdrawalSum - approvedWithdrawalSum);
-        setAvailable(netAvailable);
+        // The ledger already reserves pending payouts and debits completed ones.
+        // Zero is an authoritative balance, not a reason to restore old earnings.
+        setAvailable(availableBalance);
       })
       .catch(setLoadError);
   }, []);
@@ -79,14 +69,14 @@ export default function DaromadPage() {
      keyingisi. Ikkalasi ham ko'rsatiladi: mutaxassis nima uchun qancha
      ushlanganini ko'rmasa, escrow'ga ishonch yo'qoladi. */
   const grossPaid = paid.reduce((sum, m) => sum + m.amount, 0);
-  const totalPaid = paid.reduce((sum, m) => sum + sellerNet(m.amount), 0);
+  const totalPaid = paid.reduce((sum, m) => sum + sellerNet(m.amount, m.platformFeeRateBps), 0);
   const feeWithheld = grossPaid - totalPaid;
   const totalPending = (milestones ?? [])
     .filter((m) => {
       const status = contractById.get(m.contractId)?.status;
-      return PENDING_STATUSES.includes(m.status) && status === "faol";
+      return PENDING_STATUSES.includes(m.status) && (status === "faol" || status === "nizo");
     })
-    .reduce((sum, m) => sum + sellerNet(m.amount), 0);
+    .reduce((sum, m) => sum + sellerNet(m.amount, m.platformFeeRateBps), 0);
 
   const payments = [...paid].sort((a, b) => (b.approvedAt ?? "").localeCompare(a.approvedAt ?? ""));
 
@@ -96,7 +86,7 @@ export default function DaromadPage() {
   for (const m of paid) {
     if (!m.approvedAt) continue;
     const key = m.approvedAt.slice(0, 7);
-    monthlyTotals.set(key, (monthlyTotals.get(key) ?? 0) + sellerNet(m.amount));
+    monthlyTotals.set(key, (monthlyTotals.get(key) ?? 0) + sellerNet(m.amount, m.platformFeeRateBps));
   }
   const now = new Date();
   const monthly = Array.from({ length: 6 }, (_, i) => {
@@ -177,7 +167,7 @@ export default function DaromadPage() {
                   <p className="mt-2 font-heading text-xl font-bold text-success">{formatMoney(totalPaid, lang)}</p>
                   {feeWithheld > 0 && (
                     <p className="mt-1 text-2xs text-faint">
-                      {formatMoney(grossPaid, lang)} − {PLATFORM_FEE_PERCENT}% {t("earn.feeLabel")} ({formatMoney(feeWithheld, lang)})
+                      {formatMoney(grossPaid, lang)} − {t("earn.feeLabel")} ({formatMoney(feeWithheld, lang)})
                     </p>
                   )}
                 </Card>
@@ -251,9 +241,9 @@ export default function DaromadPage() {
                     header: t("earn.colAmount"),
                     render: (m) => (
                       <span className="flex flex-col">
-                        <span className="font-medium text-success">{formatMoney(sellerNet(m.amount), lang)}</span>
+                        <span className="font-medium text-success">{formatMoney(sellerNet(m.amount, m.platformFeeRateBps), lang)}</span>
                         <span className="text-2xs text-faint">
-                          {formatMoney(m.amount, lang)} − {PLATFORM_FEE_PERCENT}%
+                          {formatMoney(m.amount, lang)} − {(m.platformFeeRateBps ?? 500) / 100}%
                         </span>
                       </span>
                     ),
@@ -277,7 +267,7 @@ export default function DaromadPage() {
                 renderMobileCard={(m) => (
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-medium text-success">{formatMoney(sellerNet(m.amount), lang)}</span>
+                      <span className="text-sm font-medium text-success">{formatMoney(sellerNet(m.amount, m.platformFeeRateBps), lang)}</span>
                       <span className="text-2xs text-faint">{m.approvedAt ? formatDate(m.approvedAt, lang) : "—"}</span>
                     </div>
                     <p className="truncate text-xs text-ink">{contractById.get(m.contractId)?.title ?? "—"}</p>
