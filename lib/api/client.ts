@@ -41,7 +41,6 @@ import {
 } from "./mappers";
 import type * as Model from "@/lib/types";
 import { detectCardType, cardExpiry, MIN_JOB_BUDGET, isTestService } from "@/lib/validate";
-import { seedJobs, seedProfiles, seedReviews, seedServices, seedUsers } from "@/lib/mock-api/seed";
 import {
   getMessages,
   getAllMessages,
@@ -145,14 +144,10 @@ async function hydrateContract(c: RealContract, role: Model.UserRole | null): Pr
 
   if (typeof window !== "undefined") {
     try {
-      const foundSeed = seedUsers.find((u) => u.id === c.buyerId);
-      if (foundSeed) buyerName = foundSeed.fullName;
-      else {
-        const stored = localStorage.getItem(`bbd_buyer_profile_${c.buyerId}`);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed.companyName || parsed.fullName) buyerName = parsed.companyName || parsed.fullName;
-        }
+      const stored = localStorage.getItem(`bbd_buyer_profile_${c.buyerId}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.companyName || parsed.fullName) buyerName = parsed.companyName || parsed.fullName;
       }
     } catch {}
   }
@@ -524,142 +519,41 @@ function fallbackSellerProfile(userId: string): Model.SellerProfile {
   };
 }
 
-const BOOST_TEST_SPECIALISTS: Model.Specialist[] = [
-  {
-    user: {
-      id: "01a11b3f-a793-716b-912b-33fa9c686306",
-      fullName: "Jasur Dasturchi (Full-stack Dev)",
-      phone: "+998901110004",
-      role: "mutaxassis",
-      createdAt: "2026-10-08T11:21:58.946Z",
-      roleChosen: true,
-      profileDone: true,
-      verified: true,
-    },
-    profile: {
-      userId: "01a11b3f-a793-716b-912b-33fa9c686306",
-      headline: "Jasur Dasturchi (Full-Stack)",
-      bio: "Senior Full-stack dasturchi (Node.js, NestJS, Next.js, PostgreSQL). 6+ yillik tijoriy tajriba. Murakkab veb-saytlar va APIlar ishlab chiqaman.",
-      location: "Toshkent shahri",
-      skills: ["Node.js", "NestJS", "Next.js", "TypeScript", "PostgreSQL", "React"],
-      categories: ["dasturlash"],
-      portfolio: [
-        {
-          id: "port-1",
-          title: "E-Commerce Veb-sayt va API",
-          description: "Next.js va NestJS asosidagi tezkor do'kon",
-          image: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='250' viewBox='0 0 400 250'><rect width='400' height='250' fill='%231e293b'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23ffffff' font-family='sans-serif' font-size='20'>Full-Stack Veb Platforma</text></svg>",
-          category: "dasturlash",
-        },
-      ],
-      languages: [
-        { name: "O'zbek", level: "native" },
-        { name: "Rus", level: "fluent" },
-        { name: "Ingliz", level: "intermediate" },
-      ],
-      responseTimeHours: 1,
-      available: true,
-      rating: 0,
-      reviewCount: 0,
-      completedContracts: 0,
-      badge: "yangi",
-      memberSince: "2026-10-08T11:21:58.946Z",
-    },
-  },
-  {
-    user: {
-      id: "01a11b3f-a7ae-7304-92ff-498cdc5506c9",
-      fullName: "Diyora Dizayner (UI/UX & Branding)",
-      phone: "+998901110005",
-      role: "mutaxassis",
-      createdAt: "2026-10-08T11:21:58.972Z",
-      roleChosen: true,
-      profileDone: true,
-      verified: true,
-    },
-    profile: {
-      userId: "01a11b3f-a7ae-7304-92ff-498cdc5506c9",
-      headline: "Diyora Dizayner (UI/UX Pro)",
-      bio: "Senior UI/UX dizayner va Art Director. Figma, mobil ilovalar, veb platformalar va brend identikasi dizayni bo'yicha 5+ yillik tajriba.",
-      location: "Toshkent shahri",
-      skills: ["Figma", "UI/UX", "Mobile Design", "Brand Identity", "Web Design"],
-      categories: ["dizayn"],
-      portfolio: [
-        {
-          id: "port-2",
-          title: "Fintech Mobil Ilova UI/UX",
-          description: "Zamonaviy bank ilovasi dizayni va interaktiv prototip",
-          image: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='250' viewBox='0 0 400 250'><rect width='400' height='250' fill='%230f172a'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2338bdf8' font-family='sans-serif' font-size='20'>Fintech UI/UX</text></svg>",
-          category: "dizayn",
-        },
-      ],
-      languages: [
-        { name: "O'zbek", level: "native" },
-        { name: "Rus", level: "fluent" },
-        { name: "Ingliz", level: "fluent" },
-      ],
-      responseTimeHours: 2,
-      available: true,
-      rating: 4.9,
-      reviewCount: 18,
-      completedContracts: 22,
-      badge: "top_mutaxassis",
-      memberSince: "2026-10-08T11:21:58.972Z",
-    },
-  },
-  {
-    user: {
-      id: "01a11b3f-a7c1-7d79-beba-d29bd8bd05cd",
-      fullName: "Sardor Marketolog (Target & SMM)",
-      phone: "+998901110006",
-      role: "mutaxassis",
-      createdAt: "2026-10-08T11:21:58.987Z",
-      roleChosen: true,
-      profileDone: true,
-      verified: true,
-    },
-    profile: {
-      userId: "01a11b3f-a7c1-7d79-beba-d29bd8bd05cd",
-      headline: "Sardor Marketolog (Target & SMM)",
-      bio: "Raqamli marketing, maqsadli (target) reklama, kontekst reklama va SMM mutaxassisi. Savdo hajmini 3 barobargacha oshirish bo'yicha keyslar mavjud.",
-      location: "Farg'ona",
-      skills: ["Target Reklama", "SMM", "Instagram", "Facebook Ads", "Google Ads"],
-      categories: ["marketing"],
-      portfolio: [
-        {
-          id: "port-3",
-          title: "Kiyim-kechak brendi uchun SMM kampaniyasi",
-          description: "3 oyda 50,000 obunachi va 2x sotuv",
-          image: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='250' viewBox='0 0 400 250'><rect width='400' height='250' fill='%23312e81'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23a5b4fc' font-family='sans-serif' font-size='20'>Target &amp; SMM Case</text></svg>",
-          category: "marketing",
-        },
-      ],
-      languages: [
-        { name: "O'zbek", level: "native" },
-        { name: "Rus", level: "intermediate" },
-      ],
-      responseTimeHours: 1,
-      available: true,
-      rating: 4.8,
-      reviewCount: 14,
-      completedContracts: 19,
-      badge: "top_mutaxassis",
-      memberSince: "2026-10-08T11:21:58.987Z",
-    },
-  },
-];
-
 export const catalogService: CatalogService = {
   listSpecialists: () =>
     call(async () => {
       const me = sessionStore.read();
-      const specialists: Model.Specialist[] = seedUsers
-        .filter((u) => u.role === "mutaxassis" && seedProfiles[u.id])
-        .map((u) => ({
-          user: u,
-          profile: seedProfiles[u.id],
-        }));
-      specialists.unshift(...BOOST_TEST_SPECIALISTS);
+      let specialists: Model.Specialist[] = [];
+      try {
+        const categories = await getCategories();
+        const page = await http<Page<RealPublicService>>(`/services${toQuery({ perPage: 100 })}`);
+        const map = new Map<string, Model.Specialist>();
+        for (const s of page.items || []) {
+          if (s.sellerId && !map.has(s.sellerId)) {
+            map.set(s.sellerId, {
+              user: {
+                id: s.sellerId,
+                fullName: "Mutaxassis",
+                phone: "",
+                role: "mutaxassis",
+                createdAt: s.createdAt,
+                roleChosen: true,
+                profileDone: true,
+                verified: true,
+              },
+              profile: {
+                ...fallbackSellerProfile(s.sellerId),
+                headline: s.title,
+                bio: s.description || "",
+                categories: [slugById(categories, s.categoryId) as Model.ServiceCategory],
+                memberSince: s.createdAt,
+              },
+            });
+          }
+        }
+        specialists = Array.from(map.values());
+      } catch {}
+
       if (me && me.role === "mutaxassis" && !specialists.some((s) => s.user.id === me.userId)) {
         specialists.unshift({
           user: {
@@ -703,19 +597,6 @@ export const catalogService: CatalogService = {
           profile: fallbackSellerProfile(uid),
         };
       }
-      const boostFound = BOOST_TEST_SPECIALISTS.find((s) => s.user.id === userId || s.user.phone === userId);
-      if (boostFound) return boostFound;
-      const foundUser = seedUsers.find((u) => u.id === userId);
-      const foundProfile = seedProfiles[userId];
-      if (foundUser && foundProfile) {
-        return { user: foundUser, profile: foundProfile };
-      }
-      if (foundUser) {
-        return {
-          user: foundUser,
-          profile: fallbackSellerProfile(userId),
-        };
-      }
       if (typeof window !== "undefined") {
         try {
           const stored = localStorage.getItem(`bbd_seller_profile_${userId}`);
@@ -742,23 +623,12 @@ export const catalogService: CatalogService = {
           }
         } catch {}
       }
-      return {
-        user: {
-          id: userId,
-          fullName: "Mutaxassis",
-          phone: "+998901110004",
-          role: "mutaxassis",
-          createdAt: new Date().toISOString(),
-          roleChosen: true,
-          profileDone: true,
-          verified: true,
-        },
-        profile: fallbackSellerProfile(userId),
-      };
+      return null;
     }),
-  listSellerReviews: (sellerId: string) =>
+  listSellerReviews: () =>
     call(async () => {
-      return seedReviews.filter((r) => r.sellerId === sellerId);
+      // Yangi ochilgan platformada sun'iy mock sharhlar olib tashlangan — faqat haqiqiy sharhlar qaytadi
+      return [];
     }),
   listCategories: () => call(async () => (await getCategories()).map((c) => c.slug as Model.ServiceCategory)),
 };
@@ -928,9 +798,6 @@ export const servicesService: ServicesService = {
           .map((s) => mapPublicService(s, slugById(categories, s.categoryId)))
           .filter((s) => !isTestService(s));
       } catch {}
-      if (remoteItems.length === 0) {
-        remoteItems = seedServices.filter((s) => !isTestService(s));
-      }
       return remoteItems;
     }),
   get: (id) =>
@@ -951,8 +818,7 @@ export const servicesService: ServicesService = {
                 status: local.status === "archived" || local.status === "paused" ? local.status : "active",
               };
             }
-            const seed = seedServices.find((s) => s.id === id);
-            if (seed) return seed;
+            return null;
           }
         }
       }
@@ -967,8 +833,6 @@ export const servicesService: ServicesService = {
             status: local.status === "archived" || local.status === "paused" ? local.status : "active",
           };
         }
-        const seed = seedServices.find((s) => s.id === id);
-        if (seed) return seed;
         if (e instanceof ApiError && e.code === "NOT_FOUND") return null;
         throw e;
       }
@@ -1176,16 +1040,16 @@ function mapJob(dto: RealJob): Model.Job {
 
 /* Job/Proposal/Offer — ish e'lonlari va takliflar xizmatlari */
 function getLocalJobs(): Model.Job[] {
-  if (typeof window === "undefined") return seedJobs;
+  if (typeof window === "undefined") return [];
   try {
     const stored = localStorage.getItem("bbd_public_jobs");
     if (stored) {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
-    return seedJobs;
+    return [];
   } catch {
-    return seedJobs;
+    return [];
   }
 }
 
@@ -1416,6 +1280,37 @@ export const proposalsService: ProposalsService = {
       if (input.bidAmount < 1_000) {
         throw new Error("MIN_BID_1000");
       }
+
+      // BIZNES QOIDASI 1 & 2:
+      // - Bir kunda ko'pi bilan 2 ta ishga ariza topshirish mumkin.
+      // - Agar ishchi bir kunga tasdiqlangan (yollandi) ishga ega bo'lsa, shu kun uchun yangi ariza topshira olmaydi.
+      const todayDate = new Date().toISOString().slice(0, 10);
+      const myProposals = await proposalsService.listMine().catch(() => []);
+
+      const hiredToday = myProposals.some(
+        (p) => p.status === "yollandi" && p.createdAt?.slice(0, 10) === todayDate
+      );
+      if (hiredToday) {
+        throw new ApiError({
+          code: "VALIDATION",
+          status: 422,
+          message: "Siz bugungi kun uchun ishga tasdiqlangansiz (yollangansiz). Ushbu kunga boshqa yangi ariza topshirib bo'lmaydi.",
+          retryable: false,
+        });
+      }
+
+      const todayActiveProps = myProposals.filter(
+        (p) => p.status !== "qaytarib_olingan" && p.createdAt?.slice(0, 10) === todayDate
+      );
+      if (todayActiveProps.length >= 2) {
+        throw new ApiError({
+          code: "VALIDATION",
+          status: 422,
+          message: "Kunlik arizalar limiti tugadi: bir kunda ko'pi bilan 2 ta ishga ariza topshirish mumkin.",
+          retryable: false,
+        });
+      }
+
       let proposal: Model.Proposal | null = null;
       try {
         const res = await http<Model.Proposal>(`/jobs/${input.jobId}/proposals`, {
@@ -1511,6 +1406,14 @@ export const proposalsService: ProposalsService = {
           foundProp = existingMyProps.find((p) => p.id === proposalId) ?? null;
           if (foundProp) {
             foundProp.status = "yollandi";
+            // BIZNES QOIDASI: Agar ishchi bir kunga tasdiqlangan (hired) bo'lsa,
+            // shu kun uchun boshqa barcha arizalari bekor qilinadi.
+            const hireDay = foundProp.createdAt ? foundProp.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
+            for (const p of existingMyProps) {
+              if (p.id !== proposalId && p.createdAt?.slice(0, 10) === hireDay) {
+                p.status = "rad_etildi";
+              }
+            }
             localStorage.setItem(myKey, JSON.stringify(existingMyProps));
           }
 
