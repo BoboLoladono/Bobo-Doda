@@ -500,4 +500,80 @@ describe('validateEnv', () => {
       expect(message).toContain('REDIS_URL');
     }
   });
+
+  describe('Click Payment & Payme Payout & 547-sonli Qonun', () => {
+    it('PAYMENT_PROVIDER=CLICK credential yetishmasa rad etiladi', () => {
+      expect(() =>
+        validateEnv({
+          ...base,
+          PAYMENT_PROVIDER: 'CLICK',
+        }),
+      ).toThrow(/CLICK_MERCHANT_ID/);
+    });
+
+    it('PAYMENT_PROVIDER=CLICK to‘liq credential bilan o‘tadi', () => {
+      const env = validateEnv({
+        ...base,
+        PAYMENT_PROVIDER: 'CLICK',
+        CLICK_MERCHANT_ID: 'click-merch-1',
+        CLICK_SERVICE_ID: 'click-serv-1',
+        CLICK_SECRET_KEY: 'click-secret-key-1',
+      });
+      expect(env.PAYMENT_PROVIDER).toBe('CLICK');
+      expect(env.CLICK_MERCHANT_ID).toBe('click-merch-1');
+    });
+
+    it('PAYOUT_PROVIDER=PAYME credential yetishmasa rad etiladi', () => {
+      expect(() =>
+        validateEnv({
+          ...base,
+          PAYOUT_PROVIDER: 'PAYME',
+        }),
+      ).toThrow(/PAYME_PAYOUT_LOGIN/);
+    });
+
+    it('PAYOUT_PROVIDER=PAYME to‘liq credential bilan o‘tadi', () => {
+      const env = validateEnv({
+        ...base,
+        PAYOUT_PROVIDER: 'PAYME',
+        PAYME_PAYOUT_LOGIN: 'payme-payout-login',
+        PAYME_PAYOUT_KEY: 'payme-payout-key',
+      });
+      expect(env.PAYOUT_PROVIDER).toBe('PAYME');
+      expect(env.PAYME_PAYOUT_LOGIN).toBe('payme-payout-login');
+    });
+
+    it('547-sonli Qonun: production’da xorijiy AWS S3 rad etiladi', () => {
+      expect(() =>
+        validateEnv({
+          ...base,
+          ...paymeCreds,
+          ...textUpCreds,
+          NODE_ENV: 'production',
+          SWAGGER_ENABLED: 'false',
+          STAFF_CORS_ORIGINS: 'https://admin.bobololadono.uz',
+          CORS_ORIGINS: 'https://bobololadono.uz',
+          PAYMENT_PROVIDER: 'PAYME',
+          S3_ENDPOINT: 'https://mybucket.s3.amazonaws.com',
+        }),
+      ).toThrow(/547-sonli Qonunning 27¹-moddasi buzilishi/);
+    });
+
+    it('547-sonli Qonun: production’da O‘zbekiston ichki S3/MinIO o‘tadi', () => {
+      const env = validateEnv({
+        ...base,
+        ...paymeCreds,
+        ...textUpCreds,
+        NODE_ENV: 'production',
+        SWAGGER_ENABLED: 'false',
+        STAFF_CORS_ORIGINS: 'https://admin.bobololadono.uz',
+        CORS_ORIGINS: 'https://bobololadono.uz',
+        PAYMENT_PROVIDER: 'PAYME',
+        S3_ENDPOINT: 'https://s3.tashkent.bobololadono.uz',
+        DATA_RESIDENCY_COUNTRY: 'UZ',
+      });
+      expect(env.DATA_RESIDENCY_COUNTRY).toBe('UZ');
+      expect(env.DATA_RESIDENCY_ASSERTION).toBe(true);
+    });
+  });
 });

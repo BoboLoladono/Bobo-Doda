@@ -76,6 +76,15 @@ async function main(): Promise<void> {
       detail: complete ? 'PAYME_MERCHANT_ID/LOGIN/KEY/CHECKOUT_URL hammasi bor' : 'Payme credential(lar) yetishmayapti',
     });
   }
+  if (config.payment.provider === 'CLICK') {
+    const { merchantId, serviceId, secretKey } = config.click;
+    const complete = Boolean(merchantId && serviceId && secretKey);
+    results.push({
+      name: 'click_credentials_complete',
+      ok: complete,
+      detail: complete ? 'CLICK_MERCHANT_ID/SERVICE_ID/SECRET_KEY hammasi bor' : 'Click credential(lar) yetishmayapti',
+    });
+  }
 
   const smsOk = config.sms.provider !== 'CONSOLE';
   results.push({
@@ -102,8 +111,32 @@ async function main(): Promise<void> {
     name: 'payout_status',
     ok: payoutOk,
     detail: !config.payoutsEnabled
-      ? 'PAYOUTS_ENABLED=false — feature xavfsiz o‘chirilgan (real payout rail hali tanlanmagan)'
+      ? 'PAYOUTS_ENABLED=false — feature xavfsiz o‘chirilgan'
       : `PAYOUTS_ENABLED=true, PAYOUT_PROVIDER=${config.payout.provider}`,
+  });
+  if (config.payoutsEnabled && config.payout.provider === 'PAYME') {
+    const { login, key } = config.paymePayout;
+    const complete = Boolean(login && key);
+    results.push({
+      name: 'payme_payout_credentials_complete',
+      ok: complete,
+      detail: complete ? 'PAYME_PAYOUT_LOGIN/KEY hammasi bor' : 'Payme Payout credential(lar) yetishmayapti',
+    });
+  }
+
+  // 547-sonli Qonun 27¹-moddasi: Shaxsiy ma'lumotlar suvereniteti
+  const dataResidencyOk = config.dataResidency.country === 'UZ';
+  let s3DomesticOk = true;
+  if (config.s3.endpoint) {
+    const foreignClouds = /(amazonaws\.com|storage\.googleapis\.com|blob\.core\.windows\.net|digitaloceanspaces\.com)/i;
+    s3DomesticOk = !foreignClouds.test(config.s3.endpoint);
+  }
+  results.push({
+    name: 'data_sovereignty_law_547',
+    ok: dataResidencyOk && s3DomesticOk,
+    detail: dataResidencyOk && s3DomesticOk
+      ? `547-sonli Qonun (27¹-modda) ta'minlangan (Country: UZ, S3: ${config.s3.endpoint ?? 'lokal MinIO'})`
+      : '547-sonli Qonun buzilishi: shaxsiy ma’lumotlar O‘zbekiston hududidan tashqarida saqlanmoqda',
   });
 
   results.push({

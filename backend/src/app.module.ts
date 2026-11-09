@@ -7,6 +7,7 @@ import { LoggerModule } from '@/infra/logger/logger.module';
 import { PrismaModule } from '@/infra/prisma/prisma.module';
 import { RedisModule } from '@/infra/redis/redis.module';
 import { QueueModule } from '@/infra/queue/queue.module';
+import { StorageModule } from '@/infra/storage/storage.module';
 import { SecurityModule } from '@/common/security/security.module';
 import { AuditModule } from '@/common/audit/audit.module';
 import { IdempotencyModule } from '@/common/idempotency/idempotency.module';
@@ -54,6 +55,7 @@ import { JobsModule } from '@/modules/jobs/jobs.module';
     PrismaModule,
     RedisModule,
     QueueModule,
+    StorageModule,
     SecurityModule,
     AuditModule,
     IdempotencyModule,

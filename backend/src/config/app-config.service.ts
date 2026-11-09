@@ -145,11 +145,49 @@ export class AppConfigService {
     };
   }
 
+  /** Rasmiy Click Merchant API. `PAYMENT_PROVIDER=CLICK` bo'lsa majburiy. */
+  get click(): {
+    merchantId: string | undefined;
+    serviceId: string | undefined;
+    secretKey: string | undefined;
+    checkoutUrl: string | undefined;
+  } {
+    return {
+      merchantId: this.get('CLICK_MERCHANT_ID'),
+      serviceId: this.get('CLICK_SERVICE_ID'),
+      secretKey: this.get('CLICK_SECRET_KEY'),
+      checkoutUrl: this.get('CLICK_CHECKOUT_URL'),
+    };
+  }
+
   /** Bosqich 7 — `payout.module.ts` shundan provider'ni tanlaydi (Payment'dan ALOHIDA). */
   get payout(): { provider: Env['PAYOUT_PROVIDER']; testWebhookSecret: string | undefined } {
     return {
       provider: this.get('PAYOUT_PROVIDER'),
       testWebhookSecret: this.get('PAYOUT_TEST_WEBHOOK_SECRET'),
+    };
+  }
+
+  /** Payme Payout Rail konfiguratsiyasi */
+  get paymePayout(): {
+    endpoint: string;
+    login: string | undefined;
+    key: string | undefined;
+    webhookSecret: string | undefined;
+  } {
+    return {
+      endpoint: this.get('PAYME_PAYOUT_ENDPOINT'),
+      login: this.get('PAYME_PAYOUT_LOGIN'),
+      key: this.get('PAYME_PAYOUT_KEY'),
+      webhookSecret: this.get('PAYOUT_WEBHOOK_SECRET'),
+    };
+  }
+
+  /** 547-sonli Qonun — Shaxsiy ma'lumotlar suvereniteti */
+  get dataResidency(): { country: string; assertion: boolean } {
+    return {
+      country: this.get('DATA_RESIDENCY_COUNTRY'),
+      assertion: this.get('DATA_RESIDENCY_ASSERTION'),
     };
   }
 

@@ -10,6 +10,10 @@ import { PaymeProvider } from './providers/payme/payme.provider';
 import { PaymeMerchantService } from './providers/payme/payme-merchant.service';
 import { PaymeMerchantController } from './providers/payme/payme-merchant.controller';
 import { PAYME_MERCHANT_CONFIG, type PaymeMerchantConfig } from './providers/payme/payme-rpc.types';
+import { ClickProvider } from './providers/click/click.provider';
+import { ClickMerchantService } from './providers/click/click-merchant.service';
+import { ClickMerchantController } from './providers/click/click-merchant.controller';
+import { CLICK_MERCHANT_CONFIG, type ClickMerchantConfig } from './providers/click/click-rpc.types';
 import { PaymentService } from './payment.service';
 import { PaymentController } from './payment.controller';
 import { MePaymentController } from './me-payment.controller';
@@ -31,10 +35,17 @@ const DEV_ONLY_TEST_SECRET = 'test-only-insecure-secret-change-me';
  */
 @Module({
   imports: [AuthModule, StaffAuthModule, GuardsModule],
-  controllers: [PaymentController, MePaymentController, StaffPaymentController, PaymeMerchantController],
+  controllers: [
+    PaymentController,
+    MePaymentController,
+    StaffPaymentController,
+    PaymeMerchantController,
+    ClickMerchantController,
+  ],
   providers: [
     PaymentService,
     PaymeMerchantService,
+    ClickMerchantService,
     {
       // Bo'lim 32 — `PaymeMerchantController` shu orqali "Payme faolmi +
       // to'liq credential bormi"ni bir joydan biladi (`AppConfigService`ga
@@ -53,10 +64,21 @@ const DEV_ONLY_TEST_SECRET = 'test-only-insecure-secret-change-me';
       },
     },
     {
+      provide: CLICK_MERCHANT_CONFIG,
+      inject: [AppConfigService],
+      useFactory: (config: AppConfigService): ClickMerchantConfig | null => {
+        if (!config.paymentsEnabled) return null;
+        if (config.payment.provider !== 'CLICK') return null;
+        const { merchantId, serviceId, secretKey, checkoutUrl } = config.click;
+        if (!merchantId || !serviceId || !secretKey) return null;
+        return { merchantId, serviceId, secretKey, checkoutUrl };
+      },
+    },
+    {
       provide: PAYMENT_PROVIDER,
       inject: [AppConfigService],
       useFactory: (config: AppConfigService) => {
-        // Bosqich 23 — real Payme credential hali tanlanmagan bo'lsa,
+        // Bosqich 23 — real Payme/Click credential hali tanlanmagan bo'lsa,
         // feature to'liq o'chiriladi (`PAYOUTS_ENABLED` bilan bir xil
         // falsafa) — `PAYMENT_PROVIDER`/`NODE_ENV`dan qat'i nazar.
         if (!config.paymentsEnabled) {
@@ -85,17 +107,15 @@ const DEV_ONLY_TEST_SECRET = 'test-only-insecure-secret-change-me';
           }
           return new PaymeProvider({ merchantId, checkoutUrl });
         }
-        // CLICK — bo'lim 29/§0: rasmiy docs.click.uz texnik sahifalari
-        // (signature formula/error kodlar) bu muhitda o'qib bo'lmadi
-        // (JS-render qilinadigan SPA, statik fetch faqat navigatsiya
-        // qobig'ini qaytardi). Protokol O'YLAB TOPILMAYDI — CLICK_PROVIDER_
-        // IMPLEMENTATION = BLOCKED_BY_OFFICIAL_SPEC (final report). Rasmiy
-        // spetsifikatsiya tekshirib bo'lingach shu `case` yangi provider
-        // klassiga almashtiriladi.
-        throw new Error(
-          `PAYMENT_PROVIDER=${provider} hali implement qilinmagan (rasmiy protokol spetsifikatsiyasi tasdiqlanmagan) — ` +
-            'PAYMENT_PROVIDER=TEST bilan (faqat dev/test) yoki PAYME bilan ishga tushiring.',
-        );
+        if (provider === 'CLICK') {
+          const { merchantId, serviceId, secretKey, checkoutUrl } = config.click;
+          if (!merchantId || !serviceId || !secretKey) {
+            throw new Error('PAYMENT_PROVIDER=CLICK uchun CLICK_MERCHANT_ID/CLICK_SERVICE_ID/CLICK_SECRET_KEY majburiy');
+          }
+          return new ClickProvider({ merchantId, serviceId, secretKey, checkoutUrl });
+        }
+        const unsupported: string = provider;
+        throw new Error(`PAYMENT_PROVIDER=${unsupported} qo'llab-quvvatlanmaydi`);
       },
     },
   ],
