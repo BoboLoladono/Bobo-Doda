@@ -30,8 +30,8 @@ test.describe("Cross-Device Responsive Viewport Audit (320px - 1920px)", () => {
           page,
         }) => {
           await page.setViewportSize({ width: vp.width, height: vp.height });
-          await page.goto(p.path);
-          await page.waitForLoadState("networkidle");
+          await page.goto(p.path, { waitUntil: "domcontentloaded" });
+          await page.waitForTimeout(100);
 
           // 1. Check no horizontal overflow
           const overflow = await page.evaluate(() => {

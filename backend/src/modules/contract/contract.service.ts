@@ -424,10 +424,21 @@ export class ContractService {
       });
       if (refund) throw new DomainError('CONTRACT_REFUND_IN_PROGRESS', 'Shartnoma uchun refund boshlangan');
       const dispute = await tx.dispute.findFirst({
-        where: { contractId, status: { in: ['OPEN', 'UNDER_REVIEW'] } },
-        select: { id: true },
+        where: {
+          contractId,
+          OR: [
+            { status: { in: ['OPEN', 'UNDER_REVIEW'] } },
+            { status: 'RESOLVED', buyerAwardAmount: { gt: 0n } },
+          ],
+        },
+        select: { id: true, status: true },
       });
-      if (dispute) throw new DomainError('DISPUTE_IN_PROGRESS', 'Ochiq nizo hal qilinishini kuting');
+      if (dispute) {
+        if (dispute.status === 'RESOLVED') {
+          throw new DomainError('DISPUTE_ALREADY_RESOLVED', 'Nizo xaridor foydasiga hal qilingan, bosqichni tasdiqlab bo‘lmaydi');
+        }
+        throw new DomainError('DISPUTE_IN_PROGRESS', 'Ochiq nizo hal qilinishini kuting');
+      }
     }
   }
 

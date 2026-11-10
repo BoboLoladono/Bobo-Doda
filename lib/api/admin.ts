@@ -21,6 +21,7 @@
  */
 import { normalizeApiError } from "./errors";
 import * as adminMock from "@/lib/admin-api";
+import type { AdminTicketRow } from "@/lib/admin-api";
 import {
   bootstrapStaffSession,
   decodeStaffJwtSub,
@@ -34,8 +35,8 @@ import {
   STAFF_SESSION_EXPIRED_EVENT,
   takeExpiredStaffRole,
 } from "./staff-http";
-import type { AdminAccount, AdminPage, AdminPermission, AdminQueueQuery, AdminRole, AdminSession, TransactionRecord } from "@/lib/admin-types";
-import type { Job, Service, WithdrawalRequest } from "@/lib/types";
+import type { AdminAccount, AdminPage, AdminPermission, AdminQueueQuery, AdminRole, AdminSession, CategoryManagementItem, TicketMessage, TrustReport, UserAppeal } from "@/lib/admin-types";
+import type { Job, Review, Service, SupportTicket, WithdrawalRequest } from "@/lib/types";
 
 bootstrapStaffSession();
 
@@ -311,15 +312,213 @@ export async function staffRevokeOwnSession(id: string): Promise<void> {
    izohga qarang). ATAYLAB FEATURE_DISABLED: mavjud sahifalar xavfsiz
    `<ErrorState>` ko'rsatadi, mock ma'lumot ishlatilmaydi.
    ========================================================================== */
-export const getAdminAccounts: Asyncified<typeof adminMock.getAdminAccounts> = mockAsync(adminMock.getAdminAccounts);
-export const setAdminActive: Asyncified<typeof adminMock.setAdminActive> = mockAsync(adminMock.setAdminActive);
-export const addAdmin: Asyncified<typeof adminMock.addAdmin> = mockAsync(adminMock.addAdmin);
-export const updateAdminAccount: Asyncified<typeof adminMock.updateAdminAccount> = mockAsync(adminMock.updateAdminAccount);
+function roleToBackend(role?: string): string {
+  if (!role) return "OPERATIONS";
+  const r = role.toLowerCase();
+  if (r === "super_admin") return "SUPER_ADMIN";
+  if (r === "admin") return "ADMIN";
+  if (r === "operations") return "OPERATIONS";
+  if (r === "finance") return "FINANCE";
+  if (r === "support") return "SUPPORT";
+  if (r === "trust_safety") return "TRUST_SAFETY";
+  if (r === "kyc_reviewer") return "KYC_REVIEWER";
+  return role.toUpperCase();
+}
 
-export const getAdminData: Asyncified<typeof adminMock.getAdminData> = mockAsync(adminMock.getAdminData);
+function permissionToBackend(perm: string): string {
+  if (perm === "admins") return "STAFF";
+  return perm.toUpperCase();
+}
+
+function permissionsToBackend(perms?: string[]): string[] {
+  if (!perms) return [];
+  const validPermissions = new Set([
+    "DASHBOARD", "USERS", "SERVICES", "JOBS", "ORDERS", "KYC",
+    "DISPUTES", "PAYMENTS", "REPORTS", "APPEALS", "REVIEWS",
+    "SUPPORT", "CATEGORIES", "SETTINGS", "AUDIT", "STAFF"
+  ]);
+  return perms.map(permissionToBackend).filter((p) => validPermissions.has(p));
+}
+
+export async function getAdminAccounts(): Promise<AdminAccount[]> {
+  try {
+    const res = await staffHttp<{
+      items: Array<{
+        id: string;
+        email: string;
+        fullName: string;
+        title: string;
+        role: string;
+        permissions: string[];
+        status: string;
+        createdAt: string;
+        lastLoginAt?: string | null;
+        mustChangePassword: boolean;
+        mfaEnabled: boolean;
+      }>;
+    }>("/staff/admin/staff-members?perPage=100");
+
+    return res.items.map((m) => ({
+      id: m.id,
+      fullName: m.fullName,
+      email: m.email,
+      role: roleToLower(m.role),
+      title: m.title,
+      active: m.status === "ACTIVE",
+      permissions: permissionsToLower(m.permissions),
+      createdAt: m.createdAt,
+      lastLoginAt: m.lastLoginAt || undefined,
+      mustChangePassword: m.mustChangePassword,
+      mfaEnabled: m.mfaEnabled,
+    }));
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+
+export async function addAdmin(form: {
+  fullName: string;
+  email: string;
+  title: string;
+  role?: AdminRole;
+  password?: string;
+  permissions?: AdminPermission[];
+}): Promise<AdminAccount> {
+  try {
+    const res = await staffHttp<{
+      id: string;
+      email: string;
+      fullName: string;
+      title: string;
+      role: string;
+      permissions: string[];
+      status: string;
+      createdAt: string;
+      mustChangePassword: boolean;
+      mfaEnabled: boolean;
+    }>("/staff/admin/staff-members", {
+      method: "POST",
+      body: {
+        email: form.email.trim(),
+        fullName: form.fullName.trim(),
+        title: form.title.trim(),
+        role: roleToBackend(form.role),
+        permissions: permissionsToBackend(form.permissions),
+      },
+    });
+
+    return {
+      id: res.id,
+      fullName: res.fullName,
+      email: res.email,
+      role: roleToLower(res.role),
+      title: res.title,
+      active: res.status === "ACTIVE",
+      permissions: permissionsToLower(res.permissions),
+      createdAt: res.createdAt,
+      mustChangePassword: res.mustChangePassword,
+      mfaEnabled: res.mfaEnabled,
+    };
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+
+export async function setAdminActive(id: string, active: boolean, reason?: string): Promise<void> {
+  try {
+    if (active) {
+      await staffHttp(`/staff/admin/staff-members/${id}/reactivate`, {
+        method: "POST",
+      });
+    } else {
+      await staffHttp(`/staff/admin/staff-members/${id}/disable`, {
+        method: "POST",
+        body: { reason: reason || "Admin to'xtatildi" },
+      });
+    }
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+
+export async function updateAdminAccount(
+  id: string,
+  patch: Partial<AdminAccount>
+): Promise<AdminAccount> {
+  try {
+    if (patch.permissions) {
+      await staffHttp(`/staff/admin/staff-members/${id}/permissions`, {
+        method: "PATCH",
+        body: { permissions: permissionsToBackend(patch.permissions) },
+      });
+    }
+    if (typeof patch.active === "boolean") {
+      await setAdminActive(id, patch.active);
+    }
+    const updated = await staffHttp<{
+      id: string;
+      email: string;
+      fullName: string;
+      title: string;
+      role: string;
+      permissions: string[];
+      status: string;
+      createdAt: string;
+      mustChangePassword: boolean;
+      mfaEnabled: boolean;
+    }>(`/staff/admin/staff-members/${id}`);
+
+    return {
+      id: updated.id,
+      fullName: updated.fullName,
+      email: updated.email,
+      role: roleToLower(updated.role),
+      title: updated.title,
+      active: updated.status === "ACTIVE",
+      permissions: permissionsToLower(updated.permissions),
+      createdAt: updated.createdAt,
+      mustChangePassword: updated.mustChangePassword,
+      mfaEnabled: updated.mfaEnabled,
+    };
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+
+export async function getAdminData(): Promise<adminMock.AdminData> {
+  const base = adminMock.getAdminData();
+  try {
+    const realCategories = await listCategoriesAdmin();
+    return {
+      ...base,
+      categories: realCategories,
+    };
+  } catch {
+    return base;
+  }
+}
 export const getAuditEvents: Asyncified<typeof adminMock.getAuditEvents> = mockAsync(adminMock.getAuditEvents);
 export const getInternalNotes: Asyncified<typeof adminMock.getInternalNotes> = mockAsync(adminMock.getInternalNotes);
-export const getTicketConversation: Asyncified<typeof adminMock.getTicketConversation> = mockAsync(adminMock.getTicketConversation);
+export async function getTicketConversation(ticketId: string): Promise<TicketMessage[]> {
+  try {
+    const res = await staffHttp<{
+      messages?: {
+        senderName: string;
+        text: string;
+        createdAt: string;
+        isAdmin: boolean;
+      }[];
+    }>(`/staff/tickets/${ticketId}`);
+    return (res.messages || []).map((m) => ({
+      sender: m.senderName,
+      text: m.text,
+      at: m.createdAt,
+      isAdmin: m.isAdmin,
+    }));
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
 export const adminGlobalSearch: Asyncified<typeof adminMock.adminGlobalSearch> = mockAsync(adminMock.adminGlobalSearch);
 
 export const listUsersQueue: Asyncified<typeof adminMock.listUsersQueue> = mockAsync(adminMock.listUsersQueue);
@@ -372,11 +571,7 @@ export async function listJobsQueue(
       },
     };
   } catch (error) {
-    try {
-      return adminMock.listJobsQueue(query);
-    } catch {
-      throw normalizeApiError(error);
-    }
+    throw normalizeApiError(error);
   }
 }
 export const listContractsQueue: Asyncified<typeof adminMock.listContractsQueue> = mockAsync(adminMock.listContractsQueue);
@@ -431,10 +626,90 @@ export async function listWithdrawalsQueue(
   }
 }
 export const listTransactionsQueue: Asyncified<typeof adminMock.listTransactionsQueue> = mockAsync(adminMock.listTransactionsQueue);
-export const listTicketsQueue: Asyncified<typeof adminMock.listTicketsQueue> = mockAsync(adminMock.listTicketsQueue);
-export const listReportsQueue: Asyncified<typeof adminMock.listReportsQueue> = mockAsync(adminMock.listReportsQueue);
-export const listAppealsQueue: Asyncified<typeof adminMock.listAppealsQueue> = mockAsync(adminMock.listAppealsQueue);
-export const listReviewsQueue: Asyncified<typeof adminMock.listReviewsQueue> = mockAsync(adminMock.listReviewsQueue);
+
+export async function listTicketsQueue(query: AdminQueueQuery = {}): Promise<AdminPage<AdminTicketRow>> {
+  try {
+    const params = new URLSearchParams();
+    if (query.page) params.set("page", String(query.page));
+    if (query.perPage) params.set("perPage", String(query.perPage));
+    if (query.status && query.status !== "all") params.set("status", query.status);
+    if (query.search?.trim()) params.set("search", query.search.trim());
+    const res = await staffHttp<AdminPage<AdminTicketRow> & { facets: Record<string, number> }>(
+      `/staff/tickets?${params.toString()}`,
+    );
+    return res;
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+
+export async function listReportsQueue(query: {
+  page?: number;
+  perPage?: number;
+  status?: string;
+  category?: string;
+  severity?: string;
+  search?: string;
+} = {}): Promise<AdminPage<TrustReport>> {
+  try {
+    const params = new URLSearchParams();
+    if (query.page) params.set("page", String(query.page));
+    if (query.perPage) params.set("perPage", String(query.perPage));
+    if (query.status && query.status !== "all") params.set("status", query.status);
+    if (query.category && query.category !== "all") params.set("category", query.category);
+    if (query.severity && query.severity !== "all") params.set("severity", query.severity);
+    if (query.search?.trim()) params.set("search", query.search.trim());
+    const res = await staffHttp<AdminPage<TrustReport> & { facets: Record<string, number> }>(
+      `/staff/reports?${params.toString()}`,
+    );
+    return res;
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+
+export async function listAppealsQueue(query: {
+  page?: number;
+  perPage?: number;
+  status?: string;
+  search?: string;
+} = {}): Promise<AdminPage<UserAppeal>> {
+  try {
+    const params = new URLSearchParams();
+    if (query.page) params.set("page", String(query.page));
+    if (query.perPage) params.set("perPage", String(query.perPage));
+    if (query.status && query.status !== "all") params.set("status", query.status);
+    if (query.search?.trim()) params.set("search", query.search.trim());
+    const res = await staffHttp<AdminPage<UserAppeal> & { facets: Record<string, number> }>(
+      `/staff/appeals?${params.toString()}`,
+    );
+    return res;
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+
+export async function listReviewsQueue(query: {
+  page?: number;
+  perPage?: number;
+  status?: string;
+  search?: string;
+} = {}): Promise<AdminPage<Review>> {
+  try {
+    const params = new URLSearchParams();
+    if (query.page) params.set("page", String(query.page));
+    if (query.perPage) params.set("perPage", String(query.perPage));
+    if (query.status && query.status !== "all") params.set("status", query.status);
+    if (query.search?.trim()) params.set("search", query.search.trim());
+    const res = await staffHttp<AdminPage<Review> & { facets: Record<string, number> }>(
+      `/staff/reviews?${params.toString()}`,
+    );
+    return res;
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+
 export const listAuditQueue: Asyncified<typeof adminMock.listAuditQueue> = mockAsync(adminMock.listAuditQueue);
 
 export async function getAdminCounters(): Promise<adminMock.AdminCounters> {
@@ -452,7 +727,7 @@ export async function getAdminCounters(): Promise<adminMock.AdminCounters> {
       } catch {}
     }
 
-    const [users, services, contracts, disputesOpen, disputesReview, audit, pendingKyc, openJobs] = await Promise.all([
+    const [users, services, contracts, disputesOpen, disputesReview, audit, pendingKyc, openJobs, openReports, openTickets, pendingAppeals] = await Promise.all([
       hasPermission("users") ? safeTotal("/staff/users?perPage=1") : Promise.resolve(0),
       hasPermission("services") ? safeTotal("/staff/services?perPage=1") : Promise.resolve(0),
       hasPermission("orders") ? safeTotal("/staff/contracts?perPage=1") : Promise.resolve(0),
@@ -461,14 +736,17 @@ export async function getAdminCounters(): Promise<adminMock.AdminCounters> {
       hasPermission("audit") ? safeTotal("/staff/audit-logs?perPage=1") : Promise.resolve(0),
       hasPermission("kyc") ? safeTotal("/staff/seller-applications?status=PENDING&perPage=1") : Promise.resolve(0),
       hasPermission("jobs") ? safeTotal("/staff/jobs?status=OPEN&perPage=1") : Promise.resolve(0),
+      hasPermission("reports") ? safeTotal("/staff/reports?status=NEW&perPage=1") : Promise.resolve(0),
+      hasPermission("support") ? safeTotal("/staff/tickets?status=OPEN&perPage=1") : Promise.resolve(0),
+      hasPermission("appeals") ? safeTotal("/staff/appeals?status=PENDING&perPage=1") : Promise.resolve(0),
     ]);
     return {
       pendingKyc,
       openDisputes: disputesOpen + disputesReview,
       pendingWithdrawals,
-      openReports: 0,
-      openTickets: 0,
-      pendingAppeals: 0,
+      openReports,
+      openTickets,
+      pendingAppeals,
       totalUsers: users,
       totalServices: services,
       totalJobs: openJobs,
@@ -904,14 +1182,16 @@ export async function findJobById(id: string): Promise<Job | null> {
   try {
     return await staffHttp<Job>(`/staff/jobs/${id}`);
   } catch {
-    try {
-      return adminMock.findJobById(id);
-    } catch {
-      return null;
-    }
+    return null;
   }
 }
-export const findTicketById: Asyncified<typeof adminMock.findTicketById> = mockAsync(adminMock.findTicketById);
+export async function findTicketById(id: string): Promise<AdminTicketRow | null> {
+  try {
+    return await staffHttp<AdminTicketRow>(`/staff/tickets/${id}`);
+  } catch {
+    return null;
+  }
+}
 export const findDisputeById: Asyncified<typeof adminMock.findDisputeById> = mockAsync(adminMock.findDisputeById);
 
 export type {
@@ -924,9 +1204,15 @@ export type {
 } from "@/lib/admin-api";
 export type { AdminQueueQuery, AdminPage } from "@/lib/admin-types";
 
-export const suspendUser: Asyncified<typeof adminMock.suspendUser> = mockAsync(adminMock.suspendUser);
-export const unsuspendUser: Asyncified<typeof adminMock.unsuspendUser> = mockAsync(adminMock.unsuspendUser);
-export const blockUser: Asyncified<typeof adminMock.blockUser> = mockAsync(adminMock.blockUser);
+export async function suspendUser(id: string, reason = "Admin qarori bilan"): Promise<void> {
+  return staffSuspendUser(id, reason);
+}
+export async function unsuspendUser(id: string): Promise<void> {
+  return staffReactivateUser(id);
+}
+export async function blockUser(id: string, reason = "Admin qarori bilan"): Promise<void> {
+  return staffBlockUser(id, reason);
+}
 export const deactivateUser: Asyncified<typeof adminMock.deactivateUser> = mockAsync(adminMock.deactivateUser);
 export const softDeleteUser: Asyncified<typeof adminMock.softDeleteUser> = mockAsync(adminMock.softDeleteUser);
 export async function closeJobAsAdmin(jobId: string, reason: string): Promise<Job> {
@@ -936,64 +1222,41 @@ export async function closeJobAsAdmin(jobId: string, reason: string): Promise<Jo
       body: { reason },
     });
   } catch (error) {
-    try {
-      return adminMock.closeJobAsAdmin(jobId, reason) as unknown as Job;
-    } catch {
-      throw normalizeApiError(error);
-    }
+    throw normalizeApiError(error);
   }
 }
 
-interface SellerAppDto {
+interface KycQueueBackendItem {
   id: string;
   userId: string;
+  status: string;
+  rawStatus: string;
+  country: string;
+  documentType: string;
   legalName: string;
-  displayName: string;
-  description: string | null;
-  passportNumber?: string | null;
-  inn?: string | null;
-  companyDetails?: string | null;
-  status: "PENDING" | "APPROVED" | "REJECTED";
-  submittedAt: string;
-  reviewedAt?: string | null;
-  rejectionReason?: string | null;
-  createdAt: string;
+  birthDate?: string;
+  passportNumber?: string;
+  inn?: string;
+  companyDetails?: string;
+  documents: Array<{ id: string; originalFilename: string; mimeType: string; viewUrl?: string }>;
+  submittedAt?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+  userName: string;
+  userPhone: string;
 }
 
-function mapSellerAppStatus(status: string): "korib_chiqilmoqda" | "tasdiqlangan" | "rad_etilgan" | "boshlanmagan" {
-  switch (status) {
-    case "PENDING":
-      return "korib_chiqilmoqda";
-    case "APPROVED":
-      return "tasdiqlangan";
-    case "REJECTED":
-      return "rad_etilgan";
-    default:
-      return "boshlanmagan";
-  }
-}
-
-function mapSellerAppToVerificationRow(app: SellerAppDto): adminMock.AdminVerificationRow {
-  return {
-    id: app.id,
-    userId: app.userId,
-    userName: app.displayName || app.legalName || "Noma'lum",
-    userPhone: "",
-    legalName: app.legalName || app.displayName || "Noma'lum",
-    country: "UZ",
-    documentType: "passport",
-    birthDate: "1995-04-15",
-    documents: [
-      "https://images.unsplash.com/photo-1544717305-2782549b5136?w=600&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&auto=format&fit=crop&q=80",
-    ],
-    status: mapSellerAppStatus(app.status),
-    submittedAt: asStr(app.submittedAt) || asStr(app.createdAt),
-    reviewedAt: asStr(app.reviewedAt),
-    rejectionReason: asStr(app.rejectionReason),
-    passportNumber: asStr(app.passportNumber) || "AB1234567",
-    inn: asStr(app.inn) || "123456789",
-    companyDetails: asStr(app.companyDetails),
+interface KycQueueBackendResponse {
+  items: KycQueueBackendItem[];
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+  facets: {
+    _all: number;
+    korib_chiqilmoqda: number;
+    tasdiqlangan: number;
+    rad_etilgan: number;
   };
 }
 
@@ -1001,46 +1264,33 @@ export async function listVerificationsQueue(
   query: AdminQueueQuery = {}
 ): Promise<AdminPage<adminMock.AdminVerificationRow>> {
   try {
-    let backendStatus: string | undefined;
-    if (query.status === "korib_chiqilmoqda") backendStatus = "PENDING";
-    else if (query.status === "tasdiqlangan") backendStatus = "APPROVED";
-    else if (query.status === "rad_etilgan") backendStatus = "REJECTED";
-
-    const pageNum = query.page ?? 1;
-    const perPageNum = query.perPage ?? 10;
-
-    const res = await staffHttp<Page<SellerAppDto>>(
-      `/staff/seller-applications${staffToQuery({
-        page: pageNum,
-        perPage: perPageNum,
-        status: backendStatus,
+    const res = await staffHttp<KycQueueBackendResponse>(
+      `/staff/kyc${staffToQuery({
+        page: query.page ?? 1,
+        perPage: query.perPage ?? 10,
+        status: query.status,
+        search: query.search,
       })}`
     );
 
-    const safeTotal = (status?: string) =>
-      staffHttp<{ total: number }>(`/staff/seller-applications${staffToQuery({ perPage: 1, status })}`)
-        .then((r) => (typeof r?.total === "number" ? r.total : 0))
-        .catch(() => 0);
-
-    const [allCount, pendingCount, approvedCount, rejectedCount] = await Promise.all([
-      safeTotal(),
-      safeTotal("PENDING"),
-      safeTotal("APPROVED"),
-      safeTotal("REJECTED"),
-    ]);
-
-    let items = res.items.map(mapSellerAppToVerificationRow);
-    if (query.search?.trim()) {
-      const s = query.search.toLowerCase();
-      items = items.filter(
-        (v) =>
-          v.legalName.toLowerCase().includes(s) ||
-          v.userName.toLowerCase().includes(s) ||
-          v.userId.toLowerCase().includes(s) ||
-          Boolean(v.passportNumber && v.passportNumber.toLowerCase().includes(s)) ||
-          Boolean(v.inn && v.inn.toLowerCase().includes(s))
-      );
-    }
+    const items: adminMock.AdminVerificationRow[] = res.items.map((item) => ({
+      id: item.id,
+      userId: item.userId,
+      userName: item.userName,
+      userPhone: item.userPhone,
+      country: (item.country as adminMock.AdminVerificationRow["country"]) || "UZ",
+      documentType: (item.documentType as adminMock.AdminVerificationRow["documentType"]) || "passport",
+      legalName: item.legalName,
+      birthDate: item.birthDate || "",
+      documents: item.documents.map((d) => d.viewUrl || `/api/v1/kyc/documents/stream?token=${d.id}`),
+      status: (item.status as adminMock.AdminVerificationRow["status"]) || "korib_chiqilmoqda",
+      submittedAt: item.submittedAt,
+      reviewedAt: item.reviewedAt,
+      rejectionReason: item.rejectionReason,
+      passportNumber: item.passportNumber,
+      inn: item.inn,
+      companyDetails: item.companyDetails,
+    }));
 
     return {
       items,
@@ -1048,29 +1298,43 @@ export async function listVerificationsQueue(
       perPage: res.perPage,
       total: res.total,
       totalPages: res.totalPages,
-      facets: {
-        _all: allCount || res.total,
-        korib_chiqilmoqda: pendingCount,
-        tasdiqlangan: approvedCount,
-        rad_etilgan: rejectedCount,
+      facets: res.facets || {
+        _all: res.total,
+        korib_chiqilmoqda: items.filter((i) => i.status === "korib_chiqilmoqda").length,
+        tasdiqlangan: items.filter((i) => i.status === "tasdiqlangan").length,
+        rad_etilgan: items.filter((i) => i.status === "rad_etilgan").length,
       },
     };
   } catch (error) {
-    try {
-      return adminMock.listVerificationsQueue(query);
-    } catch {
-      throw normalizeApiError(error);
-    }
+    throw normalizeApiError(error);
   }
 }
 
 export async function findVerificationByUserId(userId: string): Promise<adminMock.AdminVerificationRow | null> {
   try {
-    const res = await staffHttp<Page<SellerAppDto>>(`/staff/seller-applications?perPage=50`);
-    const found = res.items.find((a) => a.userId === userId || a.id === userId);
-    if (found) return mapSellerAppToVerificationRow(found);
-  } catch {}
-  return adminMock.findVerificationByUserId(userId);
+    const item = await staffHttp<KycQueueBackendItem>(`/staff/kyc/user/${userId}`);
+    if (!item) return null;
+    return {
+      id: item.id,
+      userId: item.userId,
+      userName: item.userName,
+      userPhone: item.userPhone,
+      country: (item.country as adminMock.AdminVerificationRow["country"]) || "UZ",
+      documentType: (item.documentType as adminMock.AdminVerificationRow["documentType"]) || "passport",
+      legalName: item.legalName,
+      birthDate: item.birthDate || "",
+      documents: (item.documents || []).map((d) => d.viewUrl || ""),
+      status: (item.status as adminMock.AdminVerificationRow["status"]) || "korib_chiqilmoqda",
+      submittedAt: item.submittedAt,
+      reviewedAt: item.reviewedAt,
+      rejectionReason: item.rejectionReason,
+      passportNumber: item.passportNumber,
+      inn: item.inn,
+      companyDetails: item.companyDetails,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function adminModerateKYC(
@@ -1079,41 +1343,16 @@ export async function adminModerateKYC(
   reason?: string
 ): Promise<void> {
   try {
-    let appId = id;
-    try {
-      if (outcome === "approve") {
-        await staffHttp(`/staff/seller-applications/${appId}/approve`, { method: "POST" });
-      } else {
-        await staffHttp(`/staff/seller-applications/${appId}/reject`, {
-          method: "POST",
-          body: { reason: reason || "Talablarga mos kelmadi" },
-        });
-      }
-      return;
-    } catch {
-      const list = await staffHttp<Page<SellerAppDto>>(`/staff/seller-applications?status=PENDING&perPage=50`).catch(() => null);
-      const match = list?.items.find((a) => a.userId === id || a.id === id);
-      if (match) {
-        appId = match.id;
-        if (outcome === "approve") {
-          await staffHttp(`/staff/seller-applications/${appId}/approve`, { method: "POST" });
-        } else {
-          await staffHttp(`/staff/seller-applications/${appId}/reject`, {
-            method: "POST",
-            body: { reason: reason || "Talablarga mos kelmadi" },
-          });
-        }
-        return;
-      }
-      throw new Error("APPLICATION_NOT_FOUND");
-    }
+    await staffHttp(`/staff/kyc/${id}/review`, {
+      method: "POST",
+      body: {
+        outcome,
+        rejectionReason: reason,
+        note: reason,
+      },
+    });
   } catch (error) {
-    try {
-      adminMock.adminModerateKYC(id, outcome, reason);
-      return;
-    } catch {
-      throw normalizeApiError(error);
-    }
+    throw normalizeApiError(error);
   }
 }
 
@@ -1275,11 +1514,7 @@ export async function listServicesQueue(
       },
     };
   } catch (error) {
-    try {
-      return adminMock.listServicesQueue(query);
-    } catch {
-      throw normalizeApiError(error);
-    }
+    throw normalizeApiError(error);
   }
 }
 
@@ -1287,8 +1522,10 @@ export async function findServiceById(id: string): Promise<Service | null> {
   try {
     const res = await staffHttp<RealServiceDto>(`/staff/services/${id}`);
     if (res) return mapRealServiceToFrontend(res);
-  } catch {}
-  return adminMock.findServiceById(id);
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export async function setServiceStatus(
@@ -1310,153 +1547,88 @@ export async function setServiceStatus(
         body: { reason: reason || "Admin tomonidan rad etildi" },
       });
     }
-    return;
   } catch (error) {
-    try {
-      adminMock.setServiceStatus(serviceId, status, reason);
-      return;
-    } catch {
-      throw normalizeApiError(error);
-    }
+    throw normalizeApiError(error);
   }
 }
-export const deleteReview: Asyncified<typeof adminMock.deleteReview> = mockAsync(adminMock.deleteReview);
-export const updateTrustReport: Asyncified<typeof adminMock.updateTrustReport> = mockAsync(adminMock.updateTrustReport);
-export const handleUserAppeal: Asyncified<typeof adminMock.handleUserAppeal> = mockAsync(adminMock.handleUserAppeal);
+export async function deleteReview(reviewId: string): Promise<Review[]> {
+  try {
+    await staffHttp(`/staff/reviews/${reviewId}`, {
+      method: "DELETE",
+    });
+    return [];
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+
+export async function updateTrustReport(
+  reportId: string,
+  action: "investigating" | "resolved" | "dismissed",
+  note: string,
+  userAction?: "none" | "warned" | "restricted" | "suspended" | "removed",
+): Promise<void> {
+  try {
+    await staffHttp(`/staff/reports/${reportId}/action`, {
+      method: "POST",
+      body: { action, note, userAction },
+    });
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+
+export async function handleUserAppeal(
+  appealId: string,
+  decision: "accepted" | "rejected",
+  note: string,
+): Promise<void> {
+  try {
+    await staffHttp(`/staff/appeals/${appealId}/decide`, {
+      method: "POST",
+      body: { decision, note },
+    });
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
 
 export const forceCloseContract: Asyncified<typeof adminMock.forceCloseContract> = mockAsync(adminMock.forceCloseContract);
 
-export const replyToTicket: Asyncified<typeof adminMock.replyToTicket> = mockAsync(adminMock.replyToTicket);
-export const closeTicket: Asyncified<typeof adminMock.closeTicket> = mockAsync(adminMock.closeTicket);
-
-export async function approveWithdrawal(requestId: string): Promise<void> {
-  const actor = getCurrentAdmin() ?? adminMock.getCurrentAdmin() ?? {
-    id: "admin-system",
-    fullName: "Boshqaruvchi",
-    email: "admin@bobododa.uz",
-    role: "super_admin",
-    title: "Boshqaruvchi",
-    active: true,
-    permissions: ["payments" as AdminPermission],
-    createdAt: "",
-    mustChangePassword: false,
-    mfaEnabled: false,
-  };
-
-  if (typeof window !== "undefined") {
-    try {
-      const withdrawals: WithdrawalRequest[] = JSON.parse(
-        localStorage.getItem("sb2_withdrawal_requests") || "[]"
-      );
-      const reqIndex = withdrawals.findIndex((w) => w.id === requestId);
-      if (reqIndex !== -1) {
-        const req = withdrawals[reqIndex];
-        if (req.status !== "tasdiqlangan" && req.status !== "rad_etilgan") {
-          if (req.source === "earnings") {
-            const withdrawn: Record<string, number> = JSON.parse(
-              localStorage.getItem("sb2_withdrawn") || "{}"
-            );
-            withdrawn[req.userId] = (withdrawn[req.userId] ?? 0) + req.amount;
-            localStorage.setItem("sb2_withdrawn", JSON.stringify(withdrawn));
-          }
-          withdrawals[reqIndex] = {
-            ...req,
-            status: "tasdiqlangan",
-            payoutStatus: "paid",
-            processedAt: new Date().toISOString(),
-            processedBy: actor.fullName,
-          };
-          localStorage.setItem("sb2_withdrawal_requests", JSON.stringify(withdrawals));
-
-          const myKey = `bbd_my_withdrawals_${req.userId}`;
-          const myOnly: WithdrawalRequest[] = JSON.parse(localStorage.getItem(myKey) || "[]");
-          const myIdx = myOnly.findIndex((w) => w.id === requestId);
-          if (myIdx !== -1) {
-            myOnly[myIdx] = {
-              ...myOnly[myIdx],
-              status: "tasdiqlangan",
-              payoutStatus: "paid",
-              processedAt: new Date().toISOString(),
-              processedBy: actor.fullName,
-            };
-            localStorage.setItem(myKey, JSON.stringify(myOnly));
-          }
-
-          const txs: TransactionRecord[] = JSON.parse(localStorage.getItem("sb2_transactions") || "[]");
-          const tx: TransactionRecord = {
-            id: `tx-${Date.now().toString(36)}`,
-            type: "yechish",
-            userId: req.userId,
-            userName: req.userName,
-            amount: req.amount,
-            currency: "UZS",
-            referenceId: req.id,
-            description: `${req.cardDetails || "Plastik karta"}ga mablag' yechib olindi (Admin tasdiqladi)`,
-            status: "muvaffaqiyatli",
-            createdAt: new Date().toISOString(),
-          };
-          localStorage.setItem("sb2_transactions", JSON.stringify([tx, ...txs]));
-          return;
-        }
-      }
-    } catch {}
+export async function replyToTicket(
+  ticketId: string,
+  replyText: string,
+  newStatus?: SupportTicket["status"],
+): Promise<void> {
+  try {
+    await staffHttp(`/staff/tickets/${ticketId}/reply`, {
+      method: "POST",
+      body: { replyText, newStatus },
+    });
+  } catch (error) {
+    throw normalizeApiError(error);
   }
-  return mockAsync(adminMock.approveWithdrawal)(requestId);
 }
 
-export async function rejectWithdrawal(requestId: string, reason?: string): Promise<void> {
-  const actor = getCurrentAdmin() ?? adminMock.getCurrentAdmin() ?? {
-    id: "admin-system",
-    fullName: "Boshqaruvchi",
-    email: "admin@bobododa.uz",
-    role: "super_admin",
-    title: "Boshqaruvchi",
-    active: true,
-    permissions: ["payments" as AdminPermission],
-    createdAt: "",
-    mustChangePassword: false,
-    mfaEnabled: false,
-  };
-
-  if (typeof window !== "undefined") {
-    try {
-      const withdrawals: WithdrawalRequest[] = JSON.parse(
-        localStorage.getItem("sb2_withdrawal_requests") || "[]"
-      );
-      const reqIndex = withdrawals.findIndex((w) => w.id === requestId);
-      if (reqIndex !== -1) {
-        const req = withdrawals[reqIndex];
-        if (req.status !== "tasdiqlangan" && req.status !== "rad_etilgan") {
-          withdrawals[reqIndex] = {
-            ...req,
-            status: "rad_etilgan",
-            payoutStatus: "payout_failed",
-            rejectionReason: reason || "Ma'muriyat tomonidan rad etildi",
-            processedAt: new Date().toISOString(),
-            processedBy: actor.fullName,
-          };
-          localStorage.setItem("sb2_withdrawal_requests", JSON.stringify(withdrawals));
-
-          const myKey = `bbd_my_withdrawals_${req.userId}`;
-          const myOnly: WithdrawalRequest[] = JSON.parse(localStorage.getItem(myKey) || "[]");
-          const myIdx = myOnly.findIndex((w) => w.id === requestId);
-          if (myIdx !== -1) {
-            myOnly[myIdx] = {
-              ...myOnly[myIdx],
-              status: "rad_etilgan",
-              payoutStatus: "payout_failed",
-              rejectionReason: reason || "Ma'muriyat tomonidan rad etildi",
-              processedAt: new Date().toISOString(),
-              processedBy: actor.fullName,
-            };
-            localStorage.setItem(myKey, JSON.stringify(myOnly));
-          }
-          return;
-        }
-      }
-    } catch {}
+export async function closeTicket(ticketId: string, note?: string): Promise<void> {
+  try {
+    await staffHttp(`/staff/tickets/${ticketId}/close`, {
+      method: "POST",
+      body: { note: note || "Chipta yopildi" },
+    });
+  } catch (error) {
+    throw normalizeApiError(error);
   }
-  return mockAsync(adminMock.rejectWithdrawal)(requestId, reason || "Rad etildi");
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function approveWithdrawal(_requestId: string): Promise<void> {
+  throw new Error("PAYOUTS_DISABLED: Haqiqiy pul yechish (payout) provayderi ulanmaguncha chiqish to‘lovlari xavfsiz o‘chirilgan.");
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function rejectWithdrawal(_requestId: string, _reason?: string): Promise<void> {
+  throw new Error("PAYOUTS_DISABLED: Haqiqiy pul yechish (payout) provayderi ulanmaguncha chiqish to‘lovlari xavfsiz o‘chirilgan.");
 }
 export const reviewWithdrawal: Asyncified<typeof adminMock.reviewWithdrawal> = mockAsync(adminMock.reviewWithdrawal);
 export const listB2bPendingContracts: Asyncified<typeof adminMock.listB2bPendingContracts> = mockAsync(adminMock.listB2bPendingContracts);
@@ -1464,8 +1636,97 @@ export const approveB2bPayment: Asyncified<typeof adminMock.approveB2bPayment> =
 export const rejectB2bPayment: Asyncified<typeof adminMock.rejectB2bPayment> = mockAsync(adminMock.rejectB2bPayment);
 export const reverseTransaction: Asyncified<typeof adminMock.reverseTransaction> = mockAsync(adminMock.reverseTransaction);
 
-export const saveCategory: Asyncified<typeof adminMock.saveCategory> = mockAsync(adminMock.saveCategory);
-export const toggleCategoryActive: Asyncified<typeof adminMock.toggleCategoryActive> = mockAsync(adminMock.toggleCategoryActive);
+export interface StaffCategoryBackendItem {
+  id: string;
+  slug: string;
+  nameUz: string;
+  nameRu?: string;
+  nameEn?: string;
+  status: string;
+  sortOrder: number;
+}
+
+function mapBackendCategory(c: StaffCategoryBackendItem): CategoryManagementItem {
+  return {
+    id: c.id,
+    slug: c.slug,
+    nameUz: c.nameUz,
+    nameRu: c.nameRu || c.nameUz,
+    nameEn: c.nameEn || c.nameUz,
+    icon: "💼",
+    order: c.sortOrder ?? 0,
+    active: c.status === "ACTIVE",
+    serviceCount: 0,
+    subcategories: [],
+  };
+}
+
+export async function listCategoriesAdmin(): Promise<CategoryManagementItem[]> {
+  try {
+    const res = await staffHttp<Page<StaffCategoryBackendItem>>("/staff/categories?perPage=100");
+    return res.items.map(mapBackendCategory);
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+
+export async function saveCategory(category: CategoryManagementItem): Promise<CategoryManagementItem[]> {
+  try {
+    if (category.id && !category.id.startsWith("temp-") && !category.id.startsWith("new-")) {
+      try {
+        await staffHttp(`/staff/categories/${category.id}`, {
+          method: "PATCH",
+          body: {
+            nameUz: category.nameUz,
+            nameRu: category.nameRu,
+            nameEn: category.nameEn,
+            sortOrder: category.order,
+          },
+        });
+      } catch {
+        await staffHttp("/staff/categories", {
+          method: "POST",
+          body: {
+            slug: category.slug,
+            nameUz: category.nameUz,
+            nameRu: category.nameRu,
+            nameEn: category.nameEn,
+            sortOrder: category.order,
+          },
+        });
+      }
+    } else {
+      await staffHttp("/staff/categories", {
+        method: "POST",
+        body: {
+          slug: category.slug,
+          nameUz: category.nameUz,
+          nameRu: category.nameRu,
+          nameEn: category.nameEn,
+          sortOrder: category.order,
+        },
+      });
+    }
+    return await listCategoriesAdmin();
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+
+export async function toggleCategoryActive(categoryId: string): Promise<CategoryManagementItem[]> {
+  try {
+    const categories = await listCategoriesAdmin();
+    const target = categories.find((c) => c.id === categoryId);
+    if (!target) throw new Error("Category not found");
+    const endpoint = target.active
+      ? `/staff/categories/${categoryId}/archive`
+      : `/staff/categories/${categoryId}/activate`;
+    await staffHttp(endpoint, { method: "POST" });
+    return await listCategoriesAdmin();
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
 export const updatePlatformSetting: Asyncified<typeof adminMock.updatePlatformSetting> = mockAsync(adminMock.updatePlatformSetting);
 export const addInternalNote: Asyncified<typeof adminMock.addInternalNote> = mockAsync(adminMock.addInternalNote);
 export const addAudit: Asyncified<typeof adminMock.addAudit> = mockAsync(adminMock.addAudit);

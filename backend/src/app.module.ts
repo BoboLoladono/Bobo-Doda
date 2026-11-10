@@ -36,6 +36,11 @@ import { NotificationModule } from '@/modules/notification/notification.module';
 import { StaffAdminModule } from '@/modules/staff-admin/staff-admin.module';
 import { StaffAuditModule } from '@/modules/staff-audit/staff-audit.module';
 import { JobsModule } from '@/modules/jobs/jobs.module';
+import { KycModule } from '@/modules/kyc/kyc.module';
+import { SupportModule } from '@/modules/support/support.module';
+import { ReportModule } from '@/modules/report/report.module';
+import { AppealModule } from '@/modules/appeal/appeal.module';
+import { ReviewModule } from '@/modules/review/review.module';
 
 /**
  * Ildiz modul. Domen modullari (`users`, `catalog`, `contracts`,
@@ -82,6 +87,11 @@ import { JobsModule } from '@/modules/jobs/jobs.module';
     StaffAdminModule,
     StaffAuditModule,
     JobsModule,
+    KycModule,
+    SupportModule,
+    ReportModule,
+    AppealModule,
+    ReviewModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

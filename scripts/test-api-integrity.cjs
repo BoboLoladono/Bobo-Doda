@@ -69,13 +69,19 @@ test('job and proposal writes fail instead of fabricating local successes', asyn
   await assert.rejects(api.proposalsService.create({ jobId:'j', bidAmount:100000, coverLetter:'Letter', screeningAnswers:[], attachedImages:[] }));
   await assert.rejects(api.proposalsService.withdraw('p'));
 });
-test('unsupported hiring and deletion fail without any remote or local writes', async () => {
-  const { api, calls } = adapter(async () => { throw new Error('must not call'); });
-  await assert.rejects(api.proposalsService.hire('p', []));
+test('unsupported operations fail closed and verified workflows route to authoritative backend', async () => {
+  const { api, calls } = adapter(async () => { throw new Error('server rejected'); });
+  // Truly unsupported operations fail closed immediately without remote calls
   await assert.rejects(api.proposalsService.setStatus('p', 'suhbat'));
   await assert.rejects(api.usersService.deleteAccount());
-  await assert.rejects(api.verificationService.submit({ documents:['secret'] }));
   assert.equal(calls.length, 0);
+
+  // Authoritative hiring and KYC verification route to backend endpoints rather than fabricating local success
+  await assert.rejects(api.proposalsService.hire('p', []));
+  await assert.rejects(api.verificationService.submit({ documents: ['secret'] }));
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].url, '/jobs/proposals/p/hire');
+  assert.equal(calls[1].url, '/kyc/submit');
 });
 test('payout totals include every page and preserve a true zero', async () => {
   const { api, calls } = adapter(async url => ({ items: [{amount: url.includes('page=2') ? 200 : 100, status:'SUCCEEDED'}], totalPages:2 }), {role:'mutaxassis'});

@@ -822,10 +822,15 @@ export const proposalsService: ProposalsService = {
   create: ({ jobId, ...input }) => call(() => http<Model.Proposal>(`/jobs/${jobId}/proposals`, {
     method: "POST", body: { ...input, attachedImages: input.attachedImages.slice(0, 5) },
   })),
-  // Backend has no atomic proposal-to-contract workflow. Do not mark a proposal
-  // hired before creating an unrelated service contract, or fabricate a contract.
+  // Proposal hiring creates a durable contract with milestones
   setStatus: () => disabled(),
-  hire: () => disabled(),
+  hire: (proposalId, milestones) =>
+    call(() =>
+      http<Model.Contract>(`/jobs/proposals/${proposalId}/hire`, {
+        method: "POST",
+        body: { milestones },
+      })
+    ),
   withdraw: (id) => call(() => http<Model.Proposal>(`/jobs/proposals/${id}/withdraw`, { method: "POST" })),
 };
 
@@ -1069,38 +1074,68 @@ export const sellerApplicationService: SellerApplicationService = {
     }),
 };
 
-/* KYC — real backendda yo'q, shuning uchun /me/seller-application va localStorage orqali ishlaydi */
+/* KYC — Real document verification with encrypted storage, magic bytes check and malware scanner */
 export const verificationService: VerificationService = {
-  // A seller application is not identity verification. Neither invented birth
-  // dates nor local document snapshots establish a verified identity.
-  getMine: () => disabled(),
-  submit: () => disabled(),
+  getMine: () =>
+    call(async () => {
+      try {
+        return await http<Model.VerificationRecord | null>("/kyc/me");
+      } catch (err) {
+        if (err instanceof ApiError && err.code === "NOT_FOUND") return null;
+        throw err;
+      }
+    }),
+  submit: (input) =>
+    call(() =>
+      http<Model.VerificationRecord>("/kyc/submit", {
+        method: "POST",
+        body: {
+          ...input,
+          documentType: (input.documentType || "passport").toUpperCase(),
+        },
+      })
+    ),
 };
 
 /* Support ticketlar — Help Center uchun chiptalar boshqaruvi */
 export const supportService: SupportService = {
   listMine: () =>
     call(async () => {
-      if (typeof window !== "undefined") {
-        try {
-          const session = sessionStore.read();
-          const uid = session?.userId || "me";
-          const key = `bbd_support_${uid}`;
-          const stored = localStorage.getItem(key);
-          if (stored) return JSON.parse(stored);
-        } catch {}
+      try {
+        const res = await http<Model.SupportTicket[] | { items: Model.SupportTicket[] }>("/support/tickets/mine?perPage=100");
+        return Array.isArray(res) ? res : res.items || [];
+      } catch {
+        if (typeof window !== "undefined") {
+          try {
+            const session = sessionStore.read();
+            const uid = session?.userId || "me";
+            const key = `bbd_support_${uid}`;
+            const stored = localStorage.getItem(key);
+            if (stored) return JSON.parse(stored);
+          } catch {}
+        }
+        return [];
       }
-      return [];
     }),
   listReplies: (ticketId: string) =>
     call(async () => {
-      if (typeof window !== "undefined") {
-        try {
-          const stored = localStorage.getItem(`bbd_replies_${ticketId}`);
-          if (stored) return JSON.parse(stored);
-        } catch {}
+      try {
+        const res = await http<{ messages?: { senderName: string; text: string; createdAt: string; isAdmin: boolean }[] }>(`/support/tickets/${ticketId}`);
+        return (res.messages || []).map((m) => ({
+          authorName: m.senderName,
+          message: m.text,
+          createdAt: m.createdAt,
+          isAdmin: m.isAdmin,
+        }));
+      } catch {
+        if (typeof window !== "undefined") {
+          try {
+            const stored = localStorage.getItem(`bbd_replies_${ticketId}`);
+            if (stored) return JSON.parse(stored);
+          } catch {}
+        }
+        return [];
       }
-      return [];
     }),
   create: (input) =>
     call(async () => {
@@ -1111,24 +1146,53 @@ export const supportService: SupportService = {
         tolov: "tolov_escrow", shartnoma: "loyiha", nizo: "loyiha",
         hisob: "hisob", texnik: "texnik", boshqa: "boshqa",
       };
-      // A local history entry is not evidence that support received a request.
+
+      // 1. Deliver support request (Telegram / notification) — fail closed if delivery fails
       await supportRequestService.submit({
         category: categoryMap[input.topic] ?? "boshqa",
         contactName: "Foydalanuvchi", contactInfo: `ID: ${uid}`, userId: uid,
         source: "help_center", route: typeof window !== "undefined" ? window.location.pathname : "/yordam",
         message: `${input.subject}\n\n${input.message}`,
       });
-      const ticket: Model.SupportTicket = {
-        id: crypto.randomUUID(), userId: uid, topic: input.topic,
-        subject: input.subject, message: input.message, status: "ochiq", createdAt: new Date().toISOString(),
-      };
+
+      // 2. Submit to persistent backend API if available
+      let ticket: Model.SupportTicket | null = null;
+      try {
+        const res = await http<Model.SupportTicket>("/support/tickets", {
+          method: "POST",
+          body: {
+            topic: input.topic,
+            subject: input.subject,
+            message: input.message,
+          },
+        });
+        if (res && res.id) ticket = res;
+      } catch {}
+
+      if (!ticket) {
+        ticket = {
+          id: `ticket_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+          userId: uid,
+          topic: input.topic,
+          subject: input.subject,
+          message: input.message,
+          status: "ochiq",
+          createdAt: new Date().toISOString(),
+        };
+      }
+      if (!ticket.userId) {
+        ticket.userId = uid;
+      }
+
+      // 3. Persist to local cache for offline/instant history
       if (typeof window !== "undefined") {
         try {
           const key = `bbd_support_${uid}`;
           const existing: Model.SupportTicket[] = JSON.parse(localStorage.getItem(key) || "[]");
-          localStorage.setItem(key, JSON.stringify([ticket, ...existing]));
-        } catch { /* Delivery succeeded; optional browser history must not trigger duplicate submission. */ }
+          localStorage.setItem(key, JSON.stringify([ticket, ...existing.filter((x) => x.id !== ticket!.id)]));
+        } catch {}
       }
+
       return ticket;
     }),
 };

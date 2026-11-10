@@ -27,6 +27,8 @@ describe('EVENT_ROUTES — bo‘lim 50 markaziy routing jadvali', () => {
     const expected = [
       'SELLER_APPLICATION_APPROVED',
       'SELLER_APPLICATION_REJECTED',
+      'KYC_VERIFICATION_APPROVED',
+      'KYC_VERIFICATION_REJECTED',
       'SERVICE_APPROVED',
       'SERVICE_REJECTED',
       'CONTRACT_CREATED',

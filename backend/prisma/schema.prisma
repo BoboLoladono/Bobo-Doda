@@ -209,6 +209,36 @@ enum JobStatus {
   CLOSED
 }
 
+enum ContractSourceType {
+  SERVICE
+  JOB
+}
+
+enum KycVerificationStatus {
+  DRAFT
+  PENDING
+  SCANNING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  RESUBMISSION_REQUIRED
+}
+
+enum KycDocumentStatus {
+  QUARANTINED
+  SCANNING
+  CLEAN
+  INFECTED
+  REJECTED
+}
+
+enum KycDocumentType {
+  PASSPORT
+  ID_CARD
+  RESIDENCE_PERMIT
+  DRIVER_LICENSE
+}
+
 /// Bosqich 4 — `Contract` holat mashinasi. Docs eskizi (`SIGNED|ACTIVE|
 /// COMPLETED|CANCELLED|DISPUTED`) YANGI seller accept/reject darvozasini
 /// (PENDING_SELLER) va hali mavjud bo'lmagan Dispute'ni (DISPUTED) hisobga
@@ -543,6 +573,13 @@ model User {
   payouts            Payout[]
   disputesOpened     Dispute[]
   authGrants         AuthGrant[]
+  kycVerification    KycVerification?
+  kycDocuments       KycDocument[]
+  supportTickets     SupportTicket[]     @relation("UserSupportTickets")
+  trustReports       TrustReport[]       @relation("UserTrustReports")
+  appeals            UserAppeal[]        @relation("UserAppeals")
+  reviewsWritten     Review[]            @relation("UserReviewsWritten")
+  reviewsReceived    Review[]            @relation("UserReviewsReceived")
 
   @@index([createdAt])
   // Bosqich 11, bo'lim 57 — `GET /staff/users`/`GET /staff/sellers`
@@ -975,6 +1012,7 @@ model Service {
 /// Xaridor e'loni (Job posting) — Bosqich 22
 model Job {
   proposals JobProposal[]
+  contracts Contract[]
   id                 String    @id @db.Uuid
   buyerId            String    @db.Uuid
   buyer              User      @relation(fields: [buyerId], references: [id])
@@ -1020,8 +1058,16 @@ model Contract {
   sellerId String @db.Uuid
   seller   User   @relation("ContractsAsSeller", fields: [sellerId], references: [id])
 
-  serviceId String  @db.Uuid
-  service   Service @relation(fields: [serviceId], references: [id])
+  sourceType ContractSourceType @default(SERVICE)
+
+  serviceId String?  @db.Uuid
+  service   Service? @relation(fields: [serviceId], references: [id])
+
+  jobId String? @db.Uuid
+  job   Job?    @relation(fields: [jobId], references: [id])
+
+  proposalId String?      @unique
+  proposal   JobProposal? @relation(fields: [proposalId], references: [id])
 
   /// Quyidagi 4 maydon — yaratilish payti xotira ko'chirmasi (Service/
   /// SellerApplication keyinchalik o'zgarsa ham BUTUNLAY o'zgarmas qoladi).
@@ -1057,6 +1103,7 @@ model Contract {
   payments   Payment[]
   refunds    Refund[]
   disputes   Dispute[]
+  review     Review?
 
   @@index([buyerId, status, createdAt])
   @@index([sellerId, status, createdAt])
@@ -1064,6 +1111,7 @@ model Contract {
   @@index([sellerId, status])
   @@index([status, createdAt])
   @@index([serviceId])
+  @@index([jobId])
   @@map("contracts")
 }
 
@@ -1824,7 +1872,234 @@ model JobProposal {
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
 
+  contract Contract?
+
   @@unique([jobId, sellerId])
   @@index([sellerId, createdAt])
   @@map("job_proposals")
+}
+
+model KycVerification {
+  id                      String                @id @db.Uuid
+  userId                  String                @unique @db.Uuid
+  user                    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status                  KycVerificationStatus @default(PENDING)
+  country                 String                @default("UZ")
+  documentType            KycDocumentType       @default(PASSPORT)
+  legalName               String
+  birthDate               DateTime?             @db.Date
+  passportNumberHash      String?
+  encryptedPassportNumber String?
+  encryptedInn            String?
+  encryptedCompanyDetails String?
+  rejectionReason         String?
+  staffNotes              String?
+  submittedAt             DateTime?             @db.Timestamptz(6)
+  reviewedAt              DateTime?             @db.Timestamptz(6)
+  reviewedByStaffId       String?               @db.Uuid
+  createdAt               DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt               DateTime              @updatedAt @db.Timestamptz(6)
+  version                 Int                   @default(0)
+
+  documents               KycDocument[]
+
+  @@index([status, submittedAt])
+  @@index([userId, status])
+  @@map("kyc_verifications")
+}
+
+model KycDocument {
+  id               String            @id @db.Uuid
+  verificationId   String            @db.Uuid
+  verification     KycVerification   @relation(fields: [verificationId], references: [id], onDelete: Cascade)
+  userId           String            @db.Uuid
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fileKey          String
+  originalFilename String
+  mimeType         String
+  fileSizeBytes    Int
+  sha256Hash       String
+
+  status           KycDocumentStatus @default(QUARANTINED)
+  scanResult       Json?
+  scannedAt        DateTime?         @db.Timestamptz(6)
+
+  createdAt        DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime          @updatedAt @db.Timestamptz(6)
+
+  @@index([verificationId, status])
+  @@index([userId, createdAt])
+  @@map("kyc_documents")
+}
+
+// ============================================================================
+// STAGE 24: SUPPORT, REPORTS, APPEALS, AND REVIEWS
+// ============================================================================
+
+enum SupportTicketStatus {
+  OPEN
+  WAITING_USER
+  ANSWERED
+  CLOSED
+}
+
+model SupportTicket {
+  id              String              @id @default(uuid()) @db.Uuid
+  userId          String?             @db.Uuid
+  user            User?               @relation("UserSupportTickets", fields: [userId], references: [id])
+  contactName     String?
+  contactInfo     String?
+  topic           String
+  subject         String
+  message         String
+  status          SupportTicketStatus @default(OPEN)
+  priority        String              @default("MEDIUM")
+  closedAt        DateTime?           @db.Timestamptz(6)
+  closedByStaffId String?             @db.Uuid
+  createdAt       DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @db.Timestamptz(6)
+
+  messages        TicketMessage[]
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@map("support_tickets")
+}
+
+model TicketMessage {
+  id         String        @id @default(uuid()) @db.Uuid
+  ticketId   String        @db.Uuid
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderId   String?       @db.Uuid
+  senderName String
+  text       String
+  isAdmin    Boolean       @default(false)
+  createdAt  DateTime      @default(now()) @db.Timestamptz(6)
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_messages")
+}
+
+enum TrustReportTargetType {
+  USER
+  SERVICE
+  JOB
+  MESSAGE
+}
+
+enum TrustReportReasonType {
+  SCAM
+  SPAM
+  PLAGIARISM
+  OFF_PLATFORM
+  INAPPROPRIATE
+  FAKE_PROFILE
+  COPYRIGHT
+}
+
+enum TrustReportSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TrustReportStatus {
+  NEW
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+enum TrustReportActionTaken {
+  NONE
+  WARNED
+  RESTRICTED
+  SUSPENDED
+  REMOVED
+}
+
+model TrustReport {
+  id                String                 @id @default(uuid()) @db.Uuid
+  reporterId        String                 @db.Uuid
+  reporter          User                   @relation("UserTrustReports", fields: [reporterId], references: [id])
+  targetType        TrustReportTargetType
+  targetId          String
+  targetTitle       String
+  reasonType        TrustReportReasonType
+  description       String
+  evidenceUrl       String?
+  severity          TrustReportSeverity    @default(MEDIUM)
+  status            TrustReportStatus      @default(NEW)
+  assignedAdminId   String?                @db.Uuid
+  assignedAdminName String?
+  resolutionNote    String?
+  actionTaken       TrustReportActionTaken @default(NONE)
+  createdAt         DateTime               @default(now()) @db.Timestamptz(6)
+  resolvedAt        DateTime?              @db.Timestamptz(6)
+
+  @@index([status, createdAt])
+  @@index([reporterId])
+  @@index([targetId])
+  @@map("trust_reports")
+}
+
+enum UserAppealRestrictionType {
+  SUSPENDED
+  BLOCKED
+  RESTRICTED
+}
+
+enum UserAppealStatus {
+  PENDING
+  REVIEWING
+  ACCEPTED
+  REJECTED
+}
+
+model UserAppeal {
+  id              String                    @id @default(uuid()) @db.Uuid
+  userId          String                    @db.Uuid
+  user            User                      @relation("UserAppeals", fields: [userId], references: [id])
+  restrictionType UserAppealRestrictionType
+  originalReason  String
+  appealText      String
+  evidenceUrls    String[]                  @default([])
+  status          UserAppealStatus          @default(PENDING)
+  reviewerId      String?                   @db.Uuid
+  reviewerName    String?
+  decisionNote    String?
+  createdAt       DateTime                  @default(now()) @db.Timestamptz(6)
+  resolvedAt      DateTime?                 @db.Timestamptz(6)
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@map("user_appeals")
+}
+
+enum ReviewStatus {
+  APPROVED
+  FLAGGED
+  HIDDEN
+}
+
+model Review {
+  id          String       @id @default(uuid()) @db.Uuid
+  contractId  String       @unique @db.Uuid
+  contract    Contract     @relation(fields: [contractId], references: [id])
+  authorId    String       @db.Uuid
+  author      User         @relation("UserReviewsWritten", fields: [authorId], references: [id])
+  targetId    String       @db.Uuid
+  target      User         @relation("UserReviewsReceived", fields: [targetId], references: [id])
+  rating      Int
+  comment     String
+  status      ReviewStatus @default(APPROVED)
+  reportCount Int          @default(0)
+  createdAt   DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@index([targetId, status])
+  @@index([authorId])
+  @@map("reviews")
 }

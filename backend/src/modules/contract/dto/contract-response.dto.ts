@@ -12,7 +12,10 @@ export class ContractResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() buyerId!: string;
   @ApiProperty() sellerId!: string;
-  @ApiProperty() serviceId!: string;
+  @ApiPropertyOptional({ nullable: true }) serviceId!: string | null;
+  @ApiProperty({ enum: ['SERVICE', 'JOB'] }) sourceType!: string;
+  @ApiPropertyOptional({ nullable: true }) jobId!: string | null;
+  @ApiPropertyOptional({ nullable: true }) proposalId!: string | null;
 
   @ApiProperty() serviceTitleSnapshot!: string;
   @ApiProperty() serviceDescriptionSnapshot!: string;
@@ -55,6 +58,9 @@ export function toContractResponseDto(
     buyerId: contract.buyerId,
     sellerId: contract.sellerId,
     serviceId: contract.serviceId,
+    sourceType: contract.sourceType,
+    jobId: contract.jobId,
+    proposalId: contract.proposalId,
     serviceTitleSnapshot: contract.serviceTitleSnapshot,
     serviceDescriptionSnapshot: contract.serviceDescriptionSnapshot,
     categoryNameSnapshot: contract.categoryNameSnapshot,

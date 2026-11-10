@@ -79,6 +79,22 @@ export const EVENT_ROUTES: Record<string, NotificationRoute | null> = {
     },
   },
 
+  // ── KYC Verification ────────────────────────────────────────────────
+  KYC_VERIFICATION_APPROVED: {
+    channel: 'SMS',
+    recipient: 'USER',
+    render: () => 'Tabriklaymiz! Shaxsingiz (KYC) muvaffaqiyatli tasdiqlandi — Bobololadono',
+  },
+  KYC_VERIFICATION_REJECTED: {
+    channel: 'SMS',
+    recipient: 'USER',
+    render: (ctx) => {
+      const reason = ctx.extra.rejectionReason;
+      if (!reason) return 'Hujjatlaringiz tasdiqlanmadi. Iltimos, qayta topshiring — Bobololadono';
+      return `Hujjatlaringiz rad etildi. Sabab: ${reason} — Bobololadono`;
+    },
+  },
+
   // ── Marketplace (Service) ──────────────────────────────────────────
   SERVICE_APPROVED: {
     channel: 'SMS',

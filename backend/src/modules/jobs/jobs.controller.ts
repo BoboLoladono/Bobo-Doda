@@ -12,6 +12,7 @@ import { Page } from '@/common/pagination/page-query.dto';
 import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { CreateProposalDto } from './dto/create-proposal.dto';
+import { HireProposalDto } from './dto/hire-proposal.dto';
 import { ListJobsQueryDto } from './dto/list-jobs-query.dto';
 import { JobResponseDto, toJobResponseDto } from './dto/job-response.dto';
 
@@ -78,8 +79,16 @@ export class JobsController {
   @Post('proposals/:proposalId/hire')
   @HttpCode(200)
   @UseGuards(AccountStatusGuard)
-  async hireProposal(@CurrentUser() user: AccessTokenPayload, @Param('proposalId') proposalId: string) {
-    return this.jobs.hireProposal(proposalId, user.sub);
+  async hireProposal(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param('proposalId') proposalId: string,
+    @Body() dto?: HireProposalDto,
+  ) {
+    return this.jobs.hireProposal(proposalId, user.sub, dto, {
+      id: user.sub,
+      type: 'USER',
+      name: user.sub,
+    });
   }
 
   @ApiBearerAuth()

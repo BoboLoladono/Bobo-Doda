@@ -450,6 +450,27 @@ export class DisputeService {
           { aggregateType: 'DISPUTE', aggregateId: disputeId, eventType: 'DISPUTE_SELLER_FUNDS_RELEASED', payload: { sellerAward: sellerAward.toString() } },
           tx,
         );
+      } else if (dispute.preSettlement) {
+        // Pre-settlement'da seller award 0 (100% BUYER_FULL_REFUND) bo'lsa, Contract
+        // DARHOL CANCELLED bo'ladi — tashqi refund provider kechikishi yoki xatosi
+        // shartnoma bo'yicha qo'shimcha bosqich tasdiqlanishiga YO'L QO'YMAYDI.
+        await tx.contract.updateMany({ where: { id: contract.id, status: 'ACTIVE' }, data: { status: 'CANCELLED' } });
+        await this.audit.record(
+          {
+            actor,
+            action: 'CONTRACT_CANCELLED',
+            resourceType: 'CONTRACT',
+            resourceId: contract.id,
+            contextId: disputeId,
+            previousState: { status: 'ACTIVE' },
+            newState: { status: 'CANCELLED', reason: 'DISPUTE_BUYER_FULL_REFUND' },
+          },
+          tx,
+        );
+        await this.outbox.enqueue(
+          { aggregateType: 'CONTRACT', aggregateId: contract.id, eventType: 'CONTRACT_CANCELLED', payload: { disputeId, reason: 'DISPUTE_BUYER_FULL_REFUND' } },
+          tx,
+        );
       }
 
       let refund: Refund | null = null;

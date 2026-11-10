@@ -4,12 +4,16 @@ import { PrismaService } from '@/infra/prisma/prisma.service';
 import { IdFactory } from '@/common/id/id.factory';
 import { DomainError, ForbiddenError, NotFoundError } from '@/common/errors/domain-error';
 import { somToTiyin } from '@/common/money/money.util';
+import { PLATFORM_FEE_RATE_BPS, computePlatformFee } from '@/common/money/fee.constant';
 import type { Page } from '@/common/pagination/page-query.dto';
+import { AuditService, type AuditActor } from '@/common/audit/audit.service';
+import { OutboxService } from '@/common/outbox/outbox.service';
+import { toContractResponseDto } from '@/modules/contract/dto/contract-response.dto';
 import { CreateJobDto } from './dto/create-job.dto';
 import { CreateProposalDto } from './dto/create-proposal.dto';
+import { HireProposalDto } from './dto/hire-proposal.dto';
 import { ListJobsQueryDto } from './dto/list-jobs-query.dto';
 import type { JobWithRelations } from './dto/job-response.dto';
-import type { AuditActor } from '@/common/audit/audit.service';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -18,6 +22,8 @@ export class JobsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ids: IdFactory,
+    private readonly audit: AuditService,
+    private readonly outbox: OutboxService,
   ) {}
 
   async create(buyerId: string, dto: CreateJobDto): Promise<JobWithRelations> {
@@ -351,12 +357,259 @@ export class JobsService {
     });
   }
 
-  async hireProposal(proposalId: string, buyerId: string): Promise<Record<string, unknown>> {
-    const row = await this.prisma.jobProposal.findUnique({ where: { id: proposalId }, include: { job: true } });
-    if (!row) throw new NotFoundError('Taklif topilmadi');
-    if (row.job.buyerId !== buyerId) throw new ForbiddenError();
-    // The contract schema supports service purchases only. Never claim a hire
-    // succeeded until a job contract and same-day exclusion can commit atomically.
-    throw new DomainError('NOT_READY', 'Ish arizasidan shartnoma yaratish hali mavjud emas');
+  async hireProposal(
+    proposalId: string,
+    buyerId: string,
+    dto?: HireProposalDto,
+    actor?: AuditActor,
+  ): Promise<Record<string, unknown>> {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Concurrency lock on proposal
+      await tx.$queryRaw`SELECT id FROM job_proposals WHERE id = ${proposalId} FOR UPDATE`;
+      const row = await tx.jobProposal.findUnique({
+        where: { id: proposalId },
+        include: { job: true },
+      });
+      if (!row) throw new NotFoundError('Taklif topilmadi');
+      if (row.job.buyerId !== buyerId) throw new ForbiddenError("Siz bu e'lonning egasi emassiz");
+
+      // Idempotency: if already hired and contract exists, return existing contract
+      if (row.status === 'yollandi') {
+        const existing = await tx.contract.findUnique({
+          where: { proposalId },
+          include: {
+            milestones: { orderBy: { position: 'asc' } },
+            payments: { select: { id: true, status: true, succeededAt: true, createdAt: true } },
+          },
+        });
+        if (existing) {
+          return toContractResponseDto(existing) as unknown as Record<string, unknown>;
+        }
+        throw new DomainError('INVALID_PROPOSAL_STATUS', 'Bu ariza allaqachon yollangan');
+      }
+
+      if (row.status !== 'korib_chiqilmoqda') {
+        throw new DomainError('INVALID_PROPOSAL_STATUS', 'Faqat ko‘rib chiqilayotgan arizani yollash mumkin');
+      }
+      if (row.job.status !== JobStatus.OPEN) {
+        throw new DomainError('JOB_CLOSED', "Yopilgan e'longa mutaxassisni yollab bo‘lmaydi");
+      }
+      if (row.sellerId === buyerId) {
+        throw new DomainError('SELF_PURCHASE', "O‘z e'loningizga o‘zingizni yollay olmaysiz");
+      }
+
+      // 2. Concurrency lock on seller and eligibility check
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${row.sellerId}::uuid FOR UPDATE`;
+      const seller = await tx.user.findUniqueOrThrow({ where: { id: row.sellerId } });
+      if (seller.status !== 'ACTIVE' || seller.sellerStatus !== 'APPROVED') {
+        throw new DomainError('SELLER_NOT_APPROVED', 'Sotuvchi hozir mavjud emas yoki tasdiqlanmagan');
+      }
+
+      const buyer = await tx.user.findUniqueOrThrow({ where: { id: buyerId } });
+      const category = await tx.category.findUniqueOrThrow({ where: { id: row.job.categoryId } });
+      const sellerApp = await tx.sellerApplication.findFirst({
+        where: { userId: row.sellerId, status: 'APPROVED' },
+        orderBy: { reviewedAt: 'desc' },
+      });
+      const sellerDisplayName = sellerApp?.displayName ?? seller.fullName ?? seller.phone;
+
+      // 3. Amount and milestone calculation
+      const payload = row.payload as Record<string, unknown>;
+      const bidAmountSom = Number(payload.bidAmount) || 0;
+      if (bidAmountSom <= 0) {
+        throw new DomainError('INVALID_AMOUNT', 'Taklif summasi noto‘g‘ri');
+      }
+      const targetAmountTiyin = somToTiyin(bidAmountSom);
+
+      let milestonesData: Array<{ title: string; description?: string; amount: number; dueDate?: string }>;
+      if (dto?.milestones && dto.milestones.length > 0) {
+        const sum = dto.milestones.reduce((acc, m) => acc + m.amount, 0);
+        if (sum !== bidAmountSom) {
+          throw new DomainError(
+            'MILESTONE_AMOUNT_MISMATCH',
+            `Bosqichlar yig‘indisi (${sum}) taklif summasiga (${bidAmountSom}) teng bo‘lishi shart`,
+          );
+        }
+        milestonesData = dto.milestones;
+      } else {
+        milestonesData = [
+          {
+            title: "1-bosqich: Ishni to'liq bajarish",
+            description: row.job.title,
+            amount: bidAmountSom,
+            dueDate: row.job.deadline ? row.job.deadline.toISOString() : undefined,
+          },
+        ];
+      }
+
+      const feeAmount = computePlatformFee(targetAmountTiyin, PLATFORM_FEE_RATE_BPS);
+      const contractId = this.ids.next();
+      const now = new Date();
+
+      // Deadline: latest milestone due date, job deadline, or now + 14 days
+      let deadline = row.job.deadline ?? new Date(now.getTime() + 14 * 86400_000);
+      const latestMilestoneDue = milestonesData
+        .map((m) => (m.dueDate ? new Date(m.dueDate) : null))
+        .filter((d): d is Date => d !== null && !isNaN(d.getTime()))
+        .sort((a, b) => b.getTime() - a.getTime())[0];
+      if (latestMilestoneDue && latestMilestoneDue > deadline) {
+        deadline = latestMilestoneDue;
+      }
+
+      // 4. Create Contract with sourceType = 'JOB'
+      await tx.contract.create({
+        data: {
+          id: contractId,
+          buyerId,
+          sellerId: row.sellerId,
+          sourceType: 'JOB',
+          jobId: row.jobId,
+          proposalId: row.id,
+          serviceId: null,
+          serviceTitleSnapshot: row.job.title,
+          serviceDescriptionSnapshot: row.job.description,
+          categoryNameSnapshot: category.nameUz,
+          sellerDisplayNameSnapshot: sellerDisplayName,
+          agreedAmount: targetAmountTiyin,
+          currency: row.job.currency,
+          platformFeeRateBpsSnapshot: PLATFORM_FEE_RATE_BPS,
+          platformFeeAmountSnapshot: feeAmount,
+          deadline,
+          status: 'PENDING_SELLER',
+        },
+      });
+
+      // 5. Create Milestones
+      await tx.milestone.createMany({
+        data: milestonesData.map((m, idx) => ({
+          id: this.ids.next(),
+          contractId,
+          title: m.title,
+          description: m.description ?? '',
+          amount: somToTiyin(m.amount),
+          position: idx + 1,
+          dueAt: m.dueDate ? new Date(m.dueDate) : null,
+        })),
+      });
+
+      // 6. Update Proposal status
+      await tx.jobProposal.update({
+        where: { id: proposalId },
+        data: {
+          status: 'yollandi',
+          payload: {
+            ...payload,
+            status: 'yollandi',
+            contractId,
+            hiredAt: now.toISOString(),
+          },
+        },
+      });
+
+      // 7. Enforce User Rule #2 (Same-day conflict cancellation):
+      // If specialist is hired on this day, cancel their other competing open proposals for today
+      const dayStart = new Date(Math.floor((now.getTime() + 5 * 3600_000) / 86400_000) * 86400_000 - 5 * 3600_000);
+      const dayEnd = new Date(dayStart.getTime() + 86400_000);
+
+      const competingProposals = await tx.jobProposal.findMany({
+        where: {
+          sellerId: row.sellerId,
+          id: { not: proposalId },
+          status: 'korib_chiqilmoqda',
+          createdAt: { gte: dayStart, lt: dayEnd },
+        },
+      });
+
+      for (const comp of competingProposals) {
+        await tx.jobProposal.update({
+          where: { id: comp.id },
+          data: {
+            status: 'rad_etilgan',
+            payload: {
+              ...(comp.payload as Record<string, unknown>),
+              status: 'rad_etildi',
+              reason: 'Boshqa ishga yollanganligi sababli bekor qilindi',
+            },
+          },
+        });
+        await tx.job.update({
+          where: { id: comp.jobId },
+          data: { proposalsCount: { decrement: 1 } },
+        });
+      }
+
+      // 8. Close the Job & decline remaining proposals on this job
+      await tx.job.update({
+        where: { id: row.jobId },
+        data: { status: JobStatus.CLOSED },
+      });
+
+      const remainingJobProps = await tx.jobProposal.findMany({
+        where: {
+          jobId: row.jobId,
+          id: { not: proposalId },
+          status: 'korib_chiqilmoqda',
+        },
+      });
+
+      for (const p of remainingJobProps) {
+        await tx.jobProposal.update({
+          where: { id: p.id },
+          data: {
+            status: 'rad_etilgan',
+            payload: {
+              ...(p.payload as Record<string, unknown>),
+              status: 'rad_etildi',
+              reason: 'Boshqa nomzod tanlandi',
+            },
+          },
+        });
+      }
+
+      // 9. Audit and Outbox
+      const resolvedActor: AuditActor = actor ?? {
+        id: buyerId,
+        type: 'USER',
+        name: buyer.fullName ?? buyer.phone,
+      };
+
+      await this.audit.record(
+        {
+          actor: resolvedActor,
+          action: 'CONTRACT_CREATED',
+          resourceType: 'CONTRACT',
+          resourceId: contractId,
+          contextId: row.sellerId,
+          newState: {
+            status: 'PENDING_SELLER',
+            sourceType: 'JOB',
+            jobId: row.jobId,
+            proposalId,
+            sellerId: row.sellerId,
+          },
+        },
+        tx,
+      );
+
+      await this.outbox.enqueue(
+        {
+          aggregateType: 'CONTRACT',
+          aggregateId: contractId,
+          eventType: 'CONTRACT_CREATED',
+          payload: { buyerId, sellerId: row.sellerId, jobId: row.jobId, proposalId },
+        },
+        tx,
+      );
+
+      const createdContract = await tx.contract.findUniqueOrThrow({
+        where: { id: contractId },
+        include: {
+          milestones: { orderBy: { position: 'asc' } },
+          payments: { select: { id: true, status: true, succeededAt: true, createdAt: true } },
+        },
+      });
+
+      return toContractResponseDto(createdContract) as unknown as Record<string, unknown>;
+    });
   }
 }

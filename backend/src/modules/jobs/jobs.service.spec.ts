@@ -2,6 +2,8 @@ import { JobStatus } from '@prisma/client';
 import { JobsService } from './jobs.service';
 import type { PrismaService } from '@/infra/prisma/prisma.service';
 import type { IdFactory } from '@/common/id/id.factory';
+import type { AuditService } from '@/common/audit/audit.service';
+import type { OutboxService } from '@/common/outbox/outbox.service';
 import { DomainError, ForbiddenError, NotFoundError } from '@/common/errors/domain-error';
 import { somToTiyin } from '@/common/money/money.util';
 
@@ -56,7 +58,9 @@ describe('JobsService', () => {
     } as unknown as PrismaService;
 
     prisma.$transaction = jest.fn((fn: (tx: Partial<PrismaService>) => unknown) => fn(prisma)) as never;
-    service = new JobsService(prisma as PrismaService, ids as IdFactory);
+    const audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as AuditService;
+    const outbox = { enqueue: jest.fn().mockResolvedValue(undefined) } as unknown as OutboxService;
+    service = new JobsService(prisma as PrismaService, ids as IdFactory, audit, outbox);
   });
 
   describe('create', () => {

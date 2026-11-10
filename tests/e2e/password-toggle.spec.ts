@@ -7,8 +7,8 @@ test.describe("Password Visibility Toggle Suite", () => {
     const consoleLogs: string[] = [];
     page.on("console", (msg) => consoleLogs.push(msg.text()));
 
-    await page.goto("/rahbariyat/kirish");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/rahbariyat/kirish", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(300);
 
     const passwordInput = page.locator('input[autocomplete="current-password"]');
     await expect(passwordInput).toBeVisible();
@@ -17,7 +17,7 @@ test.describe("Password Visibility Toggle Suite", () => {
     await expect(passwordInput).toHaveAttribute("type", "password");
 
     // 2. Eye button exists
-    const toggleButton = page.locator('button[aria-label="Parolni ko‘rsatish"]');
+    const toggleButton = page.locator('button[aria-label="Parolni ko\'rsatish"], button[aria-label="Parolni ko‘rsatish"]');
     await expect(toggleButton).toBeVisible();
     await expect(toggleButton).toHaveAttribute("type", "button");
 
@@ -59,14 +59,14 @@ test.describe("Password Visibility Toggle Suite", () => {
   test("Operator admin login (/admin/kirish) has working password toggle", async ({
     page,
   }) => {
-    await page.goto("/admin/kirish");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/admin/kirish", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(300);
 
     const passwordInput = page.locator('input[autocomplete="current-password"]');
     await expect(passwordInput).toBeVisible();
     await expect(passwordInput).toHaveAttribute("type", "password");
 
-    const toggleButton = page.locator('button[aria-label="Parolni ko‘rsatish"]');
+    const toggleButton = page.locator('button[aria-label="Parolni ko\'rsatish"], button[aria-label="Parolni ko‘rsatish"]');
     await expect(toggleButton).toBeVisible();
 
     await passwordInput.fill("OperatorPass456!");
@@ -79,14 +79,14 @@ test.describe("Password Visibility Toggle Suite", () => {
   });
 
   test("Buyer/User login (/kirish) has working password toggle", async ({ page }) => {
-    await page.goto("/kirish");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/kirish", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(300);
 
     const passwordInput = page.locator('input[autocomplete="current-password"]');
     await expect(passwordInput).toBeVisible();
     await expect(passwordInput).toHaveAttribute("type", "password");
 
-    const toggleButton = page.locator('button[aria-label="Parolni ko‘rsatish"]');
+    const toggleButton = page.locator('button[aria-label="Parolni ko\'rsatish"], button[aria-label="Parolni ko‘rsatish"]');
     await expect(toggleButton).toBeVisible();
 
     await passwordInput.fill("UserPassword789!");
@@ -99,8 +99,8 @@ test.describe("Password Visibility Toggle Suite", () => {
   });
 
   test("Enter key on password input submits the form correctly (Requirement 6)", async ({ page }) => {
-    await page.goto("/rahbariyat/kirish");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/rahbariyat/kirish", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(300);
 
     const emailInput = page.locator('input').first();
     const passwordInput = page.locator('input[autocomplete="current-password"]');
@@ -126,8 +126,8 @@ test.describe("Password Visibility Toggle Suite", () => {
       window.sessionStorage.setItem("bd_registration_token", "test-reg-token-e2e");
     });
 
-    await page.goto("/royxatdan-otish/parol");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/royxatdan-otish/parol", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(300);
 
     const passwordInputs = page.locator('input[type="password"], input[autocomplete="new-password"]');
     await expect(passwordInputs).toHaveCount(2);
@@ -141,7 +141,7 @@ test.describe("Password Visibility Toggle Suite", () => {
     await expect(firstInput).toHaveAttribute("autocomplete", "new-password");
     await expect(secondInput).toHaveAttribute("autocomplete", "new-password");
 
-    const toggleButtons = page.locator('button[aria-label="Parolni ko‘rsatish"]');
+    const toggleButtons = page.locator('button[aria-label="Parolni ko\'rsatish"], button[aria-label="Parolni ko‘rsatish"]');
     await expect(toggleButtons).toHaveCount(2);
 
     await firstInput.fill("NewPass12345!");
@@ -153,7 +153,7 @@ test.describe("Password Visibility Toggle Suite", () => {
     await expect(secondInput).toHaveAttribute("type", "password"); // second remains hidden!
 
     // Toggle the second password
-    await page.locator('button[aria-label="Parolni ko‘rsatish"]').click();
+    await page.locator('button[aria-label="Parolni ko\'rsatish"], button[aria-label="Parolni ko‘rsatish"]').click();
     await expect(firstInput).toHaveAttribute("type", "text");
     await expect(secondInput).toHaveAttribute("type", "text");
 
@@ -171,13 +171,13 @@ test.describe("Password Visibility Toggle Suite", () => {
       window.sessionStorage.setItem("bd_reset_token", "test-reset-token-e2e");
     });
 
-    await page.goto("/parolni-unutdim/parol");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/parolni-unutdim/parol", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(300);
 
     const passwordInputs = page.locator('input[autocomplete="new-password"]');
     await expect(passwordInputs).toHaveCount(2);
 
-    const toggleButtons = page.locator('button[aria-label="Parolni ko‘rsatish"]');
+    const toggleButtons = page.locator('button[aria-label="Parolni ko\'rsatish"], button[aria-label="Parolni ko‘rsatish"]');
     await expect(toggleButtons).toHaveCount(2);
 
     await passwordInputs.nth(0).fill("ResetSecret987!");
@@ -224,8 +224,8 @@ test.describe("Password Visibility Toggle Suite", () => {
       });
     });
 
-    await page.goto("/admin/parolni-almashtirish");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/admin/parolni-almashtirish", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(300);
 
     const inputs = page.locator('input[type="password"]');
     await expect(inputs).toHaveCount(3);
@@ -235,7 +235,7 @@ test.describe("Password Visibility Toggle Suite", () => {
     await expect(currentPass).toHaveCount(1);
     await expect(newPassInputs).toHaveCount(2);
 
-    const toggleButtons = page.locator('button[aria-label="Parolni ko‘rsatish"]');
+    const toggleButtons = page.locator('button[aria-label="Parolni ko\'rsatish"], button[aria-label="Parolni ko‘rsatish"]');
     await expect(toggleButtons).toHaveCount(3);
 
     // Toggle 2nd input (yangi parol)
@@ -253,10 +253,10 @@ test.describe("Password Visibility Toggle Suite", () => {
 
     for (const width of mobileWidths) {
       await page.setViewportSize({ width, height: 844 });
-      await page.goto("/rahbariyat/kirish");
-      await page.waitForLoadState("networkidle");
+      await page.goto("/rahbariyat/kirish", { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(300);
 
-      const toggleButton = page.locator('button[aria-label="Parolni ko‘rsatish"]');
+      const toggleButton = page.locator('button[aria-label="Parolni ko\'rsatish"], button[aria-label="Parolni ko‘rsatish"]');
       await expect(toggleButton).toBeVisible();
 
       const box = await toggleButton.boundingBox();
