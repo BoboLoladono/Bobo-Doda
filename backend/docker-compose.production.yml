@@ -1,0 +1,159 @@
+# Bobololadono — O'zbekiston Respublikasi 547-sonli Qonuni (27¹-modda)
+# talablariga to'liq mos keluvchi Production Docker Compose infratuzilmasi.
+#
+# Barcha ma'lumotlar bazalari (PostgreSQL), kesh (Redis) va fayllar (MinIO S3)
+# O'zbekiston hududidagi serverda jismonan saqlanadi.
+
+name: bobololadono-production
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:-bobololadono}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-bobololadono}
+      TZ: UTC
+      PGTZ: UTC
+      DB_APP_ROLE: ${DB_APP_ROLE:-bobololadono_app}
+      DB_MIGRATOR_ROLE: ${DB_MIGRATOR_ROLE:-bobololadono_migrator}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD}
+      DB_MIGRATOR_PASSWORD: ${DB_MIGRATOR_PASSWORD}
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+      - ./prisma/sql/roles.sql:/docker-entrypoint-initdb.d/sql/roles.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_ADMIN_USER:-bobololadono} -d ${POSTGRES_DB:-bobololadono}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: ['redis-server', '--appendonly', 'yes', '--requirepass', '${REDIS_PASSWORD}']
+    ports:
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - redisdata_prod:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    restart: always
+    command: ['server', '/data', '--console-address', ':9001']
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+      MINIO_REGION_NAME: ${S3_REGION:-uz-tashkent-1}
+    ports:
+      - '127.0.0.1:9000:9000'
+      - '127.0.0.1:9001:9001'
+    volumes:
+      - miniodata_prod:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${S3_ACCESS_KEY} ${S3_SECRET_KEY} &&
+      mc mb --ignore-existing local/${S3_BUCKET_UPLOADS:-bobololadono-uploads} &&
+      mc mb --ignore-existing local/${S3_BUCKET_KYC:-bobololadono-kyc} &&
+      mc anonymous set none local/${S3_BUCKET_KYC:-bobololadono-kyc} &&
+      echo 'MinIO O‘zbekiston suveren saqlash chelaklari tayyor'
+      "
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ['npx', 'prisma', 'migrate', 'deploy']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_MIGRATION_URL}
+      DATABASE_MIGRATION_URL: ${DATABASE_MIGRATION_URL}
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - '127.0.0.1:4000:4000'
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATA_RESIDENCY_COUNTRY: UZ
+      DATA_RESIDENCY_ASSERTION: 'on'
+      S3_REGION: ${S3_REGION:-uz-tashkent-1}
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET_UPLOADS: ${S3_BUCKET_UPLOADS:-bobololadono-uploads}
+      S3_BUCKET_KYC: ${S3_BUCKET_KYC:-bobololadono-kyc}
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_MIGRATION_URL: ${DATABASE_MIGRATION_URL}
+      REDIS_URL: ${REDIS_URL}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_STAFF_ACCESS_SECRET: ${JWT_STAFF_ACCESS_SECRET}
+      STAFF_TOTP_ENCRYPTION_KEY: ${STAFF_TOTP_ENCRYPTION_KEY}
+      SWAGGER_ENABLED: 'false'
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      STAFF_CORS_ORIGINS: ${STAFF_CORS_ORIGINS}
+      PAYMENTS_ENABLED: ${PAYMENTS_ENABLED:-true}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-PAYME}
+      PAYME_MERCHANT_ID: ${PAYME_MERCHANT_ID}
+      PAYME_LOGIN: ${PAYME_LOGIN}
+      PAYME_KEY: ${PAYME_KEY}
+      PAYME_CHECKOUT_URL: ${PAYME_CHECKOUT_URL:-https://checkout.paycom.uz}
+      CLICK_MERCHANT_ID: ${CLICK_MERCHANT_ID}
+      CLICK_SERVICE_ID: ${CLICK_SERVICE_ID}
+      CLICK_SECRET_KEY: ${CLICK_SECRET_KEY}
+      CLICK_CHECKOUT_URL: ${CLICK_CHECKOUT_URL:-https://my.click.uz/services/pay}
+      PAYOUTS_ENABLED: ${PAYOUTS_ENABLED:-true}
+      PAYOUT_PROVIDER: ${PAYOUT_PROVIDER:-PAYME}
+      PAYME_PAYOUT_ENDPOINT: ${PAYME_PAYOUT_ENDPOINT:-https://checkout.paycom.uz/api}
+      PAYME_PAYOUT_LOGIN: ${PAYME_PAYOUT_LOGIN}
+      PAYME_PAYOUT_KEY: ${PAYME_PAYOUT_KEY}
+      SMS_PROVIDER: ${SMS_PROVIDER:-TEXTUP}
+      TEXTUP_AUTH_URL: ${TEXTUP_AUTH_URL}
+      TEXTUP_SMS_URL: ${TEXTUP_SMS_URL}
+      TEXTUP_EMAIL: ${TEXTUP_EMAIL}
+      TEXTUP_PASSWORD: ${TEXTUP_PASSWORD}
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:4000/health/ready || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  pgdata_prod:
+  redisdata_prod:
+  miniodata_prod:

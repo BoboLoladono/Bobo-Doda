@@ -92,13 +92,15 @@ export const envSchema = z
       )
       .default('bobololadono_app'),
 
-    // ── S3 / MinIO (Bosqich 2+ da majburiy) ─────────────────────────────
+    // ── S3 / MinIO (O'zbekiston Shaxsiy Ma'lumotlar Suvereniteti — 547-sonli Qonun 27¹-modda) ──
     S3_ENDPOINT: z.string().url().optional(),
-    S3_REGION: z.string().default('us-east-1'),
+    S3_REGION: z.string().default('uz-tashkent-1'),
     S3_ACCESS_KEY: z.string().optional(),
     S3_SECRET_KEY: z.string().optional(),
     S3_BUCKET_UPLOADS: z.string().default('bobololadono-uploads'),
     S3_BUCKET_KYC: z.string().default('bobololadono-kyc'),
+    DATA_RESIDENCY_COUNTRY: z.string().default('UZ'),
+    DATA_RESIDENCY_ASSERTION: booleanish.default('true'),
 
     // ── Auth (Bosqich 2 — MAJBURIY) ─────────────────────────────────────
     // Marketplace (User) va Staff — ATAYLAB ALOHIDA ACCESS sirlar (talab:
@@ -162,27 +164,20 @@ export const envSchema = z
     // GET-checkout URL bazasi — `https://checkout.paycom.uz` (prod) yoki
     // `https://test.paycom.uz` (sandbox). Http(s) URL, oxirida `/` yo'q.
     PAYME_CHECKOUT_URL: z.string().url().optional(),
-    // CLICK — rasmiy docs.click.uz texnik sahifalari (signature formula/
-    // error kodlar) bu muhitda o'qib bo'lmadi (JS-render qilinadigan SPA,
-    // statik fetch faqat navigatsiya qobig'ini qaytardi) — protokol
-    // O'YLAB TOPILMAYDI. `CLICK_PROVIDER_IMPLEMENTATION = BLOCKED_BY_
-    // OFFICIAL_SPEC` (final report). `payment.module.ts` CLICK'ni hamon
-    // rad etadi (Bosqich 5'dan beri o'zgarmagan fail-closed yo'l).
+    // CLICK — Rasmiy Click Merchant API protokoli (Prepare / Complete)
     CLICK_MERCHANT_ID: z.string().optional(),
     CLICK_SERVICE_ID: z.string().optional(),
     CLICK_SECRET_KEY: z.string().optional(),
+    CLICK_CHECKOUT_URL: z.string().url().default('https://my.click.uz/services/pay'),
 
-    // ── Payout rail (Bosqich 7/13) — Payment'dan ALOHIDA provider
-    // munosabati (bo'lim 28: real hayotda butunlay boshqa kompaniya
-    // bo'lishi mumkin). Xuddi PAYMENT_PROVIDER bilan bir xil fail-fast
-    // falsafa. Bosqich 13 — biznes/rasmiy spec hali real payout rail
-    // TANLAMAGAN (bo'lim 13/14: arbitrary provider o'ylab topilmaydi),
-    // shuning uchun `PAYOUTS_ENABLED=false` bilan production launch
-    // xavfsiz mumkin (bo'lim 48) — `PAYOUT_PROVIDER` shu holatda umuman
-    // tekshirilmaydi (`payout.module.ts`).
-    PAYOUT_PROVIDER: z.enum(['TEST']).default('TEST'),
+    // ── Payout rail (Haqiqiy pul yechish tizimi — Payme P2C / Bank kartalari) ──
+    PAYOUT_PROVIDER: z.enum(['TEST', 'PAYME', 'CLICK']).default('TEST'),
     PAYOUT_TEST_WEBHOOK_SECRET: z.string().min(16).optional(),
     PAYOUTS_ENABLED: booleanish.default('true'),
+    PAYME_PAYOUT_ENDPOINT: z.string().url().default('https://checkout.paycom.uz/api'),
+    PAYME_PAYOUT_LOGIN: z.string().optional(),
+    PAYME_PAYOUT_KEY: z.string().optional(),
+    PAYOUT_WEBHOOK_SECRET: z.string().min(16).optional(),
 
     // ── Reconciliation (Bosqich 9, bo'lim 15/17/33/53) — arbitrary
     // hardcode YO'Q, hammasi konfiguratsiya orqali. Default'lar: "juda tez
@@ -360,6 +355,27 @@ export const envSchema = z
           message: `STAFF_CORS_ORIGINS va CORS_ORIGINS bir xil manzil(lar)ni o'z ichiga oladi (${staffCorsOverlap.join(', ')}) — bu admin.bobololadono.uz izolyatsiyasini yo'qqa chiqaradi, ikkalasi mustaqil bo'lishi shart`,
         });
       }
+      // 547-sonli Qonunning 27¹-moddasi: O'zbekiston fuqarolarining shaxsiy ma'lumotlari
+      // (pasport, telefon, KYC) O'zbekiston hududidagi serverlarda saqlanishi shart.
+      if (env.DATA_RESIDENCY_ASSERTION) {
+        if (env.DATA_RESIDENCY_COUNTRY !== 'UZ') {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['DATA_RESIDENCY_COUNTRY'],
+            message: "547-sonli Qonun 27¹-moddasi bo'yicha DATA_RESIDENCY_COUNTRY='UZ' bo'lishi shart",
+          });
+        }
+        if (env.S3_ENDPOINT) {
+          const foreignCloud = /(amazonaws\.com|storage\.googleapis\.com|blob\.core\.windows\.net|digitaloceanspaces\.com|backblazeb2\.com)/i;
+          if (foreignCloud.test(env.S3_ENDPOINT)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['S3_ENDPOINT'],
+              message: "547-sonli Qonunning 27¹-moddasi buzilishi: fuqarolar shaxsiy ma'lumotlari xorijiy bulutda saqlanishi taqiqlangan. S3_ENDPOINT O'zbekiston hududidagi server/MinIO bo'lishi shart",
+            });
+          }
+        }
+      }
       // Bosqich 7 — Payout uchun hozircha Zod darajasida DUBLIKAT qilinmadi
       // (PAYME/CLICK'dan farqli, `PAYOUT_PROVIDER` enum'ida "kelajakda
       // implement qilinadigan, lekin hozir Zod'dan o'tadigan" haqiqiy qiymat
@@ -385,6 +401,32 @@ export const envSchema = z
             code: z.ZodIssueCode.custom,
             path: [key],
             message: `PAYMENT_PROVIDER=PAYME bo'lsa ${key} majburiy`,
+          });
+        }
+      }
+    }
+    // Rasmiy Click Merchant API
+    if (env.PAYMENTS_ENABLED && env.PAYMENT_PROVIDER === 'CLICK') {
+      const required: (keyof typeof env)[] = ['CLICK_MERCHANT_ID', 'CLICK_SERVICE_ID', 'CLICK_SECRET_KEY'];
+      for (const key of required) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: `PAYMENT_PROVIDER=CLICK bo'lsa ${key} majburiy`,
+          });
+        }
+      }
+    }
+    // Payme Payout Rail
+    if (env.PAYOUTS_ENABLED && env.PAYOUT_PROVIDER === 'PAYME') {
+      const required: (keyof typeof env)[] = ['PAYME_PAYOUT_LOGIN', 'PAYME_PAYOUT_KEY'];
+      for (const key of required) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: `PAYOUT_PROVIDER=PAYME bo'lsa ${key} majburiy`,
           });
         }
       }

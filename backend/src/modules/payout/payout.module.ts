@@ -6,6 +6,7 @@ import { AppConfigService } from '@/config/app-config.service';
 import { PAYOUT_PROVIDER } from './providers/payout-provider.interface';
 import { TestPayoutProvider } from './providers/test/test-payout.provider';
 import { DisabledPayoutProvider } from './providers/disabled/disabled-payout.provider';
+import { PaymePayoutProvider } from './providers/payme/payme-payout.provider';
 import { PayoutService } from './payout.service';
 import { SellerPayoutController } from './seller-payout.controller';
 import { StaffPayoutController } from './staff-payout.controller';
@@ -39,19 +40,24 @@ const DEV_ONLY_TEST_SECRET = 'test-only-insecure-payout-secret-change-me';
         }
         const { provider, testWebhookSecret } = config.payout;
         if (provider === 'TEST') {
-          // Ikkinchi qatlam himoya (`env.schema.ts`da PAYOUT_PROVIDER uchun
-          // Zod darajasida DUBLIKAT YO'Q — izohga qarang: hozircha yagona
-          // qiymat TEST bo'lgani uchun bitta joyda yetarli, lekin baribir
-          // fail-closed bo'lishi SHART).
           if (config.isProduction) {
             throw new Error("PAYOUT_PROVIDER=TEST production'da ishlatib bo'lmaydi (fail closed)");
           }
           return new TestPayoutProvider(testWebhookSecret ?? DEV_ONLY_TEST_SECRET);
         }
-        // Hozircha `PAYOUT_PROVIDER` enum'ida TEST'dan boshqa qiymat YO'Q
-        // (bo'lim 28: real rail spec yo'q, o'ylab topilmaydi) — bu shox
-        // faqat kelajakda enum kengaytirilganda ishga tushadi.
-        throw new Error('PAYOUT_PROVIDER: qo‘llab-quvvatlanmaydigan qiymat (hali implement qilinmagan)');
+        if (provider === 'PAYME') {
+          const { endpoint, login, key, webhookSecret } = config.paymePayout;
+          if (!endpoint || !login || !key) {
+            throw new Error('PAYOUT_PROVIDER=PAYME uchun PAYME_PAYOUT_ENDPOINT, PAYME_PAYOUT_LOGIN, PAYME_PAYOUT_KEY majburiy');
+          }
+          return new PaymePayoutProvider({
+            endpoint,
+            login,
+            key,
+            webhookSecret,
+          });
+        }
+        throw new Error(`PAYOUT_PROVIDER=${provider} qo'llab-quvvatlanmaydi`);
       },
     },
   ],
