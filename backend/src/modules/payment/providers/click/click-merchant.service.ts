@@ -143,14 +143,42 @@ export class ClickMerchantService {
       };
     }
 
+    // Bekor qilingan to‘lov tekshiruvi
+    if (payment.status === 'CANCELLED') {
+      return {
+        click_trans_id: dto.click_trans_id,
+        merchant_trans_id: payment.id,
+        error: CLICK_ERROR.TRANSACTION_CANCELLED,
+        error_note: 'To‘lov bekor qilingan',
+      };
+    }
+
     // Click o'zi xatolik bildirsa
     if (Number(dto.error) < 0) {
       this.logger.warn(`Click Complete: Click tarafida xatolik (${dto.error})`);
+      if (payment.status === 'PENDING' || payment.status === 'PROCESSING') {
+        await this.prisma.$transaction(async (tx) => {
+          await this.paymentService.applyProviderRpcStatus(tx, payment, 'CANCELLED');
+        });
+      }
       return {
         click_trans_id: dto.click_trans_id,
         merchant_trans_id: payment.id,
         error: Number(dto.error),
         error_note: dto.error_note || 'Click xatosi',
+      };
+    }
+
+    // Amount tekshiruvi: 1 UZS = 100 tiyin
+    const expectedUzs = Number(payment.amount) / 100;
+    const incomingUzs = Number(dto.amount);
+    if (Math.abs(expectedUzs - incomingUzs) > 0.01) {
+      this.logger.warn(`Click Complete: Summa nomuvofiq (kutilgan: ${expectedUzs}, kelgan: ${incomingUzs})`);
+      return {
+        click_trans_id: dto.click_trans_id,
+        merchant_trans_id: payment.id,
+        error: CLICK_ERROR.INCORRECT_AMOUNT,
+        error_note: 'Incorrect amount',
       };
     }
 
@@ -165,6 +193,12 @@ export class ClickMerchantService {
     }
 
     await this.prisma.$transaction(async (tx) => {
+      if (!payment.providerPaymentId) {
+        await tx.payment.update({
+          where: { id: payment.id },
+          data: { providerPaymentId: String(dto.click_trans_id) },
+        });
+      }
       await this.paymentService.applyProviderRpcStatus(tx, payment, 'SUCCEEDED');
     });
 

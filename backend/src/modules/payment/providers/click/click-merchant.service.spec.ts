@@ -10,6 +10,7 @@ describe('ClickMerchantService', () => {
   let prisma: {
     payment: {
       findUnique: jest.Mock;
+      update: jest.Mock;
     };
     $transaction: jest.Mock;
   };
@@ -23,6 +24,7 @@ describe('ClickMerchantService', () => {
     prisma = {
       payment: {
         findUnique: jest.fn(),
+        update: jest.fn(),
       },
       $transaction: jest.fn(async (cb) => cb(prisma)),
     };
@@ -237,6 +239,209 @@ describe('ClickMerchantService', () => {
 
       expect(res.error).toBe(CLICK_ERROR.SUCCESS);
       expect(paymentService.applyProviderRpcStatus).not.toHaveBeenCalled();
+    });
+
+    it('returns INCORRECT_AMOUNT on Complete if amount does not match payment', async () => {
+      const payment = {
+        id: 'pay-1',
+        amount: BigInt(5000000), // 50000 UZS
+        status: 'PENDING',
+      };
+      prisma.payment.findUnique.mockResolvedValue(payment);
+
+      const sign = computeClickSign({
+        clickTransId: 111,
+        serviceId: 222,
+        secretKey,
+        merchantTransId: 'pay-1',
+        merchantPrepareId: 'pay-1',
+        amount: 25000, // mismatched amount
+        action: CLICK_ACTION.COMPLETE,
+        signTime: '2026-11-09 12:00:00',
+      });
+
+      const res = await service.handleRequest(
+        {
+          click_trans_id: 111,
+          service_id: 222,
+          merchant_trans_id: 'pay-1',
+          merchant_prepare_id: 'pay-1',
+          amount: 25000,
+          action: CLICK_ACTION.COMPLETE,
+          error: 0,
+          sign_time: '2026-11-09 12:00:00',
+          sign_string: sign,
+        },
+        secretKey,
+      );
+
+      expect(res.error).toBe(CLICK_ERROR.INCORRECT_AMOUNT);
+      expect(paymentService.applyProviderRpcStatus).not.toHaveBeenCalled();
+    });
+
+    it('returns TRANSACTION_CANCELLED on Complete if payment is already CANCELLED', async () => {
+      const payment = {
+        id: 'pay-1',
+        amount: BigInt(5000000),
+        status: 'CANCELLED',
+      };
+      prisma.payment.findUnique.mockResolvedValue(payment);
+
+      const sign = computeClickSign({
+        clickTransId: 111,
+        serviceId: 222,
+        secretKey,
+        merchantTransId: 'pay-1',
+        merchantPrepareId: 'pay-1',
+        amount: 50000,
+        action: CLICK_ACTION.COMPLETE,
+        signTime: '2026-11-09 12:00:00',
+      });
+
+      const res = await service.handleRequest(
+        {
+          click_trans_id: 111,
+          service_id: 222,
+          merchant_trans_id: 'pay-1',
+          merchant_prepare_id: 'pay-1',
+          amount: 50000,
+          action: CLICK_ACTION.COMPLETE,
+          error: 0,
+          sign_time: '2026-11-09 12:00:00',
+          sign_string: sign,
+        },
+        secretKey,
+      );
+
+      expect(res.error).toBe(CLICK_ERROR.TRANSACTION_CANCELLED);
+      expect(paymentService.applyProviderRpcStatus).not.toHaveBeenCalled();
+    });
+
+    it('cancels pending payment when Click sends negative error on Complete', async () => {
+      const payment = {
+        id: 'pay-1',
+        amount: BigInt(5000000),
+        status: 'PENDING',
+      };
+      prisma.payment.findUnique.mockResolvedValue(payment);
+
+      const sign = computeClickSign({
+        clickTransId: 111,
+        serviceId: 222,
+        secretKey,
+        merchantTransId: 'pay-1',
+        merchantPrepareId: 'pay-1',
+        amount: 50000,
+        action: CLICK_ACTION.COMPLETE,
+        signTime: '2026-11-09 12:00:00',
+      });
+
+      const res = await service.handleRequest(
+        {
+          click_trans_id: 111,
+          service_id: 222,
+          merchant_trans_id: 'pay-1',
+          merchant_prepare_id: 'pay-1',
+          amount: 50000,
+          action: CLICK_ACTION.COMPLETE,
+          error: -8,
+          error_note: 'User rejected in app',
+          sign_time: '2026-11-09 12:00:00',
+          sign_string: sign,
+        },
+        secretKey,
+      );
+
+      expect(res.error).toBe(-8);
+      expect(paymentService.applyProviderRpcStatus).toHaveBeenCalledWith(expect.anything(), payment, 'CANCELLED');
+    });
+
+    it('updates providerPaymentId on payment during Complete', async () => {
+      const payment = {
+        id: 'pay-1',
+        amount: BigInt(5000000),
+        status: 'PENDING',
+        providerPaymentId: null,
+      };
+      prisma.payment.findUnique.mockResolvedValue(payment);
+
+      const sign = computeClickSign({
+        clickTransId: 998877,
+        serviceId: 222,
+        secretKey,
+        merchantTransId: 'pay-1',
+        merchantPrepareId: 'pay-1',
+        amount: 50000,
+        action: CLICK_ACTION.COMPLETE,
+        signTime: '2026-11-09 12:00:00',
+      });
+
+      await service.handleRequest(
+        {
+          click_trans_id: 998877,
+          service_id: 222,
+          merchant_trans_id: 'pay-1',
+          merchant_prepare_id: 'pay-1',
+          amount: 50000,
+          action: CLICK_ACTION.COMPLETE,
+          error: 0,
+          sign_time: '2026-11-09 12:00:00',
+          sign_string: sign,
+        },
+        secretKey,
+      );
+
+      expect(prisma.payment.update).toHaveBeenCalledWith({
+        where: { id: 'pay-1' },
+        data: { providerPaymentId: '998877' },
+      });
+    });
+
+    it('handles concurrent Complete calls safely without double settlement', async () => {
+      let currentStatus = 'PENDING';
+      const payment = {
+        id: 'pay-1',
+        amount: BigInt(5000000),
+        get status() {
+          return currentStatus;
+        },
+      };
+      prisma.payment.findUnique.mockImplementation(async () => payment);
+      paymentService.applyProviderRpcStatus.mockImplementation(async () => {
+        currentStatus = 'SUCCEEDED';
+        return 'TARGET_STATUS_APPLIED';
+      });
+
+      const sign = computeClickSign({
+        clickTransId: 111,
+        serviceId: 222,
+        secretKey,
+        merchantTransId: 'pay-1',
+        merchantPrepareId: 'pay-1',
+        amount: 50000,
+        action: CLICK_ACTION.COMPLETE,
+        signTime: '2026-11-09 12:00:00',
+      });
+
+      const reqDto = {
+        click_trans_id: 111,
+        service_id: 222,
+        merchant_trans_id: 'pay-1',
+        merchant_prepare_id: 'pay-1',
+        amount: 50000,
+        action: CLICK_ACTION.COMPLETE,
+        error: 0,
+        sign_time: '2026-11-09 12:00:00',
+        sign_string: sign,
+      };
+
+      const [res1, res2] = await Promise.all([
+        service.handleRequest(reqDto, secretKey),
+        service.handleRequest(reqDto, secretKey),
+      ]);
+
+      expect(res1.error).toBe(CLICK_ERROR.SUCCESS);
+      expect(res2.error).toBe(CLICK_ERROR.SUCCESS);
     });
   });
 });

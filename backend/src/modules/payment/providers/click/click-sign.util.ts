@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 
 export interface VerifyClickSignParams {
   clickTransId: string | number;
@@ -35,5 +35,8 @@ export function computeClickSign(params: Omit<VerifyClickSignParams, 'signString
 export function verifyClickSign(params: VerifyClickSignParams): boolean {
   if (!params.signString || !params.secretKey) return false;
   const computed = computeClickSign(params);
-  return computed === params.signString.toLowerCase();
+  const computedBuf = Buffer.from(computed, 'utf8');
+  const signBuf = Buffer.from(params.signString.toLowerCase(), 'utf8');
+  if (computedBuf.length !== signBuf.length) return false;
+  return timingSafeEqual(computedBuf, signBuf);
 }
