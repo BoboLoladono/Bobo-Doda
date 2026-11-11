@@ -59,3 +59,4 @@ process.env.PAYMENT_PROVIDER = 'TEST';
 process.env.PAYOUT_PROVIDER = 'TEST';
 process.env.PAYMENTS_ENABLED = 'true';
 process.env.PAYOUTS_ENABLED = 'true';
+process.env.KYC_SUBMISSION_ENABLED = 'true';
