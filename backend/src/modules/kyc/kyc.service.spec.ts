@@ -1,7 +1,9 @@
 import { KycDocumentStatus, KycDocumentType, KycVerificationStatus } from '@prisma/client';
-import type { AuditService } from '@/common/audit/audit.service';
+import type { AuditActor, AuditService } from '@/common/audit/audit.service';
 import type { OutboxService } from '@/common/outbox/outbox.service';
+import type { AppConfigService } from '@/config/app-config.service';
 import type { PrismaService } from '@/infra/prisma/prisma.service';
+import type { SubmitKycDto } from './dto/submit-kyc.dto';
 import { KycService } from './kyc.service';
 import { MockMalwareScanner } from './scanner/mock-malware.scanner';
 import type { StorageProvider } from './storage/storage-provider.interface';
