@@ -99,6 +99,7 @@ export const envSchema = z
     S3_SECRET_KEY: z.string().optional(),
     S3_BUCKET_UPLOADS: z.string().default('bobololadono-uploads'),
     S3_BUCKET_KYC: z.string().default('bobololadono-kyc'),
+    KYC_SUBMISSION_ENABLED: booleanish.default('false'),
     DATA_RESIDENCY_COUNTRY: z.string().default('UZ'),
     DATA_RESIDENCY_ASSERTION: booleanish.default('true'),
 

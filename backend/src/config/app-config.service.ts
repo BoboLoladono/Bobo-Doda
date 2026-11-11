@@ -39,6 +39,10 @@ export class AppConfigService {
     return this.isProduction ? false : this.get('SWAGGER_ENABLED');
   }
 
+  get kycSubmissionEnabled(): boolean {
+    return this.get('KYC_SUBMISSION_ENABLED');
+  }
+
   get corsOrigins(): string[] {
     return this.get('CORS_ORIGINS');
   }

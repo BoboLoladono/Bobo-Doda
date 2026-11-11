@@ -58,17 +58,41 @@ describe('KycService (Identity Verification & Document Processing)', () => {
       $transaction: jest.fn((fn: (client: typeof tx) => unknown) => fn(tx)),
     };
 
+    const mockConfig = { kycSubmissionEnabled: true } as unknown as AppConfigService;
     const service = new KycService(
       db as unknown as PrismaService,
       { next: () => 'generated-id' },
       mockAudit,
       mockOutbox,
+      mockConfig,
       mockStorage,
       mockScanner,
     );
 
     return { service, tx };
   };
+
+  it('throws FEATURE_DISABLED when kycSubmissionEnabled is false', async () => {
+    const disabledConfig = { kycSubmissionEnabled: false } as unknown as AppConfigService;
+    const { tx } = setup();
+    const service = new KycService(
+      tx as unknown as PrismaService,
+      { next: () => 'id' },
+      mockAudit,
+      mockOutbox,
+      disabledConfig,
+      mockStorage,
+      mockScanner,
+    );
+
+    await expect(
+      service.submit(
+        'user-1',
+        { legalName: 'Ali Valiyev', birthDate: '1990-01-01', documentType: 'PASSPORT', documents: ['a', 'b'] } as unknown as SubmitKycDto,
+        { role: 'USER', userId: 'user-1' } as unknown as AuditActor,
+      ),
+    ).rejects.toMatchObject({ code: 'FEATURE_DISABLED' });
+  });
 
   it('rejects applicant younger than 18 years old', async () => {
     const { service } = setup();

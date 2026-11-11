@@ -10,6 +10,7 @@ import { AuditService, type AuditActor } from '@/common/audit/audit.service';
 import { DomainError, NotFoundError } from '@/common/errors/domain-error';
 import { IdFactory } from '@/common/id/id.factory';
 import { OutboxService } from '@/common/outbox/outbox.service';
+import { AppConfigService } from '@/config/app-config.service';
 import { buildPage, type Page } from '@/common/pagination/page-query.dto';
 import { PrismaService } from '@/infra/prisma/prisma.service';
 import type { StaffKycQueueQueryDto } from './dto/staff-kyc-queue-query.dto';
@@ -40,6 +41,7 @@ export class KycService {
     private readonly ids: IdFactory,
     private readonly audit: AuditService,
     private readonly outbox: OutboxService,
+    private readonly config: AppConfigService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
     @Inject(MALWARE_SCANNER) private readonly scanner: MalwareScanner,
   ) {}
@@ -64,6 +66,12 @@ export class KycService {
     dto: SubmitKycDto,
     actor: AuditActor,
   ): Promise<KycVerificationResponseDto> {
+    if (!this.config.kycSubmissionEnabled) {
+      throw new DomainError(
+        'FEATURE_DISABLED',
+        'KYC hujjatlarini topshirish vaqtincha to‘xtatilgan (547-sonli Qonunga muvofiq O‘zbekiston ichki server klasteri sozlanmoqda)',
+      );
+    }
     // 1. Legal Name validation (minimum 2 words)
     const words = dto.legalName.trim().split(/\s+/);
     if (words.length < 2) {
