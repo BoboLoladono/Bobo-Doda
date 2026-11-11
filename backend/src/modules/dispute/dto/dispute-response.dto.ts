@@ -12,11 +12,15 @@ export class DisputeResponseDto {
   @ApiProperty() preSettlement!: boolean;
   @ApiProperty({ description: 'Butun so‘m' }) disputedAmount!: number;
   @ApiProperty({ description: 'Butun so‘m' }) heldAmount!: number;
+  @ApiProperty({ description: 'Exact integer tiyin as a decimal string; 100 tiyin = 1 UZS' }) disputedAmountTiyin!: string;
+  @ApiProperty({ description: 'Exact integer tiyin as a decimal string; 100 tiyin = 1 UZS' }) heldAmountTiyin!: string;
   @ApiProperty() currency!: string;
 
   @ApiPropertyOptional({ enum: DisputeResolutionType }) resolutionType?: DisputeResolutionType | null;
   @ApiPropertyOptional({ description: 'Butun so‘m' }) buyerAwardAmount?: number | null;
   @ApiPropertyOptional({ description: 'Butun so‘m' }) sellerAwardAmount?: number | null;
+  @ApiPropertyOptional({ description: 'Exact integer tiyin as a decimal string; null until allocated', nullable: true }) buyerAwardAmountTiyin?: string | null;
+  @ApiPropertyOptional({ description: 'Exact integer tiyin as a decimal string; null until allocated', nullable: true }) sellerAwardAmountTiyin?: string | null;
   @ApiPropertyOptional() resolutionReason?: string | null;
 
   @ApiProperty() openedAt!: Date;
@@ -38,11 +42,15 @@ export function toDisputeResponseDto(dispute: Dispute): DisputeResponseDto {
     status: dispute.status,
     preSettlement: dispute.preSettlement,
     disputedAmount: tiyinToSom(dispute.disputedAmount),
+    disputedAmountTiyin: dispute.disputedAmount.toString(),
     heldAmount: tiyinToSom(dispute.heldAmount),
+    heldAmountTiyin: dispute.heldAmount.toString(),
     currency: dispute.currency,
     resolutionType: dispute.resolutionType,
     buyerAwardAmount: dispute.buyerAwardAmount !== null ? tiyinToSom(dispute.buyerAwardAmount) : null,
+    buyerAwardAmountTiyin: dispute.buyerAwardAmount?.toString() ?? null,
     sellerAwardAmount: dispute.sellerAwardAmount !== null ? tiyinToSom(dispute.sellerAwardAmount) : null,
+    sellerAwardAmountTiyin: dispute.sellerAwardAmount?.toString() ?? null,
     resolutionReason: dispute.resolutionReason,
     openedAt: dispute.openedAt,
     reviewStartedAt: dispute.reviewStartedAt,

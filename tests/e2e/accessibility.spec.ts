@@ -17,8 +17,8 @@ test.describe("Frontend WCAG 2.1 AA Accessibility Audit", () => {
 
   for (const { name, path } of publicRoutes) {
     test(`A11y check for ${name} (${path})`, async ({ page }) => {
-      await page.goto(path);
-      await page.waitForLoadState("networkidle");
+      await page.goto(path, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(500);
 
       // Bobololadono brend to'q sariq (#FF7A1A) tugmalari oq matnda 2.6:1 kontrastga ega;
       // dizayn tizimi brend o'ziga xosligini saqlab qolgan holda alohida ko'rib chiqilgan.
@@ -32,14 +32,14 @@ test.describe("Frontend WCAG 2.1 AA Accessibility Audit", () => {
   }
 
   test("Interactive A11y: Password toggle has aria-controls and valid focus rings", async ({ page }) => {
-    await page.goto("/rahbariyat/kirish");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/rahbariyat/kirish", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(500);
 
     const input = page.locator('input[autocomplete="current-password"]');
     const inputId = await input.getAttribute("id");
     expect(inputId).toBeTruthy();
 
-    const toggle = page.locator('button[aria-label="Parolni ko‘rsatish"]');
+    const toggle = page.locator('button[aria-label="Parolni ko\'rsatish"], button[aria-label="Parolni ko‘rsatish"]');
     await expect(toggle).toHaveAttribute("aria-controls", inputId!);
     await expect(toggle).toHaveAttribute("type", "button");
 

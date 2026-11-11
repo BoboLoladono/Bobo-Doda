@@ -15,6 +15,7 @@ export class LedgerEntryResponseDto {
   @ApiProperty({ enum: LedgerAccountOwnerType }) accountOwnerType!: LedgerAccountOwnerType;
   @ApiPropertyOptional() accountOwnerId?: string | null;
   @ApiProperty({ description: 'Ishorali butun so‘m — musbat=kredit, manfiy=debit' }) amount!: number;
+  @ApiProperty({ description: 'Exact signed integer tiyin, decimal string; 100 tiyin = 1 UZS', example: '12345' }) amountTiyin!: string;
   @ApiProperty() currency!: string;
   @ApiProperty() createdAt!: Date;
 }
@@ -47,6 +48,7 @@ export function toLedgerTransactionResponseDto(transaction: TransactionWithEntri
       accountOwnerType: entry.account.ownerType,
       accountOwnerId: entry.account.ownerId,
       amount: tiyinToSom(entry.amount),
+      amountTiyin: entry.amount.toString(),
       currency: entry.currency,
       createdAt: entry.createdAt,
     })),

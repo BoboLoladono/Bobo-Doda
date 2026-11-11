@@ -1,3 +1,12 @@
+> **2026-11-08 re-audit: NOT READY for a real-money production launch.**
+> This document below is historical and describes an older frontend integration.
+> Current evidence and release blockers: [local re-audit](docs/REAUDIT.md),
+> [all original findings](docs/REAUDIT-ORIGINAL-FINDINGS.md),
+> [financial review](docs/REAUDIT-FINANCIAL.md), [security review](docs/REAUDIT-SECURITY.md).
+> The backend now exists; mock-backed chat/profile/admin functions and disabled
+> job hiring, card binding/payout initiation, KYC and deletion remain incomplete.
+> No live deployment, financial transaction or production-data access was performed.
+
 # Bobololadono production readiness
 
 Holat: frontend mahsulot oqimlari tayyor va **backend ulanishiga tayyor**;

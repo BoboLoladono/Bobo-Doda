@@ -131,6 +131,7 @@ export class StaffAdminController {
   }
 
   @Post(':id/totp/reset')
+  @RequireRole('SUPER_ADMIN')
   @HttpCode(200)
   async resetTotp(
     @CurrentStaff() staff: StaffAccessTokenPayload,
@@ -142,6 +143,7 @@ export class StaffAdminController {
   }
 
   @Post(':id/password-reset')
+  @RequireRole('SUPER_ADMIN')
   @HttpCode(200)
   @ApiOkResponse({ type: AdminPasswordResetResponseDto })
   async resetPassword(

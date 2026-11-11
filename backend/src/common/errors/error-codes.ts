@@ -64,6 +64,10 @@ export const ERROR_CODES = {
   PAYMENT_NOT_FOUND: { httpStatus: 404, retryable: false }, // Bosqich 5
   REFUND_NOT_FOUND: { httpStatus: 404, retryable: false }, // Bosqich 7
   PAYOUT_NOT_FOUND: { httpStatus: 404, retryable: false }, // Bosqich 7
+  TICKET_NOT_FOUND: { httpStatus: 404, retryable: false },
+  REPORT_NOT_FOUND: { httpStatus: 404, retryable: false },
+  APPEAL_NOT_FOUND: { httpStatus: 404, retryable: false },
+  REVIEW_NOT_FOUND: { httpStatus: 404, retryable: false },
 
   // ── O'chirilgan (410) ────────────────────────────────────────────────
   DELETED: { httpStatus: 410, retryable: false },
@@ -113,9 +117,11 @@ export const ERROR_CODES = {
   // Bo'lim 7 — bitta Contract uchun bir vaqtda faqat BITTA OPEN/UNDER_REVIEW
   // Dispute (DB partial unique index — asosiy himoya; bu tezkor app-darajasidagi xato).
   DISPUTE_ALREADY_OPEN: { httpStatus: 409, retryable: false }, // Bosqich 8
+  DISPUTE_ALREADY_RESOLVED: { httpStatus: 409, retryable: false },
   // Bo'lim 8/39 — ochiq nizo bo'lgan Contract uchun settlement HAM, yalang'och
   // Refund HAM bloklanadi (`CONTRACT_REFUND_IN_PROGRESS` bilan bir xil simmetriya).
   DISPUTE_IN_PROGRESS: { httpStatus: 409, retryable: false }, // Bosqich 8
+  CONTRACT_NOT_COMPLETED: { httpStatus: 409, retryable: false },
 
   // ── Validatsiya (422) ──────────────────────────────────────────────
   VALIDATION: { httpStatus: 422, retryable: false },
@@ -156,8 +162,23 @@ export const ERROR_CODES = {
   BELOW_MINIMUM: { httpStatus: 422, retryable: false },
   BELOW_MIN_PAYOUT: { httpStatus: 422, retryable: false },
   FILE_TOO_LARGE: { httpStatus: 422, retryable: false },
+  FILE_TOO_SMALL: { httpStatus: 422, retryable: false },
   FILE_TYPE_NOT_ALLOWED: { httpStatus: 422, retryable: false },
+  INVALID_FILE_TYPE: { httpStatus: 422, retryable: false },
+  MIME_TYPE_MISMATCH: { httpStatus: 422, retryable: false },
   FILE_READ_FAILED: { httpStatus: 422, retryable: false },
+  INVALID_LEGAL_NAME: { httpStatus: 422, retryable: false },
+  INVALID_BIRTH_DATE: { httpStatus: 422, retryable: false },
+  UNDERAGE: { httpStatus: 422, retryable: false },
+  DOCUMENTS_REQUIRED: { httpStatus: 422, retryable: false },
+  INFECTED_DOCUMENT: { httpStatus: 422, retryable: false },
+  ALREADY_APPROVED: { httpStatus: 409, retryable: false },
+  ALREADY_UNDER_REVIEW: { httpStatus: 409, retryable: false },
+  JOB_CLOSED: { httpStatus: 409, retryable: false },
+  INVALID_PROPOSAL_STATUS: { httpStatus: 409, retryable: false },
+  SELF_PURCHASE: { httpStatus: 403, retryable: false },
+  KYC_NOT_FOUND: { httpStatus: 404, retryable: false },
+  INVALID_TOKEN: { httpStatus: 401, retryable: false },
 
   // ── Rate limit (429) ──────────────────────────────────────────────
   RATE_LIMITED: { httpStatus: 429, retryable: true },

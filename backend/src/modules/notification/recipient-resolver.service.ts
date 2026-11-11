@@ -52,6 +52,14 @@ export class RecipientResolverService {
         return { userId, extra };
       }
 
+      case 'KYC_VERIFICATION': {
+        const userId = typeof extra.userId === 'string' ? extra.userId : undefined;
+        if (userId) return { userId, extra };
+        const kyc = await this.prisma.kycVerification.findUnique({ where: { id: aggregateId } });
+        if (!kyc) return null;
+        return { userId: kyc.userId, extra };
+      }
+
       case 'SERVICE': {
         const service = await this.prisma.service.findUnique({ where: { id: aggregateId } });
         if (!service) return null;

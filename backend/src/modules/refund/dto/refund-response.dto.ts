@@ -10,6 +10,7 @@ export class RefundResponseDto {
   @ApiPropertyOptional({ description: 'Bosqich 8 — dispute-driven bo‘lsa tegishli Dispute ID' }) disputeId?: string | null;
   @ApiProperty({ enum: RefundStatus }) status!: RefundStatus;
   @ApiProperty({ description: 'Butun so‘m' }) amount!: number;
+  @ApiProperty({ description: 'Exact signed integer tiyin, decimal string; 100 tiyin = 1 UZS', example: '12345' }) amountTiyin!: string;
   @ApiProperty() currency!: string;
   @ApiProperty() reason!: string;
 
@@ -29,6 +30,7 @@ export function toRefundResponseDto(refund: Refund): RefundResponseDto {
     disputeId: refund.disputeId,
     status: refund.status,
     amount: tiyinToSom(refund.amount),
+    amountTiyin: refund.amount.toString(),
     currency: refund.currency,
     reason: refund.reason,
     failureReason: refund.failureReason,

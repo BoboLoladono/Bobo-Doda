@@ -406,6 +406,42 @@ export class ContractService {
     }
   }
 
+  private async assertMilestoneMutationAllowed(
+    tx: Prisma.TransactionClient,
+    contractId: string,
+    operation?: 'submit' | 'revision' | 'approve',
+  ): Promise<void> {
+    // The contract lock also serializes this gate with refund/dispute decisions.
+    await tx.$queryRaw`SELECT id FROM contracts WHERE id = ${contractId}::uuid FOR UPDATE`;
+    const contract = await tx.contract.findUniqueOrThrow({ where: { id: contractId } });
+    if (contract.status !== 'ACTIVE') {
+      throw new DomainError('INVALID_TRANSITION', 'Faqat faol shartnoma bosqichini o‘zgartirish mumkin');
+    }
+    if (operation === 'approve') {
+      const refund = await tx.refund.findFirst({
+        where: { contractId, status: { in: ['PENDING', 'PROCESSING', 'SUCCEEDED'] } },
+        select: { id: true },
+      });
+      if (refund) throw new DomainError('CONTRACT_REFUND_IN_PROGRESS', 'Shartnoma uchun refund boshlangan');
+      const dispute = await tx.dispute.findFirst({
+        where: {
+          contractId,
+          OR: [
+            { status: { in: ['OPEN', 'UNDER_REVIEW'] } },
+            { status: 'RESOLVED', buyerAwardAmount: { gt: 0n } },
+          ],
+        },
+        select: { id: true, status: true },
+      });
+      if (dispute) {
+        if (dispute.status === 'RESOLVED') {
+          throw new DomainError('DISPUTE_ALREADY_RESOLVED', 'Nizo xaridor foydasiga hal qilingan, bosqichni tasdiqlab bo‘lmaydi');
+        }
+        throw new DomainError('DISPUTE_IN_PROGRESS', 'Ochiq nizo hal qilinishini kuting');
+      }
+    }
+  }
+
   async submitMilestone(
     contractId: string,
     milestoneId: string,
@@ -416,6 +452,7 @@ export class ContractService {
     await this.getSellerOwnedMilestoneOrThrow(contractId, milestoneId, sellerId);
     await this.assertContractFunded(contractId);
     const result = await this.prisma.$transaction(async (tx) => {
+      await this.assertMilestoneMutationAllowed(tx, contractId, 'submit');
       const cas = await tx.milestone.updateMany({
         where: { id: milestoneId, contractId, status: { in: ['IN_PROGRESS', 'REVISION_REQUESTED'] } },
         data: { status: 'SUBMITTED', submittedAt: new Date() },
@@ -467,6 +504,7 @@ export class ContractService {
   ): Promise<Milestone> {
     await this.getBuyerOwnedMilestoneOrThrow(contractId, milestoneId, buyerId);
     const result = await this.prisma.$transaction(async (tx) => {
+      await this.assertMilestoneMutationAllowed(tx, contractId, 'revision');
       const cas = await tx.milestone.updateMany({
         where: { id: milestoneId, contractId, status: 'SUBMITTED' },
         data: { status: 'REVISION_REQUESTED' },
@@ -524,7 +562,7 @@ export class ContractService {
   ): Promise<Milestone> {
     await this.getBuyerOwnedMilestoneOrThrow(contractId, milestoneId, buyerId);
     const result = await this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM contracts WHERE id = ${contractId}::uuid FOR UPDATE`;
+      await this.assertMilestoneMutationAllowed(tx, contractId, 'approve');
 
       const cas = await tx.milestone.updateMany({
         where: { id: milestoneId, contractId, status: 'SUBMITTED' },

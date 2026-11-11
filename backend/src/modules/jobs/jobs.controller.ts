@@ -1,5 +1,9 @@
-import { Body, Controller, Get, HttpCode, NotFoundException, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
+import { Roles } from '@/modules/auth/decorators/roles.decorator';
+import { RolesGuard } from '@/modules/auth/guards/roles.guard';
+import { SellerEligibilityGuard } from '@/common/guards/seller-eligibility.guard';
 import { Public } from '@/modules/auth/decorators/public.decorator';
 import { CurrentUser } from '@/modules/auth/decorators/current-user.decorator';
 import type { AccessTokenPayload } from '@/modules/auth/types/token-payload';
@@ -8,6 +12,7 @@ import { Page } from '@/common/pagination/page-query.dto';
 import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { CreateProposalDto } from './dto/create-proposal.dto';
+import { HireProposalDto } from './dto/hire-proposal.dto';
 import { ListJobsQueryDto } from './dto/list-jobs-query.dto';
 import { JobResponseDto, toJobResponseDto } from './dto/job-response.dto';
 
@@ -24,6 +29,8 @@ export class JobsController {
   }
 
   @ApiBearerAuth()
+  @Roles(Role.BUYER)
+  @UseGuards(RolesGuard)
   @Get('mine')
   @UseGuards(AccountStatusGuard)
   async listMine(
@@ -38,21 +45,24 @@ export class JobsController {
   }
 
   @ApiBearerAuth()
+  @Roles(Role.SELLER)
+  @UseGuards(RolesGuard)
   @Get('proposals/mine')
   @UseGuards(AccountStatusGuard)
   async listMyProposals(@CurrentUser() user: AccessTokenPayload) {
     return this.jobs.listMyProposals(user.sub);
   }
 
-  @Public()
+  @ApiBearerAuth()
+  @UseGuards(AccountStatusGuard)
   @Get('proposals/:proposalId')
-  async getProposal(@Param('proposalId') proposalId: string) {
-    const prop = await this.jobs.getProposal(proposalId);
-    if (!prop) throw new NotFoundException('Proposal not found');
-    return prop;
+  async getProposal(@CurrentUser() user: AccessTokenPayload, @Param('proposalId') proposalId: string) {
+    return this.jobs.getProposal(proposalId, user.sub);
   }
 
   @ApiBearerAuth()
+  @Roles(Role.SELLER)
+  @UseGuards(RolesGuard)
   @Post('proposals/:proposalId/withdraw')
   @HttpCode(200)
   @UseGuards(AccountStatusGuard)
@@ -64,20 +74,35 @@ export class JobsController {
   }
 
   @ApiBearerAuth()
+  @Roles(Role.BUYER)
+  @UseGuards(RolesGuard)
   @Post('proposals/:proposalId/hire')
   @HttpCode(200)
   @UseGuards(AccountStatusGuard)
-  async hireProposal(@Param('proposalId') proposalId: string) {
-    return this.jobs.hireProposal(proposalId);
-  }
-
-  @Public()
-  @Get(':id/proposals')
-  async listProposals(@Param('id') id: string) {
-    return this.jobs.listProposalsForJob(id);
+  async hireProposal(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param('proposalId') proposalId: string,
+    @Body() dto?: HireProposalDto,
+  ) {
+    return this.jobs.hireProposal(proposalId, user.sub, dto, {
+      id: user.sub,
+      type: 'USER',
+      name: user.sub,
+    });
   }
 
   @ApiBearerAuth()
+  @UseGuards(AccountStatusGuard)
+  @Roles(Role.BUYER)
+  @UseGuards(RolesGuard)
+  @Get(':id/proposals')
+  async listProposals(@CurrentUser() user: AccessTokenPayload, @Param('id') id: string) {
+    return this.jobs.listProposalsForJob(id, user.sub);
+  }
+
+  @ApiBearerAuth()
+  @Roles(Role.SELLER)
+  @UseGuards(RolesGuard, SellerEligibilityGuard)
   @Post(':id/proposals')
   @HttpCode(200)
   @UseGuards(AccountStatusGuard)
@@ -98,6 +123,8 @@ export class JobsController {
   }
 
   @ApiBearerAuth()
+  @Roles(Role.BUYER)
+  @UseGuards(RolesGuard)
   @Post()
   @HttpCode(200)
   @UseGuards(AccountStatusGuard)
@@ -111,6 +138,8 @@ export class JobsController {
   }
 
   @ApiBearerAuth()
+  @Roles(Role.BUYER)
+  @UseGuards(RolesGuard)
   @Patch(':id/close')
   @UseGuards(AccountStatusGuard)
   @ApiOkResponse({ type: JobResponseDto })
@@ -123,6 +152,8 @@ export class JobsController {
   }
 
   @ApiBearerAuth()
+  @Roles(Role.BUYER)
+  @UseGuards(RolesGuard)
   @Post(':id/close')
   @HttpCode(200)
   @UseGuards(AccountStatusGuard)

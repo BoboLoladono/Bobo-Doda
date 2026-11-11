@@ -69,7 +69,8 @@ export default function AdminsPage() {
   async function toggle(item: AdminAccount) {
     setError("");
     try {
-      setAdmins(await setAdminActive(item.id, !item.active));
+      await setAdminActive(item.id, !item.active);
+      setAdmins(await getAdminAccounts());
     } catch (err) {
       setError(adminErrorText(err));
     }

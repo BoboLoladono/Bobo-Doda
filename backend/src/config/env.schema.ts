@@ -99,6 +99,7 @@ export const envSchema = z
     S3_SECRET_KEY: z.string().optional(),
     S3_BUCKET_UPLOADS: z.string().default('bobololadono-uploads'),
     S3_BUCKET_KYC: z.string().default('bobololadono-kyc'),
+    KYC_SUBMISSION_ENABLED: booleanish.default('false'),
     DATA_RESIDENCY_COUNTRY: z.string().default('UZ'),
     DATA_RESIDENCY_ASSERTION: booleanish.default('true'),
 
@@ -405,18 +406,13 @@ export const envSchema = z
         }
       }
     }
-    // Rasmiy Click Merchant API
+    // Click provayderi bilan shartnoma mavjud emas — ushbu relizdan to'liq chiqarilgan
     if (env.PAYMENTS_ENABLED && env.PAYMENT_PROVIDER === 'CLICK') {
-      const required: (keyof typeof env)[] = ['CLICK_MERCHANT_ID', 'CLICK_SERVICE_ID', 'CLICK_SECRET_KEY'];
-      for (const key of required) {
-        if (!env[key]) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: [key],
-            message: `PAYMENT_PROVIDER=CLICK bo'lsa ${key} majburiy`,
-          });
-        }
-      }
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['PAYMENT_PROVIDER'],
+        message: "PAYMENT_PROVIDER=CLICK qo‘llab-quvvatlanmaydi: Click bilan shartnoma mavjud emas",
+      });
     }
     // Payme Payout Rail
     if (env.PAYOUTS_ENABLED && env.PAYOUT_PROVIDER === 'PAYME') {

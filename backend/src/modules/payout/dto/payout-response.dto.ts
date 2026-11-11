@@ -7,6 +7,7 @@ export class PayoutResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty({ enum: PayoutStatus }) status!: PayoutStatus;
   @ApiProperty({ description: 'Butun so‘m' }) amount!: number;
+  @ApiProperty({ description: 'Exact signed integer tiyin, decimal string; 100 tiyin = 1 UZS', example: '12345' }) amountTiyin!: string;
   @ApiProperty() currency!: string;
   @ApiProperty() destinationReference!: string;
 
@@ -23,6 +24,7 @@ export function toPayoutResponseDto(payout: Payout): PayoutResponseDto {
     id: payout.id,
     status: payout.status,
     amount: tiyinToSom(payout.amount),
+    amountTiyin: payout.amount.toString(),
     currency: payout.currency,
     destinationReference: payout.destinationReference,
     failureReason: payout.failureReason,

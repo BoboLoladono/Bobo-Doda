@@ -1,3 +1,4 @@
+import { tiyinToSom } from '@/common/money/money.util';
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
@@ -10,4 +11,10 @@ export class SellerBalanceResponseDto {
   @ApiProperty() currency!: string;
   @ApiProperty({ description: 'Butun so‘m — SELLER_PAYABLE hisobidagi joriy qoldiq' })
   available!: number;
+  @ApiProperty({ description: 'Exact signed integer tiyin as a decimal string; 100 tiyin = 1 UZS' })
+  availableTiyin!: string;
+}
+
+export function toSellerBalanceResponseDto(currency: string, balanceTiyin: bigint): SellerBalanceResponseDto {
+  return { currency, available: tiyinToSom(balanceTiyin), availableTiyin: balanceTiyin.toString() };
 }

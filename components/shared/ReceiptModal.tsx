@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import type { Milestone } from "@/lib/types";
 import { formatDate, formatMoney } from "@/lib/format";
-import { platformFee, sellerNet, PLATFORM_FEE_PERCENT } from "@/lib/fees";
+import { platformFee, sellerNet } from "@/lib/fees";
 import { useT } from "@/lib/i18n";
 
 interface ReceiptModalProps {
@@ -31,8 +31,8 @@ export function ReceiptModal({
 
   if (!milestone) return null;
 
-  const feeAmount = platformFee(milestone.amount);
-  const netAmount = sellerNet(milestone.amount);
+  const feeAmount = platformFee(milestone.amount, milestone.platformFeeRateBps);
+  const netAmount = sellerNet(milestone.amount, milestone.platformFeeRateBps);
 
   const receiptNo = `RCP-${(milestone.id || "100").replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}`;
   const paidDate = milestone.approvedAt ? formatDate(milestone.approvedAt, lang) : formatDate(new Date().toISOString(), lang);
@@ -140,7 +140,7 @@ export function ReceiptModal({
               </tr>
               <tr>
                 <td className="p-3">
-                  <p className="font-medium text-muted">Platforma xizmat haqi ({PLATFORM_FEE_PERCENT}%)</p>
+                  <p className="font-medium text-muted">Platforma xizmat haqi ({(milestone.platformFeeRateBps ?? 500) / 100}%)</p>
                   <p className="text-2xs text-faint">Xavfsiz Escrow kafolati va tranzaksiya infratuzilmasi</p>
                 </td>
                 <td className="p-3 text-right font-heading text-xs font-semibold text-muted">

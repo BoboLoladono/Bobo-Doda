@@ -61,6 +61,7 @@ execFileSync(
       // JWT emas — `backend/src/common/security/opaque-token.util.ts`).
       JWT_ACCESS_SECRET: 'x'.repeat(32),
       JWT_STAFF_ACCESS_SECRET: 'z'.repeat(32),
+      STAFF_TOTP_ENCRYPTION_KEY: process.env.STAFF_TOTP_ENCRYPTION_KEY || '2'.repeat(64),
     },
   },
 );

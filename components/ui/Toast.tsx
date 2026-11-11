@@ -4,6 +4,8 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -31,11 +33,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const toast = useCallback((text: string, kind: ToastKind = "success") => {
     const id = nextId++;
     setItems((prev) => [...prev, { id, kind, text }]);
-    /* Xato xabari uzoqroq turadi — 3.5s da o'qib ulgurmaslik mumkin edi */
-    setTimeout(
-      () => setItems((prev) => prev.filter((t) => t.id !== id)),
-      kind === "error" ? 7000 : 3500
-    );
+
   }, []);
 
   const dismiss = useCallback((id: number) => {
@@ -52,8 +50,35 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         className="pointer-events-none fixed bottom-4 left-1/2 z-[60] flex w-full max-w-sm -translate-x-1/2 flex-col gap-2 px-4"
       >
         {items.map((item) => (
+          <ToastMessage key={item.id} item={item} dismiss={dismiss} />
+        ))}
+      </div>
+    </ToastContext.Provider>
+  );
+}
+
+function ToastMessage({ item, dismiss }: { item: ToastItem; dismiss: (id: number) => void }) {
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const remaining = useRef(item.kind === "error" ? 7000 : 3500);
+  const paused = hovered || focused;
+  useEffect(() => {
+    if (paused) return;
+    const started = Date.now();
+    const timer = setTimeout(() => dismiss(item.id), remaining.current);
+    return () => {
+      clearTimeout(timer);
+      remaining.current = Math.max(0, remaining.current - (Date.now() - started));
+    };
+  }, [paused, item.id, dismiss]);
+  return (
           <div
-            key={item.id}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            onFocusCapture={() => setFocused(true)}
+            onBlurCapture={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
+            }}
             role={item.kind === "error" ? "alert" : "status"}
             className={`sb-fade-in pointer-events-auto flex items-center gap-3 rounded-card border bg-card px-4 py-3 text-sm shadow-overlay ${
               item.kind === "success"
@@ -75,9 +100,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <span className="flex-1">{item.text}</span>
             <ToastDismiss onClick={() => dismiss(item.id)} />
           </div>
-        ))}
-      </div>
-    </ToastContext.Provider>
   );
 }
 

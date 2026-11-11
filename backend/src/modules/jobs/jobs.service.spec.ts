@@ -2,6 +2,8 @@ import { JobStatus } from '@prisma/client';
 import { JobsService } from './jobs.service';
 import type { PrismaService } from '@/infra/prisma/prisma.service';
 import type { IdFactory } from '@/common/id/id.factory';
+import type { AuditService } from '@/common/audit/audit.service';
+import type { OutboxService } from '@/common/outbox/outbox.service';
 import { DomainError, ForbiddenError, NotFoundError } from '@/common/errors/domain-error';
 import { somToTiyin } from '@/common/money/money.util';
 
@@ -55,7 +57,10 @@ describe('JobsService', () => {
       } as unknown,
     } as unknown as PrismaService;
 
-    service = new JobsService(prisma as PrismaService, ids as IdFactory);
+    prisma.$transaction = jest.fn((fn: (tx: Partial<PrismaService>) => unknown) => fn(prisma)) as never;
+    const audit = { record: jest.fn().mockResolvedValue(undefined) } as unknown as AuditService;
+    const outbox = { enqueue: jest.fn().mockResolvedValue(undefined) } as unknown as OutboxService;
+    service = new JobsService(prisma as PrismaService, ids as IdFactory, audit, outbox);
   });
 
   describe('create', () => {
@@ -180,6 +185,13 @@ describe('JobsService', () => {
       );
       expect(res.status).toBe(JobStatus.CLOSED);
       expect(prisma.job?.update).toHaveBeenCalled();
+      expect(prisma.auditLog?.create).toHaveBeenCalled();
+    });
+
+    it('fails the transaction when mandatory audit logging fails', async () => {
+      (prisma.auditLog?.create as jest.Mock).mockRejectedValue(new Error('audit unavailable'));
+      await expect(service.closeAsAdmin(mockJob.id, 'Reason', { id: 'staff-1', type: 'STAFF', name: 'Admin' }))
+        .rejects.toThrow('audit unavailable');
     });
   });
 });

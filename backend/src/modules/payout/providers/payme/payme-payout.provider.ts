@@ -25,14 +25,14 @@ export class PaymePayoutProvider implements PayoutProvider {
 
   async createPayout(params: CreatePayoutParams): Promise<CreatePayoutResult> {
     const rawCard = params.destinationReference.replace(/[\s-]/g, '');
-    const isUzcard = /^8600\d{12}$/.test(rawCard);
+    const isUzcard = /^(8600|5614|6262)\d{12}$/.test(rawCard);
     const isHumo = /^9860\d{12}$/.test(rawCard);
     const isMaskedOrMock = /^(\d{4}[*]{6,8}\d{4})$/.test(rawCard) || rawCard.startsWith('TEST_');
 
     if (!isUzcard && !isHumo && !isMaskedOrMock) {
       throw new DomainError(
         'PAYOUT_PROVIDER_ERROR',
-        'Noto‘g‘ri karta raqami. Faqat Uzcard (8600) va Humo (9860) kartalari qo‘llab-quvvatlanadi.',
+        'Noto‘g‘ri karta raqami. Faqat Uzcard va Humo kartalari qo‘llab-quvvatlanadi.',
       );
     }
 
@@ -173,8 +173,10 @@ export class PaymePayoutProvider implements PayoutProvider {
 
     if (authVal && authVal.startsWith('Basic ')) {
       const expected = Buffer.from(`${this.options.login}:${this.options.key}`).toString('base64');
-      const provided = authVal.replace(/^Basic\s+/, '');
-      if (provided === expected) {
+      const provided = authVal.replace(/^Basic\s+/, '').trim();
+      const expBuf = Buffer.from(expected, 'utf8');
+      const provBuf = Buffer.from(provided, 'utf8');
+      if (expBuf.length === provBuf.length && timingSafeEqual(expBuf, provBuf)) {
         authenticated = true;
       }
     }
@@ -195,6 +197,14 @@ export class PaymePayoutProvider implements PayoutProvider {
       throw new DomainError('PAYOUT_WEBHOOK_INVALID', 'Yaroqsiz JSON formati');
     }
 
+    const paramsObj = (body.params && typeof body.params === 'object' ? body.params : {}) as Record<string, unknown>;
+    const resultObj = (body.result && typeof body.result === 'object' ? body.result : {}) as Record<string, unknown>;
+    const receiptObj = (paramsObj.receipt && typeof paramsObj.receipt === 'object'
+      ? paramsObj.receipt
+      : resultObj.receipt && typeof resultObj.receipt === 'object'
+        ? resultObj.receipt
+        : {}) as Record<string, unknown>;
+
     const eventId =
       typeof body.eventId === 'string'
         ? body.eventId
@@ -206,15 +216,23 @@ export class PaymePayoutProvider implements PayoutProvider {
         ? body.providerPayoutId
         : typeof body.receipt_id === 'string'
           ? body.receipt_id
-          : typeof body.id === 'string'
-            ? body.id
-            : '';
+          : typeof receiptObj._id === 'string'
+            ? receiptObj._id
+            : typeof paramsObj.id === 'string'
+              ? paramsObj.id
+              : typeof body.id === 'string'
+                ? body.id
+                : '';
     const statusVal =
       typeof body.status === 'string'
         ? body.status
         : typeof body.state === 'string'
           ? body.state
-          : '';
+          : typeof paramsObj.state === 'string' || typeof paramsObj.state === 'number'
+            ? String(paramsObj.state)
+            : typeof receiptObj.state === 'string' || typeof receiptObj.state === 'number'
+              ? String(receiptObj.state)
+              : '';
     const statusRaw = statusVal.toUpperCase();
     const isSuccess = statusRaw === 'SUCCEEDED' || statusRaw === 'PAID' || statusRaw === '4';
     const isFailed = statusRaw === 'FAILED' || statusRaw === 'CANCELLED' || statusRaw === '-1' || statusRaw === '-2';
@@ -228,7 +246,11 @@ export class PaymePayoutProvider implements PayoutProvider {
         ? body.amountTiyin
         : typeof body.amount === 'number'
           ? body.amount
-          : 0;
+          : typeof paramsObj.amount === 'number'
+            ? paramsObj.amount
+            : typeof receiptObj.amount === 'number'
+              ? receiptObj.amount
+              : 0;
     const currency = typeof body.currency === 'string' ? body.currency : 'UZS';
 
     return {

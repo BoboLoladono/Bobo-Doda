@@ -59,12 +59,15 @@ export default function LandingPage() {
     document.title = titles[lang] || titles.uz;
   }, [lang]);
 
-  /* Headline rotator (To'xtatish / davom ettirish qo'llab-quvvatlanadi) */
+  /* Headline rotator (To'xtatish / davom ettirish qo'llab-quvvatlanadi, prefers-reduced-motion inobatga olingan) */
   useEffect(() => {
     if (heroPaused) return;
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
     const timer = setInterval(() => {
       setHeadlineIndex((prev) => (prev + 1) % 4);
-    }, 3600);
+    }, 4500);
     return () => clearInterval(timer);
   }, [heroPaused]);
 
@@ -211,62 +214,62 @@ export default function LandingPage() {
     },
   ];
 
-  /* ── Categories List with full 3-language support ───────────────────── */
+  /* ── Categories List with full 3-language support (To'g'ridan-to'g'ri bozor katalogiga ulanadi) ─ */
   const categoriesList = [
     {
-      key: "dev",
+      key: "dasturlash",
       icon: "💻",
       title: tr("Dasturlash & IT", "Разработка & IT", "Development & IT"),
-      count: tr("1,420+ mutaxassis", "1 420+ специалистов", "1,420+ specialists"),
+      count: tr("Web, Mobile & Botlar", "Web, Mobile & Боты", "Web, Mobile & Bots"),
       price: tr("500,000 so'mdan", "от 500 000 сум", "from 500,000 UZS"),
     },
     {
-      key: "des",
+      key: "dizayn",
       icon: "🎨",
       title: tr("Dizayn & Kreativ", "Дизайн & Креатив", "Design & Creative"),
-      count: tr("980+ mutaxassis", "980+ специалистов", "980+ specialists"),
+      count: tr("UI/UX, Logotip & Brending", "UI/UX, Логотипы & Брендинг", "UI/UX, Logo & Branding"),
       price: tr("300,000 so'mdan", "от 300 000 сум", "from 300,000 UZS"),
     },
     {
-      key: "mar",
+      key: "marketing",
       icon: "📈",
       title: tr("Marketing & SMM", "Маркетинг & SMM", "Marketing & SMM"),
-      count: tr("730+ mutaxassis", "730+ специалистов", "730+ specialists"),
+      count: tr("Target, SEO & Reklama", "Таргет, SEO & Реклама", "Targeting, SEO & Ads"),
       price: tr("400,000 so'mdan", "от 400 000 сум", "from 400,000 UZS"),
     },
     {
-      key: "ai",
+      key: "dasturlash",
       icon: "🤖",
       title: tr("Sun'iy Intellekt & Data", "ИИ & Аналитика данных", "AI & Data Science"),
-      count: tr("310+ mutaxassis", "310+ специалистов", "310+ specialists"),
+      count: tr("AI botlar & Avtomatlashtirish", "AI-боты & Автоматизация", "AI Bots & Automation"),
       price: tr("800,000 so'mdan", "от 800 000 сум", "from 800,000 UZS"),
     },
     {
-      key: "vid",
+      key: "video",
       icon: "🎬",
       title: tr("Video & Motion 3D", "Видео & 3D Моушн", "Video & 3D Motion"),
-      count: tr("540+ mutaxassis", "540+ специалистов", "540+ specialists"),
+      count: tr("Reels, Montaj & Grafika", "Reels, Монтаж & Графика", "Reels, Editing & Motion"),
       price: tr("350,000 so'mdan", "от 350 000 сум", "from 350,000 UZS"),
     },
     {
-      key: "tra",
+      key: "kontent",
       icon: "✍️",
       title: tr("Matn & Tarjima", "Тексты & Переводы", "Writing & Translation"),
-      count: tr("460+ mutaxassis", "460+ специалистов", "460+ specialists"),
+      count: tr("Kopirayting & Redaktura", "Копирайтинг & Редактура", "Copywriting & Editing"),
       price: tr("150,000 so'mdan", "от 150 000 сум", "from 150,000 UZS"),
     },
     {
-      key: "biz",
+      key: "biznes",
       icon: "💼",
       title: tr("Biznes & Konsalting", "Бизнес & Консалтинг", "Business & Consulting"),
-      count: tr("390+ mutaxassis", "390+ специалистов", "390+ specialists"),
+      count: tr("Biznes-reja & Moliya", "Бизнес-план & Финансы", "Business Plan & Finance"),
       price: tr("600,000 so'mdan", "от 600 000 сум", "from 600,000 UZS"),
     },
     {
-      key: "cyb",
+      key: "dasturlash",
       icon: "🛡️",
       title: tr("Kiberxavfsizlik & QA", "Кибербезопасность & QA", "Cybersecurity & QA"),
-      count: tr("210+ mutaxassis", "210+ специалистов", "210+ specialists"),
+      count: tr("Xavfsizlik auditi & Testlash", "Аудит безопасности & Тесты", "Security Audit & QA"),
       price: tr("700,000 so'mdan", "от 700 000 сум", "from 700,000 UZS"),
     },
   ];
@@ -731,6 +734,29 @@ export default function LandingPage() {
           gap: 56px;
           align-items: center;
         }
+        .hero-pause-toggle {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 999px;
+          background: var(--card);
+          border: 1px solid var(--hair);
+          color: var(--n500);
+          font-size: 11px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .hero-pause-toggle:hover {
+          color: var(--ink);
+          border-color: rgba(20, 20, 20, 0.2);
+          transform: scale(1.05);
+        }
+        .hero-pause-toggle:focus-visible {
+          outline: 2px solid var(--orange);
+          outline-offset: 2px;
+        }
         .hero-title {
           font-family: var(--font-display);
           font-size: clamp(38px, 4.6vw, 70px);
@@ -741,7 +767,7 @@ export default function LandingPage() {
           color: var(--ink);
         }
         .hero-title .accent-orange {
-          color: var(--orange);
+          color: #d45100;
         }
         .hero-desc {
           font-size: 19px;
@@ -868,7 +894,7 @@ export default function LandingPage() {
           font-family: var(--font-display);
           font-size: 25px;
           font-weight: 800;
-          color: var(--orange);
+          color: var(--orange-ink);
           letter-spacing: -0.02em;
         }
         .deal-parties-grid {
@@ -901,11 +927,11 @@ export default function LandingPage() {
         }
         .party-avatar.buyer {
           background: #e0f2fe;
-          color: #0284c7;
+          color: #0369a1;
         }
         .party-avatar.freelancer {
           background: #fef3c7;
-          color: #d97706;
+          color: #92400e;
         }
         .party-name {
           font-size: 12.5px;
@@ -961,10 +987,10 @@ export default function LandingPage() {
           font-size: 11px;
         }
         .milestone-status.done {
-          color: #059669;
+          color: #047857;
         }
         .milestone-status.escrow {
-          color: var(--orange);
+          color: #9a3412;
         }
         .deal-floating-badge-top {
           position: absolute;
@@ -1036,7 +1062,7 @@ export default function LandingPage() {
           margin-bottom: 8px;
         }
         .statbar dt.highlight {
-          color: var(--orange);
+          color: var(--orange-ink);
         }
         .statbar dd {
           margin: 0;
@@ -1090,7 +1116,7 @@ export default function LandingPage() {
           font-size: 15px;
           font-weight: 700;
           letter-spacing: 0.1em;
-          color: var(--n300);
+          color: var(--n500);
         }
         .stage-item.lime-card .stage-num {
           color: #5A6A18;
@@ -1138,11 +1164,10 @@ export default function LandingPage() {
           font-size: clamp(24px, 3.4vw, 40px);
           font-weight: 700;
           letter-spacing: -0.03em;
-          color: var(--ink);
-          opacity: 0.4;
+          color: var(--n700);
           text-decoration: line-through;
           text-decoration-thickness: 3px;
-          text-decoration-color: var(--orange);
+          text-decoration-color: var(--orange-ink);
           padding: 16px 0;
           border-bottom: 1px solid rgba(20, 20, 20, 0.08);
         }
@@ -1195,9 +1220,13 @@ export default function LandingPage() {
           font-size: 96px;
           font-weight: 800;
           letter-spacing: -0.06em;
-          color: var(--shell);
+          color: rgba(20, 20, 20, 0.04);
           pointer-events: none;
           line-height: 1;
+          user-select: none;
+        }
+        .card-big-num::before {
+          content: attr(data-num);
         }
         .card-tag {
           font-size: 11px;
@@ -1234,7 +1263,7 @@ export default function LandingPage() {
           font-size: 22px;
           font-weight: 800;
           letter-spacing: -0.03em;
-          color: var(--orange);
+          color: var(--orange-ink);
         }
         .card-bid-pill {
           font-size: 12px;
@@ -1347,7 +1376,7 @@ export default function LandingPage() {
         }
         .faq-icon-cross {
           font-size: 20px;
-          color: var(--orange);
+          color: var(--orange-ink);
           transition: transform 0.2s;
         }
         .faq-row[data-open="true"] .faq-icon-cross {
@@ -1425,7 +1454,7 @@ export default function LandingPage() {
           font-family: inherit;
         }
         .footer-col-yv a:hover, .footer-col-yv button:hover {
-          color: var(--orange);
+          color: var(--orange-ink);
         }
 
         /* ── Mobile Responsive ─────────────────────────────────────── */
@@ -1658,19 +1687,33 @@ export default function LandingPage() {
             <div className="container-yv">
               <div className="hero-grid">
                 <div>
-                  <span className="eyebrow-pill">
-                    <span className="eyebrow-pill-dot" aria-hidden="true" />
-                    {tr(
-                      "Markaziy Osiyo raqamli xizmatlar bozori",
-                      "Рынок цифровых услуг Центральной Азии",
-                      "Central Asia Digital Services Marketplace"
-                    )}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                    <span className="eyebrow-pill" style={{ margin: 0 }}>
+                      <span className="eyebrow-pill-dot" aria-hidden="true" />
+                      {tr(
+                        "Markaziy Osiyo raqamli xizmatlar bozori",
+                        "Рынок цифровых услуг Центральной Азии",
+                        "Central Asia Digital Services Marketplace"
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setHeroPaused((v) => !v)}
+                      className="hero-pause-toggle"
+                      aria-label={heroPaused ? tr("Sarlavhalar aylanishini yoqish", "Включить авторотацию", "Enable title rotation") : tr("Sarlavhalar aylanishini to'xtatish", "Приостановить авторотацию", "Pause title rotation")}
+                      title={heroPaused ? tr("Aylantirish", "Возобновить", "Play") : tr("To'xtatish", "Пауза", "Pause")}
+                    >
+                      {heroPaused ? "▶" : "⏸"}
+                    </button>
+                  </div>
 
                   <h1
                     className="hero-title"
                     onMouseEnter={() => setHeroPaused(true)}
                     onMouseLeave={() => setHeroPaused(false)}
+                    onFocus={() => setHeroPaused(true)}
+                    onBlur={() => setHeroPaused(false)}
+                    aria-live="polite"
                   >
                     <span>{headlines[headlineIndex].line1}</span>
                     <br />
@@ -1690,13 +1733,13 @@ export default function LandingPage() {
                       <span>{tr("Buyurtma berish", "Разместить заказ", "Post a project")}</span>
                       <span className="badge" aria-hidden="true">↗</span>
                     </Link>
-                    <Link href="#portfolio" className="btn-outline">
+                    <Link href="/bozor?tab=jobs" className="btn-outline">
                       {tr("Buyurtmalarni ko'rish", "Смотреть заказы", "Explore jobs")}
                     </Link>
                   </div>
 
                   <div style={{ display: "inline-flex", alignItems: "center", gap: 12, padding: "8px 18px 8px 12px", borderRadius: 999, background: "var(--card)", border: "1px solid var(--hair)", boxShadow: "var(--elev-sm)" }}>
-                    <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 18, color: "var(--orange)" }}>
+                    <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 18, color: "var(--orange-ink)" }}>
                       100%
                     </span>
                     <span style={{ fontSize: 13.5, color: "var(--n500)", fontWeight: 600 }}>
@@ -1711,14 +1754,14 @@ export default function LandingPage() {
                     {/* Floating Trust Badge 1 */}
                     <div className="deal-floating-badge-top" aria-hidden="true">
                       <span style={{ fontSize: 16 }}>⚡</span>
-                      <span>{tr("12 daqiqada 9 ta taklif", "9 откликов за 12 минут", "9 proposals in 12 min")}</span>
+                      <span>{tr("Tezkor takliflar va saralash", "Быстрые отклики и подбор", "Fast proposals & talent matching")}</span>
                     </div>
 
                     <div className="hero-deal-card">
                       <div className="deal-card-header">
                         <div className="deal-status-pill">
                           <span className="deal-status-dot" aria-hidden="true" />
-                          <span>{tr("Jonli bitim #BD-4892", "Сделка #BD-4892", "Deal #BD-4892")}</span>
+                          <span>{tr("Escrow bitimi namunasi", "Пример сделки в Escrow", "Escrow deal preview")}</span>
                         </div>
                         <div className="deal-escrow-badge">
                           <span aria-hidden="true">🛡️</span>
@@ -1806,7 +1849,7 @@ export default function LandingPage() {
                     {/* Floating Trust Badge 2 */}
                     <div className="deal-floating-badge-bottom" aria-hidden="true">
                       <span style={{ color: "var(--lime)" }}>🔒</span>
-                      <span>{tr("Mablag' kafolati: 0% xavf", "Гарантия возврата 100%", "100% money-back guarantee")}</span>
+                      <span>{tr("Natija tekshirilgach to'lanadi", "Выплата только после проверки", "Payment released upon approval")}</span>
                     </div>
                   </div>
                 </div>
@@ -1814,20 +1857,35 @@ export default function LandingPage() {
             </div>
           </section>
 
-          {/* ── STATBAR (Yoshlar Ventures uslubidagi ulkan raqamlar) ───── */}
+          {/* ── STATBAR (Halol va tasdiqlangan afzalliklar) ───────────── */}
           <section className="statbar-wrap">
             <dl className="nav-container statbar">
               <div>
-                <dt>18,400+</dt>
-                <dd>{tr("Muvaffaqiyatli bitimlar", "Успешных контрактов", "Completed contracts")}</dd>
+                <dt>100%</dt>
+                <dd>
+                  <span>{tr("Escrow himoyasi", "Защита средств Escrow", "Escrow protection")}</span>
+                  <span style={{ display: "block", fontSize: 13, color: "var(--n500)", margin: "6px 0 0", textTransform: "none", letterSpacing: "normal", fontWeight: 400 }}>
+                    {tr("Mablag' qabul qilinguncha xavfsiz muzlatiladi", "Средства надежно резервируются до приемки", "Funds safely held until your approval")}
+                  </span>
+                </dd>
               </div>
               <div>
-                <dt className="highlight">100%</dt>
-                <dd>{tr("Muzlatilgan kafolat", "Защита средств Escrow", "Escrow protected funds")}</dd>
+                <dt className="highlight">0%</dt>
+                <dd>
+                  <span>{tr("Xaridor komissiyasi", "Комиссия заказчика", "Client platform fee")}</span>
+                  <span style={{ display: "block", fontSize: 13, color: "var(--n500)", margin: "6px 0 0", textTransform: "none", letterSpacing: "normal", fontWeight: 400 }}>
+                    {tr("Xaridor uchun xizmat mutlaqo bepul", "Для заказчика сервис абсолютно бесплатный", "Zero platform fee for clients")}
+                  </span>
+                </dd>
               </div>
               <div>
-                <dt>&lt; 14 min</dt>
-                <dd>{tr("O'rtacha birinchi taklif", "Средний первый отклик", "Average response time")}</dd>
+                <dt>100%</dt>
+                <dd>
+                  <span>{tr("Elektron shartnoma", "Электронный договор", "Legal digital contract")}</span>
+                  <span style={{ display: "block", fontSize: 13, color: "var(--n500)", margin: "6px 0 0", textTransform: "none", letterSpacing: "normal", fontWeight: 400 }}>
+                    {tr("Har bir buyurtma uchun avtomatik shartnoma", "Каждая сделка оформляется договором", "Every milestone backed by formal agreement")}
+                  </span>
+                </dd>
               </div>
             </dl>
           </section>
@@ -1925,18 +1983,22 @@ export default function LandingPage() {
 
           {/* ── MARQUEE PORTFOLIO / RECENT JOBS ───────────────────────── */}
           <section className="stages-section" id="portfolio" style={{ paddingBottom: 30 }}>
-            <div className="container-yv" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 36 }}>
+            <div className="container-yv" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 36, flexWrap: "wrap", gap: 16 }}>
               <div>
                 <span className="eyebrow-pill">
                   <span className="eyebrow-pill-dot" aria-hidden="true" />
-                  {tr("Qaynoq loyihalar", "Лента проектов", "Live Feed")}
+                  {tr("Bozor talabi", "Лента заказов", "Marketplace demand")}
                 </span>
                 <h2 className="section-title" style={{ margin: 0 }}>
-                  {tr("Jonli buyurtmalar oqimi", "Свежие заказы в реальном времени", "Live project feed in real time")}
+                  {tr("Ommabop loyihalar oqimi", "Популярные проекты и направления", "Trending marketplace projects")}
                 </h2>
               </div>
-              <Link href="/kirish?tab=register&role=mutaxassis" className="btn-outline" style={{ display: "none" }}>
-                {tr("Barchasi ↗", "Все ↗", "View all ↗")}
+              <Link
+                href="/bozor?tab=jobs"
+                className="btn-outline"
+                style={{ display: "inline-flex", minHeight: 44, padding: "0 22px", borderRadius: 999 }}
+              >
+                {tr("Barcha e'lonlarni ko'rish ↗", "Все заказы ↗", "Explore all jobs ↗")}
               </Link>
             </div>
 
@@ -1944,8 +2006,13 @@ export default function LandingPage() {
               <div className="marquee-track">
                 {/* 1-loop */}
                 {portfolioItems.map((item) => (
-                  <article key={item.num} className="yv-job-card">
-                    <span className="card-big-num" aria-hidden="true">{item.num}</span>
+                  <Link
+                    href="/bozor?tab=jobs"
+                    key={item.num}
+                    className="yv-job-card"
+                    style={{ textDecoration: "none", color: "inherit" }}
+                  >
+                    <span className="card-big-num" aria-hidden="true" data-num={item.num} />
                     <div>
                       <div className="card-tag">{item.category}</div>
                       <h3 className="card-job-title">{item.title}</h3>
@@ -1962,12 +2029,17 @@ export default function LandingPage() {
                         {tr(`${item.bids} ta taklif`, `${item.bids} откликов`, `${item.bids} proposals`)}
                       </span>
                     </div>
-                  </article>
+                  </Link>
                 ))}
                 {/* 2-loop (infinite marquee seamless effect) */}
                 {portfolioItems.map((item) => (
-                  <article key={`loop-${item.num}`} className="yv-job-card">
-                    <span className="card-big-num" aria-hidden="true">{item.num}</span>
+                  <Link
+                    href="/bozor?tab=jobs"
+                    key={`loop-${item.num}`}
+                    className="yv-job-card"
+                    style={{ textDecoration: "none", color: "inherit" }}
+                  >
+                    <span className="card-big-num" aria-hidden="true" data-num={item.num} />
                     <div>
                       <div className="card-tag">{item.category}</div>
                       <h3 className="card-job-title">{item.title}</h3>
@@ -1984,7 +2056,7 @@ export default function LandingPage() {
                         {tr(`${item.bids} ta taklif`, `${item.bids} откликов`, `${item.bids} proposals`)}
                       </span>
                     </div>
-                  </article>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -2005,10 +2077,10 @@ export default function LandingPage() {
 
               <div className="cat-grid-yv">
                 {categoriesList.map((c) => (
-                  <Link href={`/kirish?tab=register&role=xaridor&cat=${c.key}`} key={c.key} className="cat-card-yv">
+                  <Link href={`/bozor?tab=services&category=${c.key}`} key={`${c.key}-${c.title}`} className="cat-card-yv">
                     <div>
                       <div className="cat-icon-wrap">
-                        <span style={{ fontSize: 20 }}>⚡</span>
+                        <span style={{ fontSize: 20 }}>{c.icon}</span>
                       </div>
                       <h3>{c.title}</h3>
                       <p>{c.count}</p>
@@ -2052,7 +2124,7 @@ export default function LandingPage() {
                     {tr("Loyiha summasi", "Сумма проекта", "Project budget")}
                   </label>
                   <div
-                    style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 800, color: "var(--orange)", margin: "8px 0" }}
+                    style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 800, color: "var(--orange-ink)", margin: "8px 0" }}
                     aria-live="polite"
                   >
                     {formatSum(calcBudget)} UZS
@@ -2079,7 +2151,7 @@ export default function LandingPage() {
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
                       <span style={{ color: "var(--n500)" }}>{tr("Escrow himoyasi:", "Защита Escrow:", "Escrow protection:")}</span>
-                      <strong style={{ color: "var(--orange)" }}>
+                      <strong style={{ color: "var(--orange-ink)" }}>
                         {tr("100% Kafolatlangan", "100% Гарантировано", "100% Guaranteed")}
                       </strong>
                     </div>
@@ -2092,6 +2164,13 @@ export default function LandingPage() {
                       <span style={{ color: "var(--ink)" }}>{formatSum(specialistShare)} UZS</span>
                     </div>
                   </div>
+                  <p style={{ color: "var(--n500)", fontSize: 13, marginTop: 16, textAlign: "center", borderTop: "1px dashed var(--hair)", paddingTop: 14 }}>
+                    {tr(
+                      "To'lovlar Payme, Click va Uzum orqali xavfsiz qabul qilinadi. Escrow depoziti ish qabul qilinguncha kafolatlanadi.",
+                      "Платежи безопасно проводятся через Payme, Click и Uzum. Депозит застрахован до полного приема работы.",
+                      "Payments are securely processed via Payme, Click, and Uzum. Escrow deposits are held safely until completion."
+                    )}
+                  </p>
                 </div>
               </div>
             </div>

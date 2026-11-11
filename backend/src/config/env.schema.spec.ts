@@ -502,25 +502,16 @@ describe('validateEnv', () => {
   });
 
   describe('Click Payment & Payme Payout & 547-sonli Qonun', () => {
-    it('PAYMENT_PROVIDER=CLICK credential yetishmasa rad etiladi', () => {
+    it('PAYMENT_PROVIDER=CLICK rad etiladi (Click bilan shartnoma mavjud emas)', () => {
       expect(() =>
         validateEnv({
           ...base,
           PAYMENT_PROVIDER: 'CLICK',
+          CLICK_MERCHANT_ID: 'click-merch-1',
+          CLICK_SERVICE_ID: 'click-serv-1',
+          CLICK_SECRET_KEY: 'click-secret-key-1',
         }),
-      ).toThrow(/CLICK_MERCHANT_ID/);
-    });
-
-    it('PAYMENT_PROVIDER=CLICK to‘liq credential bilan o‘tadi', () => {
-      const env = validateEnv({
-        ...base,
-        PAYMENT_PROVIDER: 'CLICK',
-        CLICK_MERCHANT_ID: 'click-merch-1',
-        CLICK_SERVICE_ID: 'click-serv-1',
-        CLICK_SECRET_KEY: 'click-secret-key-1',
-      });
-      expect(env.PAYMENT_PROVIDER).toBe('CLICK');
-      expect(env.CLICK_MERCHANT_ID).toBe('click-merch-1');
+      ).toThrow(/Click bilan shartnoma mavjud emas/);
     });
 
     it('PAYOUT_PROVIDER=PAYME credential yetishmasa rad etiladi', () => {

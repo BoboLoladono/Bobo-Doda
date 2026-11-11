@@ -177,6 +177,7 @@ jobs:
       # CI yashil qolib ketmasin: shu flag yoqilganda testlar SKIP o'rniga
       # YIQILADI ("infra topilmadi"). Lokal ishda flag yo'q — qulay skip.
       CI_REQUIRE_E2E: 'true'
+      E2E_ISOLATED_INFRA: 'true'
     steps:
       - uses: actions/checkout@v4
 

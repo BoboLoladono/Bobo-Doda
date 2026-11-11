@@ -52,6 +52,7 @@ export class MeController {
   }
 
   @Post('roles/choose')
+  @UseGuards(AccountStatusGuard)
   @HttpCode(200)
   @ApiOkResponse({ type: AuthSessionDto })
   async chooseRole(
@@ -64,6 +65,22 @@ export class MeController {
     return toSessionDto(result);
   }
 
+  @Post('roles/switch')
+  @UseGuards(AccountStatusGuard)
+  @HttpCode(200)
+  @ApiOkResponse({ type: AuthSessionDto })
+  async switchRole(
+    @CurrentUser() user: AccessTokenPayload,
+    @Body() dto: ChooseRoleDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthSessionDto> {
+    const result = await this.auth.switchRole(user, dto.role);
+    this.setCookie(res, result.refreshToken);
+    return toSessionDto(result);
+  }
+
+  @Get('sessions')
+  @ApiOkResponse({ type: [SessionDto] })
   async listSessions(@CurrentUser() user: AccessTokenPayload): Promise<SessionDto[]> {
     return this.me.listSessions(user.sub, user.familyId);
   }

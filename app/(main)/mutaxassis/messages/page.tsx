@@ -78,7 +78,7 @@ export default function XabarlarPage() {
         }
 
         /* Kelgan taklif suhbatlari (qabul qilinganlari shartnomaga ko'chgan) */
-        const openOffers = offers.filter((o) => o.status !== "qabul_qilindi");
+        const openOffers = offers.filter((o) => o.status === "yuborilgan");
         /* `allSettled` — bitta taklif suhbati yuklanmasa BUTUN inbox
            xatoga o'tib ketmasin (ilgari `all` bilan shunday bo'lardi). */
         const offerThreads = await Promise.allSettled(

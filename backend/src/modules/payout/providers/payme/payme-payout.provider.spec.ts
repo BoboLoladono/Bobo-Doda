@@ -121,4 +121,73 @@ describe('PaymePayoutProvider', () => {
     expect(verified.providerPayoutId).toBe('payout-100');
     expect(verified.amountTiyin).toBe(BigInt(5000000));
   });
+
+  it('accepts co-badged Uzcard cards (5614, 6262)', async () => {
+    const mockFetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        result: {
+          receipt: { _id: 'receipt-5614', create_time: 1700000000000 },
+        },
+      }),
+    });
+    global.fetch = mockFetch;
+
+    const provider = new PaymePayoutProvider(options);
+
+    const res1 = await provider.createPayout({
+      payoutId: 'payout-5614',
+      sellerId: 'seller-1',
+      destinationReference: '5614 1234 5678 9012',
+      amountTiyin: BigInt(2000000),
+      currency: 'UZS',
+    });
+    expect(res1.providerPayoutId).toBe('receipt-5614');
+
+    const res2 = await provider.createPayout({
+      payoutId: 'payout-6262',
+      sellerId: 'seller-1',
+      destinationReference: '6262 1234 5678 9012',
+      amountTiyin: BigInt(3000000),
+      currency: 'UZS',
+    });
+    expect(res2.providerPayoutId).toBe('receipt-5614');
+  });
+
+  it('extracts webhook fields from nested params and result objects', () => {
+    const provider = new PaymePayoutProvider(options);
+    const authHeader = `Basic ${Buffer.from(`${options.login}:${options.key}`).toString('base64')}`;
+
+    const nestedPayload = {
+      method: 'receipts.state',
+      params: {
+        receipt: {
+          _id: 'receipt-nested-999',
+          state: 4,
+          amount: 7500000,
+        },
+      },
+    };
+
+    const verified = provider.verifyWebhook({
+      rawBody: Buffer.from(JSON.stringify(nestedPayload)),
+      headers: { authorization: authHeader },
+    });
+
+    expect(verified.status).toBe('SUCCEEDED');
+    expect(verified.providerPayoutId).toBe('receipt-nested-999');
+    expect(verified.amountTiyin).toBe(BigInt(7500000));
+  });
+
+  it('rejects invalid timing-attacked basic auth token', () => {
+    const provider = new PaymePayoutProvider(options);
+    const invalidAuth = `Basic ${Buffer.from(`wrong:wrong`).toString('base64')}`;
+
+    expect(() =>
+      provider.verifyWebhook({
+        rawBody: Buffer.from(JSON.stringify({ id: '1', status: 'SUCCEEDED' })),
+        headers: { authorization: invalidAuth },
+      }),
+    ).toThrow(DomainError);
+  });
 });

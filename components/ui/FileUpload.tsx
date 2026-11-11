@@ -123,7 +123,7 @@ export function FileUpload({
                 type="button"
                 onClick={() => onChange(value.filter((_, idx) => idx !== i))}
                 aria-label={t("upload.remove")}
-                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-line bg-card text-2xs text-muted transition-colors duration-150 hover:text-danger shadow-xs"
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-line bg-card text-2xs text-muted transition-colors duration-150 hover:text-danger shadow-xs after:absolute after:-inset-3 after:content-[''] focus:outline-hidden focus:ring-2 focus:ring-primary/40"
               >
                 ×
               </button>
@@ -143,7 +143,7 @@ export function FileUpload({
           </button>
         )}
       </div>
-      <p className="text-2xs text-faint">
+      <p className="text-2xs text-faint" aria-live="polite">
         {full ? t("upload.limit") : `${t("upload.hint")} · ${value.length}/${max}`}
       </p>
       {(fileError || error) && (

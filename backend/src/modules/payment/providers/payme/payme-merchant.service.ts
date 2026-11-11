@@ -131,9 +131,8 @@ export class PaymeMerchantService {
 
     if (payment.status !== 'PENDING') {
       throw new PaymeRpcError(
-        PAYME_ERROR.ACCOUNT_NOT_FOUND,
+        PAYME_ERROR.OPERATION_NOT_ALLOWED,
         'Bu hisob uchun to‘lov allaqachon yakunlangan',
-        PAYME_ACCOUNT_FIELD,
       );
     }
 
@@ -186,9 +185,8 @@ export class PaymeMerchantService {
           return this.createTransactionResponse(race, payment);
         }
         throw new PaymeRpcError(
-          PAYME_ERROR.ACCOUNT_NOT_FOUND,
+          PAYME_ERROR.OPERATION_NOT_ALLOWED,
           'Bu hisob uchun boshqa transaksiya allaqachon mavjud',
-          PAYME_ACCOUNT_FIELD,
         );
       }
       throw err;
@@ -277,6 +275,17 @@ export class PaymeMerchantService {
     }
 
     if (found.state === PAYME_STATE.PERFORMED) {
+      const payment = await this.prisma.payment.findUnique({
+        where: { id: found.paymentId },
+        include: { contract: { select: { status: true } } },
+      });
+      if (payment?.contract?.status === 'COMPLETED') {
+        throw new PaymeRpcError(
+          PAYME_ERROR.CANNOT_CANCEL_COMPLETED,
+          'Buyurtma to‘liq bajarilgan, bekor qilib bo‘lmaydi',
+        );
+      }
+
       // Payme spetsifikatsiyasi: bajarilgan transaksiyani bekor qilish (state: -2, reason: 5)
       const cancelTime = new Date();
       const cancelReason = PAYME_REASON.CANCELLED_AFTER_PERFORM;

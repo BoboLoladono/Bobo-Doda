@@ -153,8 +153,8 @@ function write<T>(key: string, value: T): void {
   }
 }
 
-/* v8: Rich full-flow demo data for all platform capabilities */
-const SEED_VERSION = "18";
+/* Production clean seed: barcha mock ma'lumotlar olib tashlangan */
+const SEED_VERSION = "clean_v19";
 
 /** To'liq ISO sana-vaqt satri ("2026-03-05T16:00:00.000Z").
     Faqat shu shakl siljitiladi — "1994-05-12" kabi tug'ilgan sanalar tegilmaydi. */
@@ -252,14 +252,8 @@ function ensureSeed(): void {
     write(KEYS.withdrawalRequests, fresh.withdrawalRequests);
     write(KEYS.cards, fresh.cards);
     write(KEYS.disputes, fresh.disputes);
-    write(KEYS.balances, {
-      "u-b2": 4500000,
-      "u-b1": 2000000,
-    });
-    write(KEYS.withdrawn, {
-      "u-1": 3325000,
-      "u-2": 1900000,
-    });
+    write(KEYS.balances, {});
+    write(KEYS.withdrawn, {});
     // Yangi seed versiyasi o'rnatiladi, lekin mavjud foydalanuvchi sessiyasiga tegilmaydi
     window.localStorage.setItem(KEYS.seeded, SEED_VERSION);
   }

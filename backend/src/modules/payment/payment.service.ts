@@ -61,23 +61,6 @@ export class PaymentService {
     }
     assertSupportedCurrency(contract.currency);
 
-    // Konkurentlik tekshiruvi (Yakuniy raund talabi 1): bitta shartnomaga bir nechta
-    // parallel to'lov yaratilishini bloklash. Shartnomada allaqachon PENDING yoki
-    // PROCESSING holatidagi to'lov bo'lsa yangi so'rov rad etiladi.
-    const existingActive = await this.prisma.payment.findFirst({
-      where: { contractId, status: { in: ['PENDING', 'PROCESSING', 'SUCCEEDED'] } },
-      select: { id: true, status: true },
-    });
-    if (existingActive) {
-      if (existingActive.status === 'SUCCEEDED') {
-        throw new DomainError('PAYMENT_ALREADY_SUCCEEDED', 'Bu shartnoma allaqachon to‘langan');
-      }
-      throw new DomainError(
-        'PAYMENT_ALREADY_IN_PROGRESS',
-        'Ushbu shartnoma uchun to‘lov allaqachon jarayonda (PENDING yoki PROCESSING)',
-      );
-    }
-
     const paymentId = this.ids.next();
     let payment: Payment;
     try {
@@ -86,6 +69,10 @@ export class PaymentService {
         // faqat bitta to'lov yaratish oqimi kirishi uchun Contract qatorini
         // `FOR UPDATE` bilan qulflaymiz. Parallel so'rovlar navbatda kutadi.
         await tx.$queryRaw`SELECT id FROM contracts WHERE id = ${contractId}::uuid FOR UPDATE`;
+        const current = await tx.contract.findUniqueOrThrow({ where: { id: contractId } });
+        if (current.status !== 'ACTIVE') {
+          throw new DomainError('PAYMENT_NOT_ALLOWED', 'Faqat faol shartnoma uchun to‘lov boshlash mumkin');
+        }
 
         const existingTx = await tx.payment.findFirst({
           where: { contractId, status: { in: ['PENDING', 'PROCESSING', 'SUCCEEDED'] } },

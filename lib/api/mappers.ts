@@ -300,8 +300,9 @@ export function mapContract(
 
   return {
     id: c.id,
-    sourceType: "xizmat",
-    serviceId: c.serviceId,
+    sourceType: c.sourceType === "JOB" ? "taklif" : "xizmat",
+    serviceId: c.serviceId ?? undefined,
+    jobId: c.jobId ?? undefined,
     buyerId: c.buyerId,
     buyerName: opts.buyerName ?? "Xaridor",
     sellerId: c.sellerId,
@@ -318,7 +319,7 @@ export function mapContract(
   };
 }
 
-export function mapMilestone(m: RealMilestone, funded: boolean): Model.Milestone {
+export function mapMilestone(m: RealMilestone, funded: boolean, platformFeeRateBps?: number): Model.Milestone {
   let status: Model.MilestoneStatus;
   switch (m.status) {
     case "PENDING":
@@ -343,6 +344,7 @@ export function mapMilestone(m: RealMilestone, funded: boolean): Model.Milestone
     ? new Date(new Date(submittedAtStr).getTime() + 3 * 86400000).toISOString()
     : undefined;
   return {
+    platformFeeRateBps,
     id: m.id,
     contractId: m.contractId,
     title: m.title,

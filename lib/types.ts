@@ -281,6 +281,8 @@ export interface DeliverableFile {
 }
 
 export interface Milestone {
+  /** Immutable server contract fee snapshot (basis points), not browser settings. */
+  platformFeeRateBps?: number;
   id: string;
   contractId: string;
   title: string;

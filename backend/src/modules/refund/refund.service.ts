@@ -95,6 +95,20 @@ export class RefundService {
     let refund: Refund;
     try {
       refund = await this.prisma.$transaction(async (tx) => {
+        // Serialize the decision with settlement and dispute opening. Preflight
+        // reads above are only for feedback; they cannot authorize a refund.
+        await tx.$queryRaw`SELECT id FROM contracts WHERE id = ${contractId}::uuid FOR UPDATE`;
+        const current = await tx.contract.findUniqueOrThrow({ where: { id: contractId } });
+        if (current.status !== 'ACTIVE') {
+          throw new DomainError('REFUND_NOT_ALLOWED', 'Faqat faol shartnoma uchun refund mumkin');
+        }
+        const dispute = await tx.dispute.findFirst({
+          where: { contractId, status: { in: ['OPEN', 'UNDER_REVIEW'] } },
+          select: { id: true },
+        });
+        if (dispute) {
+          throw new DomainError('DISPUTE_IN_PROGRESS', 'Ochiq nizo uchun refund faqat nizo orqali amalga oshiriladi');
+        }
         const created = await tx.refund.create({
           data: {
             id: refundId,

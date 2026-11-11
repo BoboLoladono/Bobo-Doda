@@ -17,11 +17,6 @@ const DELIBERATELY_UNTYPED = new Set<string>([
   // Payme JSON-RPC 2.0 konverti: Basic auth bilan himoyalangan, har metod
   // parametrlari servisda alohida tekshiriladi (bitta DTO bilan ifodalab bo'lmaydi).
   'PaymeMerchantController.handle',
-  // Click Merchant RPC: imzo va parametrlarni Click spetsifikatsiyasi bo'yicha
-  // o'zi tekshiradi (xatolar HTTP 400 emas, Click formatidagi JSON bo'lishi shart).
-  'ClickMerchantController.handleGeneral',
-  'ClickMerchantController.handlePrepare',
-  'ClickMerchantController.handleComplete',
 ]);
 
 const ERASED_TYPES: ReadonlySet<unknown> = new Set<unknown>([undefined, Object, String, Number, Boolean, Array]);

@@ -333,6 +333,8 @@ export default function BozorPage() {
       {/* Main 3-Tab Navigator */}
       <div>
         <Tabs
+          panelId="market-results"
+          idPrefix="market"
           value={tab}
           onChange={(v) => {
             setTab(v as TabKey);
@@ -568,6 +570,7 @@ export default function BozorPage() {
       </div>
 
       {/* Content Section */}
+      <div id="market-results" role="tabpanel" aria-labelledby={`market-tab-${tab}`} tabIndex={0}>
       {loadError ? (
         <ErrorState error={loadError} onRetry={load} />
       ) : loading ? (
@@ -580,7 +583,7 @@ export default function BozorPage() {
         <>
           {/* TAB 1: XIZMATLAR */}
           {tab === "services" && (
-            <div role="tabpanel" aria-label={t("market.tabServices")}>
+            <div>
               {filteredServices.length === 0 ? (
                 <Card className="text-center py-12 flex flex-col items-center justify-center">
                   <p className="font-heading text-base font-bold text-ink">{t("market.empty")}</p>
@@ -630,7 +633,7 @@ export default function BozorPage() {
 
           {/* TAB 2: ISHLAR */}
           {tab === "jobs" && (
-            <div role="tabpanel" aria-label={t("market.tabJobs")}>
+            <div>
               {filteredJobs.length === 0 ? (
                 <Card className="text-center py-12 flex flex-col items-center justify-center">
                   <p className="font-heading text-base font-bold text-ink">{t("market.empty")}</p>
@@ -737,7 +740,7 @@ export default function BozorPage() {
 
           {/* TAB 3: MUTAXASSISLAR */}
           {tab === "specialists" && (
-            <div role="tabpanel" aria-label={t("market.tabSpecialists")}>
+            <div>
               {filteredSpecialists.length === 0 ? (
                 <Card className="text-center py-12 flex flex-col items-center justify-center">
                   <p className="font-heading text-base font-bold text-ink">{t("market.empty")}</p>
@@ -894,6 +897,8 @@ export default function BozorPage() {
           )}
         </>
       )}
+
+      </div>
 
       {/* Direct Offer Modal from Specialist Card */}
       {offerSpecialist && (

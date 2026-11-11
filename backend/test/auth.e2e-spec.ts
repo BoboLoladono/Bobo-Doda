@@ -62,8 +62,25 @@ describe('Auth (e2e, real Postgres + Redis + BullMQ)', () => {
   }, 120_000);
 
   afterAll(async () => {
+    if (reachable && app) {
+      try {
+        const redis = app.get(RedisService).client;
+        const keys = await redis.keys('ratelimit:*');
+        if (keys.length) await redis.del(...keys);
+      } catch (_err) {
+        void _err;
+      }
+      await dropDatabase(DB);
+    }
     await app?.close();
-    if (reachable) await dropDatabase(DB);
+  });
+
+  beforeEach(async () => {
+    if (reachable && app) {
+      const redis = app.get(RedisService).client;
+      const keys = await redis.keys('ratelimit:*');
+      if (keys.length) await redis.del(...keys);
+    }
   });
 
   const t = (name: string, fn: () => Promise<void>): void =>
@@ -74,8 +91,9 @@ describe('Auth (e2e, real Postgres + Redis + BullMQ)', () => {
 
   async function requestAndGetCode(phone: string, purpose: 'REGISTER' | 'PASSWORD_RESET'): Promise<string> {
     const path = purpose === 'REGISTER' ? '/api/v1/auth/register/request-otp' : '/api/v1/auth/password-reset/request-otp';
+    const callsBefore = sms.calls;
     await request(app!.getHttpServer()).post(path).send({ phone }).expect(200, { sent: true });
-    await waitFor(() => sms.lastPhone === phone && !!sms.lastCode, { label: 'otp sms' });
+    await waitFor(() => sms.calls > callsBefore && sms.lastPhone === phone && !!sms.lastCode, { label: 'otp sms' });
     return sms.lastCode!;
   }
 
@@ -460,6 +478,7 @@ describe('Auth (e2e, real Postgres + Redis + BullMQ)', () => {
   // ── FORGOT PASSWORD ────────────────────────────────────────────────────────
 
   t('FORGOT: mavjud foydalanuvchi → 1 ta SMS → verify → yangi parol → eski parol ISHLAMAYDI, yangisi ISHLAYDI, eski sessiyalar bekor', async () => {
+    await flushIpCounter();
     const { phone, refreshCookie } = await registerFresh();
     const callsBefore = sms.calls;
 
@@ -753,8 +772,8 @@ describe('Auth (e2e, real Postgres + Redis + BullMQ)', () => {
   });
 
   t('Telefon formati normallashadi — so‘rash E.164’da, tasdiqlash milliy formatda BIR XIL OTP’ni topadi', async () => {
-    const national = `90${(Date.now() % 10_000_000).toString().padStart(7, '0')}`;
-    const e164 = `+998${national}`;
+    const e164 = uniquePhone();
+    const national = e164.replace('+998', '');
 
     const code = await requestAndGetCode(e164, 'REGISTER');
     const res = await request(app!.getHttpServer())

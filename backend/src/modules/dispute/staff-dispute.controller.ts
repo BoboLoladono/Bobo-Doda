@@ -128,6 +128,7 @@ export class StaffDisputeController {
           dto.sellerAwardAmount,
           dto.resolutionReason,
           actor,
+          { buyerAwardAmountTiyin: dto.buyerAwardAmountTiyin, sellerAwardAmountTiyin: dto.sellerAwardAmountTiyin },
         );
         return { statusCode: 200, body: toStaffDisputeResponseDto(dispute) };
       },
