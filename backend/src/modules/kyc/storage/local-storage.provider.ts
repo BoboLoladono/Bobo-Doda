@@ -52,8 +52,9 @@ export class LocalStorageProvider implements StorageProvider {
     if (key.includes('..') || path.isAbsolute(key)) {
       throw new Error(`Invalid storage path traversal attempt: ${key}`);
     }
+    const safeBase = this.baseDir.endsWith(path.sep) ? this.baseDir : `${this.baseDir}${path.sep}`;
     const fullPath = path.resolve(this.baseDir, key);
-    if (!fullPath.startsWith(this.baseDir)) {
+    if (fullPath !== this.baseDir && !fullPath.startsWith(safeBase)) {
       throw new Error(`Invalid storage path traversal attempt: ${key}`);
     }
     return fullPath;

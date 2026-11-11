@@ -136,6 +136,44 @@ export const JobStatus = {
 export type JobStatus = (typeof JobStatus)[keyof typeof JobStatus];
 export const JobStatusValues = ['OPEN', 'CLOSED'] as const;
 
+export const ContractSourceType = {
+  SERVICE: 'SERVICE',
+  JOB: 'JOB',
+} as const;
+export type ContractSourceType = (typeof ContractSourceType)[keyof typeof ContractSourceType];
+export const ContractSourceTypeValues = ['SERVICE', 'JOB'] as const;
+
+export const KycVerificationStatus = {
+  DRAFT: 'DRAFT',
+  PENDING: 'PENDING',
+  SCANNING: 'SCANNING',
+  UNDER_REVIEW: 'UNDER_REVIEW',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  RESUBMISSION_REQUIRED: 'RESUBMISSION_REQUIRED',
+} as const;
+export type KycVerificationStatus = (typeof KycVerificationStatus)[keyof typeof KycVerificationStatus];
+export const KycVerificationStatusValues = ['DRAFT', 'PENDING', 'SCANNING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'RESUBMISSION_REQUIRED'] as const;
+
+export const KycDocumentStatus = {
+  QUARANTINED: 'QUARANTINED',
+  SCANNING: 'SCANNING',
+  CLEAN: 'CLEAN',
+  INFECTED: 'INFECTED',
+  REJECTED: 'REJECTED',
+} as const;
+export type KycDocumentStatus = (typeof KycDocumentStatus)[keyof typeof KycDocumentStatus];
+export const KycDocumentStatusValues = ['QUARANTINED', 'SCANNING', 'CLEAN', 'INFECTED', 'REJECTED'] as const;
+
+export const KycDocumentType = {
+  PASSPORT: 'PASSPORT',
+  ID_CARD: 'ID_CARD',
+  RESIDENCE_PERMIT: 'RESIDENCE_PERMIT',
+  DRIVER_LICENSE: 'DRIVER_LICENSE',
+} as const;
+export type KycDocumentType = (typeof KycDocumentType)[keyof typeof KycDocumentType];
+export const KycDocumentTypeValues = ['PASSPORT', 'ID_CARD', 'RESIDENCE_PERMIT', 'DRIVER_LICENSE'] as const;
+
 export const ContractStatus = {
   PENDING_SELLER: 'PENDING_SELLER',
   ACTIVE: 'ACTIVE',
@@ -275,3 +313,86 @@ export const OtpPurpose = {
 } as const;
 export type OtpPurpose = (typeof OtpPurpose)[keyof typeof OtpPurpose];
 export const OtpPurposeValues = ['REGISTER', 'PASSWORD_RESET'] as const;
+
+export const SupportTicketStatus = {
+  OPEN: 'OPEN',
+  WAITING_USER: 'WAITING_USER',
+  ANSWERED: 'ANSWERED',
+  CLOSED: 'CLOSED',
+} as const;
+export type SupportTicketStatus = (typeof SupportTicketStatus)[keyof typeof SupportTicketStatus];
+export const SupportTicketStatusValues = ['OPEN', 'WAITING_USER', 'ANSWERED', 'CLOSED'] as const;
+
+export const TrustReportTargetType = {
+  USER: 'USER',
+  SERVICE: 'SERVICE',
+  JOB: 'JOB',
+  MESSAGE: 'MESSAGE',
+} as const;
+export type TrustReportTargetType = (typeof TrustReportTargetType)[keyof typeof TrustReportTargetType];
+export const TrustReportTargetTypeValues = ['USER', 'SERVICE', 'JOB', 'MESSAGE'] as const;
+
+export const TrustReportReasonType = {
+  SCAM: 'SCAM',
+  SPAM: 'SPAM',
+  PLAGIARISM: 'PLAGIARISM',
+  OFF_PLATFORM: 'OFF_PLATFORM',
+  INAPPROPRIATE: 'INAPPROPRIATE',
+  FAKE_PROFILE: 'FAKE_PROFILE',
+  COPYRIGHT: 'COPYRIGHT',
+} as const;
+export type TrustReportReasonType = (typeof TrustReportReasonType)[keyof typeof TrustReportReasonType];
+export const TrustReportReasonTypeValues = ['SCAM', 'SPAM', 'PLAGIARISM', 'OFF_PLATFORM', 'INAPPROPRIATE', 'FAKE_PROFILE', 'COPYRIGHT'] as const;
+
+export const TrustReportSeverity = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+} as const;
+export type TrustReportSeverity = (typeof TrustReportSeverity)[keyof typeof TrustReportSeverity];
+export const TrustReportSeverityValues = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
+
+export const TrustReportStatus = {
+  NEW: 'NEW',
+  INVESTIGATING: 'INVESTIGATING',
+  RESOLVED: 'RESOLVED',
+  DISMISSED: 'DISMISSED',
+} as const;
+export type TrustReportStatus = (typeof TrustReportStatus)[keyof typeof TrustReportStatus];
+export const TrustReportStatusValues = ['NEW', 'INVESTIGATING', 'RESOLVED', 'DISMISSED'] as const;
+
+export const TrustReportActionTaken = {
+  NONE: 'NONE',
+  WARNED: 'WARNED',
+  RESTRICTED: 'RESTRICTED',
+  SUSPENDED: 'SUSPENDED',
+  REMOVED: 'REMOVED',
+} as const;
+export type TrustReportActionTaken = (typeof TrustReportActionTaken)[keyof typeof TrustReportActionTaken];
+export const TrustReportActionTakenValues = ['NONE', 'WARNED', 'RESTRICTED', 'SUSPENDED', 'REMOVED'] as const;
+
+export const UserAppealRestrictionType = {
+  SUSPENDED: 'SUSPENDED',
+  BLOCKED: 'BLOCKED',
+  RESTRICTED: 'RESTRICTED',
+} as const;
+export type UserAppealRestrictionType = (typeof UserAppealRestrictionType)[keyof typeof UserAppealRestrictionType];
+export const UserAppealRestrictionTypeValues = ['SUSPENDED', 'BLOCKED', 'RESTRICTED'] as const;
+
+export const UserAppealStatus = {
+  PENDING: 'PENDING',
+  REVIEWING: 'REVIEWING',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+} as const;
+export type UserAppealStatus = (typeof UserAppealStatus)[keyof typeof UserAppealStatus];
+export const UserAppealStatusValues = ['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED'] as const;
+
+export const ReviewStatus = {
+  APPROVED: 'APPROVED',
+  FLAGGED: 'FLAGGED',
+  HIDDEN: 'HIDDEN',
+} as const;
+export type ReviewStatus = (typeof ReviewStatus)[keyof typeof ReviewStatus];
+export const ReviewStatusValues = ['APPROVED', 'FLAGGED', 'HIDDEN'] as const;

@@ -228,6 +228,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/roles/switch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MeController_switchRole"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/sessions": {
         parameters: {
             query?: never;
@@ -2196,6 +2212,478 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/kyc/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Joriy foydalanuvchining KYC verifikatsiya holati */
+        get: operations["KycController_getMine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/kyc/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** KYC hujjatlarini topshirish (verifikatsiyaga yuborish) */
+        post: operations["KycController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/kyc/documents/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Qisqa umrli imzolangan token bilan hujjatni xavfsiz ko‘rish */
+        get: operations["KycController_streamDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/kyc": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Verifikatsiya arizalari navbati (filtr va qidiruv bilan) */
+        get: operations["StaffKycController_listQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/kyc/user/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Foydalanuvchi ID bo‘yicha verifikatsiya ma’lumotlari */
+        get: operations["StaffKycController_getByUserId"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/kyc/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ariza ID bo‘yicha to‘liq verifikatsiya ma’lumotlari va hujjat havolalari */
+        get: operations["StaffKycController_getDetails"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/kyc/{id}/documents/{documentId}/view-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hujjatni ko‘rish uchun qisqa umrli (5 daqiqalik) imzolangan havola */
+        get: operations["StaffKycController_getDocumentViewUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/kyc/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verifikatsiya arizasini ko‘rib chiqish (tasdiqlash, rad etish yoki qayta so‘rash) */
+        post: operations["StaffKycController_review"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SupportController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support/tickets/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SupportController_listMine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support/tickets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SupportController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support/tickets/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SupportController_addMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffSupportController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/tickets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffSupportController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/tickets/{id}/reply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffSupportController_reply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/tickets/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffSupportController_close"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReportController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffReportController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/reports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffReportController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/reports/{id}/action": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffReportController_updateAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appeals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AppealController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/appeals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffAppealController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/appeals/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffAppealController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/appeals/{id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffAppealController_decide"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/contracts/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReviewController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sellers/{id}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewController_listForSeller"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffReviewController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/reviews/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffReviewController_get"];
+        put?: never;
+        post?: never;
+        delete: operations["StaffReviewController_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/reviews/{id}/hide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffReviewController_hide"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2587,7 +3075,11 @@ export interface components {
             id: string;
             buyerId: string;
             sellerId: string;
-            serviceId: string;
+            serviceId?: string | null;
+            /** @enum {string} */
+            sourceType: "SERVICE" | "JOB";
+            jobId?: string | null;
+            proposalId?: string | null;
             serviceTitleSnapshot: string;
             serviceDescriptionSnapshot: string;
             categoryNameSnapshot: string;
@@ -3092,6 +3584,22 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        HireMilestoneDto: {
+            /** @example 1-bosqich: Boshlang‘ich ishlar */
+            title: string;
+            /** @example Bajariladigan ishlar tavsifi */
+            description?: string;
+            /**
+             * @description Butun so‘mda
+             * @example 500000
+             */
+            amount: number;
+            /** @example 2026-12-01T00:00:00.000Z */
+            dueDate?: string;
+        };
+        HireProposalDto: {
+            milestones?: components["schemas"]["HireMilestoneDto"][];
+        };
         CreateProposalDto: {
             /** @description Taklif summasi (kamida 1 000 so‘m) */
             bidAmount: number;
@@ -3143,6 +3651,180 @@ export interface components {
             deadline?: string;
             /** @description Ixtiyoriy ilova qilingan rasmlar/fayllar */
             attachedImages?: string[];
+        };
+        SubmitKycDto: {
+            /** @example UZ */
+            country: string;
+            /**
+             * @example PASSPORT
+             * @enum {string}
+             */
+            documentType: "PASSPORT" | "ID_CARD" | "RESIDENCE_PERMIT" | "DRIVER_LICENSE";
+            /** @example Alisher Navoiy */
+            legalName: string;
+            /** @example 1995-05-15 */
+            birthDate: string;
+            /** @description Kamida 2 ta hujjatning base64 ma’lumotlari yoki data-URL */
+            documents: string[];
+            /** @example AA1234567 */
+            passportNumber?: string;
+            /** @example 123456789 */
+            inn?: string;
+            /** @example MChJ "Bobo-Doda xizmatlari" */
+            companyDetails?: string;
+        };
+        StaffKycReviewDto: {
+            /**
+             * @example approve
+             * @enum {string}
+             */
+            outcome: "approve" | "reject" | "request_resubmission";
+            /** @example Hujjat rasmi xira, iltimos qaytadan aniqroq surat yuklang */
+            rejectionReason?: string;
+            /** @example Operator eslatmasi */
+            note?: string;
+        };
+        CreateSupportTicketDto: {
+            /** @example texnik */
+            topic: string;
+            /** @example Tizimga kirishda xatolik */
+            subject: string;
+            /** @example Telefon raqamimga SMS kod kelmayapti, iltimos tekshiring. */
+            message: string;
+            contactName?: string;
+            contactInfo?: string;
+        };
+        TicketMessageResponseDto: {
+            id: string;
+            ticketId: string;
+            senderId?: Record<string, never>;
+            senderName: string;
+            text: string;
+            isAdmin: boolean;
+            createdAt: string;
+        };
+        SupportTicketResponseDto: {
+            id: string;
+            userId?: Record<string, never>;
+            userName?: Record<string, never>;
+            contactName?: Record<string, never>;
+            contactInfo?: Record<string, never>;
+            topic: string;
+            subject: string;
+            message: string;
+            status: string;
+            priority: string;
+            closedAt?: Record<string, never>;
+            createdAt: string;
+            updatedAt: string;
+            messages?: components["schemas"]["TicketMessageResponseDto"][];
+        };
+        CreateTicketMessageDto: {
+            /** @example Rahmat, muammo bartaraf etildi. */
+            text: string;
+        };
+        StaffReplyTicketDto: {
+            /** @example Sizning murojaatingiz bo‘yicha texnik xizmat ko‘rsatildi. */
+            replyText: string;
+            /** @example javob_berildi */
+            newStatus?: string;
+        };
+        StaffCloseTicketDto: {
+            /** @example Murojaat muvaffaqiyatli hal qilindi */
+            note: string;
+        };
+        CreateReportDto: {
+            /** @example user */
+            targetType: string;
+            /** @example f87a8b32-... */
+            targetId: string;
+            /** @example Elnur Xatamov (Sotuvchi) */
+            targetTitle: string;
+            /** @example off_platform */
+            reasonType: string;
+            /** @example Foydalanuvchi Telegram orqali to‘lov qilishni so‘radi. */
+            description: string;
+            evidenceUrl?: string;
+            /** @example medium */
+            severity?: string;
+        };
+        ReportResponseDto: {
+            id: string;
+            reporterId: string;
+            reporterName: string;
+            targetType: string;
+            targetId: string;
+            targetTitle: string;
+            reasonType: string;
+            description: string;
+            evidenceUrl?: Record<string, never>;
+            severity: string;
+            status: string;
+            assignedAdminId?: Record<string, never>;
+            assignedAdminName?: Record<string, never>;
+            resolutionNote?: Record<string, never>;
+            actionTaken: string;
+            createdAt: string;
+            resolvedAt?: Record<string, never>;
+        };
+        StaffUpdateReportDto: {
+            /** @example resolved */
+            action: string;
+            /** @example Foydalanuvchiga qoidalarni buzgani uchun ogohlantirish berildi. */
+            note: string;
+            /** @example warned */
+            userAction?: string;
+        };
+        CreateAppealDto: {
+            /** @example blocked */
+            restrictionType: string;
+            /** @example Shubhali faoliyat tufayli */
+            originalReason: string;
+            /** @example Mening hisobim noto‘g‘ri bloklangan, barcha qoidalar bo‘yicha ishlaganman. */
+            appealText: string;
+            evidenceUrls?: string[];
+        };
+        AppealResponseDto: {
+            id: string;
+            userId: string;
+            userName: string;
+            userRole: string;
+            restrictionType: string;
+            originalReason: string;
+            appealText: string;
+            evidenceUrls: string[];
+            status: string;
+            reviewerId?: Record<string, never>;
+            reviewerName?: Record<string, never>;
+            decisionNote?: Record<string, never>;
+            createdAt: string;
+            resolvedAt?: Record<string, never>;
+        };
+        StaffDecideAppealDto: {
+            /** @example accepted */
+            decision: string;
+            /** @example Foydalanuvchi ma‘lumotlari tasdiqlandi, hisob tiklandi. */
+            note: string;
+        };
+        CreateReviewDto: {
+            /** @example 5 */
+            rating: number;
+            /** @example Ajoyib mutaxassis, ishni muddatidan oldin bajardi! */
+            comment: string;
+        };
+        ReviewResponseDto: {
+            id: string;
+            contractId: string;
+            contractTitle: string;
+            authorId: string;
+            authorName: string;
+            targetId: string;
+            targetName: string;
+            rating: number;
+            comment: string;
+            status: string;
+            reportCount: number;
+            createdAt: string;
         };
     };
     responses: never;
@@ -3433,6 +4115,29 @@ export interface operations {
         };
     };
     MeController_chooseRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChooseRoleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthSessionDto"];
+                };
+            };
+        };
+    };
+    MeController_switchRole: {
         parameters: {
             query?: never;
             header?: never;
@@ -6264,7 +6969,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HireProposalDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -6440,6 +7149,665 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobResponseDto"];
+                };
+            };
+        };
+    };
+    KycController_getMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    KycController_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitKycDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    KycController_streamDocument: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StaffKycController_listQueue: {
+        parameters: {
+            query?: {
+                page?: number;
+                perPage?: number;
+                status?: string;
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StaffKycController_getByUserId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StaffKycController_getDetails: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StaffKycController_getDocumentViewUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StaffKycController_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StaffKycReviewDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SupportController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSupportTicketDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResponseDto"];
+                };
+            };
+        };
+    };
+    SupportController_listMine: {
+        parameters: {
+            query?: {
+                page?: number;
+                perPage?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SupportController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResponseDto"];
+                };
+            };
+        };
+    };
+    SupportController_addMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTicketMessageDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketMessageResponseDto"];
+                };
+            };
+        };
+    };
+    StaffSupportController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                perPage?: number;
+                status?: string;
+                search?: string;
+                topic?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StaffSupportController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResponseDto"];
+                };
+            };
+        };
+    };
+    StaffSupportController_reply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StaffReplyTicketDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResponseDto"];
+                };
+            };
+        };
+    };
+    StaffSupportController_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StaffCloseTicketDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResponseDto"];
+                };
+            };
+        };
+    };
+    ReportController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReportDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportResponseDto"];
+                };
+            };
+        };
+    };
+    StaffReportController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                perPage?: number;
+                status?: string;
+                category?: string;
+                severity?: string;
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StaffReportController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportResponseDto"];
+                };
+            };
+        };
+    };
+    StaffReportController_updateAction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StaffUpdateReportDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportResponseDto"];
+                };
+            };
+        };
+    };
+    AppealController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAppealDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppealResponseDto"];
+                };
+            };
+        };
+    };
+    StaffAppealController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                perPage?: number;
+                status?: string;
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StaffAppealController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppealResponseDto"];
+                };
+            };
+        };
+    };
+    StaffAppealController_decide: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StaffDecideAppealDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppealResponseDto"];
+                };
+            };
+        };
+    };
+    ReviewController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReviewDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewResponseDto"];
+                };
+            };
+        };
+    };
+    ReviewController_listForSeller: {
+        parameters: {
+            query?: {
+                page?: number;
+                perPage?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StaffReviewController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                perPage?: number;
+                status?: string;
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StaffReviewController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewResponseDto"];
+                };
+            };
+        };
+    };
+    StaffReviewController_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewResponseDto"];
+                };
+            };
+        };
+    };
+    StaffReviewController_hide: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewResponseDto"];
                 };
             };
         };

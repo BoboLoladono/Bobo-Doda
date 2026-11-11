@@ -367,6 +367,37 @@
         ]
       }
     },
+    "/api/v1/me/roles/switch": {
+      "post": {
+        "operationId": "MeController_switchRole",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChooseRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSessionDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/api/v1/me/sessions": {
       "get": {
         "operationId": "MeController_listSessions",
@@ -5628,6 +5659,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HireProposalDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": ""
@@ -5932,6 +5973,1212 @@
         ],
         "tags": [
           "staff-jobs"
+        ]
+      }
+    },
+    "/api/v1/kyc/me": {
+      "get": {
+        "operationId": "KycController_getMine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Joriy foydalanuvchining KYC verifikatsiya holati",
+        "tags": [
+          "KYC"
+        ]
+      }
+    },
+    "/api/v1/kyc/submit": {
+      "post": {
+        "operationId": "KycController_submit",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitKycDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "KYC hujjatlarini topshirish (verifikatsiyaga yuborish)",
+        "tags": [
+          "KYC"
+        ]
+      }
+    },
+    "/api/v1/kyc/documents/stream": {
+      "get": {
+        "operationId": "KycController_streamDocument",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Qisqa umrli imzolangan token bilan hujjatni xavfsiz ko‘rish",
+        "tags": [
+          "KYC"
+        ]
+      }
+    },
+    "/api/v1/staff/kyc": {
+      "get": {
+        "operationId": "StaffKycController_listQueue",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "perPage",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "korib_chiqilmoqda",
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "Navoiy",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Verifikatsiya arizalari navbati (filtr va qidiruv bilan)",
+        "tags": [
+          "staff-kyc"
+        ]
+      }
+    },
+    "/api/v1/staff/kyc/user/{userId}": {
+      "get": {
+        "operationId": "StaffKycController_getByUserId",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Foydalanuvchi ID bo‘yicha verifikatsiya ma’lumotlari",
+        "tags": [
+          "staff-kyc"
+        ]
+      }
+    },
+    "/api/v1/staff/kyc/{id}": {
+      "get": {
+        "operationId": "StaffKycController_getDetails",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ariza ID bo‘yicha to‘liq verifikatsiya ma’lumotlari va hujjat havolalari",
+        "tags": [
+          "staff-kyc"
+        ]
+      }
+    },
+    "/api/v1/staff/kyc/{id}/documents/{documentId}/view-url": {
+      "get": {
+        "operationId": "StaffKycController_getDocumentViewUrl",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "documentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hujjatni ko‘rish uchun qisqa umrli (5 daqiqalik) imzolangan havola",
+        "tags": [
+          "staff-kyc"
+        ]
+      }
+    },
+    "/api/v1/staff/kyc/{id}/review": {
+      "post": {
+        "operationId": "StaffKycController_review",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffKycReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Verifikatsiya arizasini ko‘rib chiqish (tasdiqlash, rad etish yoki qayta so‘rash)",
+        "tags": [
+          "staff-kyc"
+        ]
+      }
+    },
+    "/api/v1/support/tickets": {
+      "post": {
+        "operationId": "SupportController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSupportTicketDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportTicketResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "support"
+        ]
+      }
+    },
+    "/api/v1/support/tickets/mine": {
+      "get": {
+        "operationId": "SupportController_listMine",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "perPage",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "support"
+        ]
+      }
+    },
+    "/api/v1/support/tickets/{id}": {
+      "get": {
+        "operationId": "SupportController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportTicketResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "support"
+        ]
+      }
+    },
+    "/api/v1/support/tickets/{id}/messages": {
+      "post": {
+        "operationId": "SupportController_addMessage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTicketMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketMessageResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "support"
+        ]
+      }
+    },
+    "/api/v1/staff/tickets": {
+      "get": {
+        "operationId": "StaffSupportController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "perPage",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "topic",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-support"
+        ]
+      }
+    },
+    "/api/v1/staff/tickets/{id}": {
+      "get": {
+        "operationId": "StaffSupportController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportTicketResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-support"
+        ]
+      }
+    },
+    "/api/v1/staff/tickets/{id}/reply": {
+      "post": {
+        "operationId": "StaffSupportController_reply",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffReplyTicketDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportTicketResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-support"
+        ]
+      }
+    },
+    "/api/v1/staff/tickets/{id}/close": {
+      "post": {
+        "operationId": "StaffSupportController_close",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffCloseTicketDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportTicketResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-support"
+        ]
+      }
+    },
+    "/api/v1/reports": {
+      "post": {
+        "operationId": "ReportController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/staff/reports": {
+      "get": {
+        "operationId": "StaffReportController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "perPage",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "severity",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-reports"
+        ]
+      }
+    },
+    "/api/v1/staff/reports/{id}": {
+      "get": {
+        "operationId": "StaffReportController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-reports"
+        ]
+      }
+    },
+    "/api/v1/staff/reports/{id}/action": {
+      "post": {
+        "operationId": "StaffReportController_updateAction",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffUpdateReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-reports"
+        ]
+      }
+    },
+    "/api/v1/appeals": {
+      "post": {
+        "operationId": "AppealController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAppealDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "appeals"
+        ]
+      }
+    },
+    "/api/v1/staff/appeals": {
+      "get": {
+        "operationId": "StaffAppealController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "perPage",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-appeals"
+        ]
+      }
+    },
+    "/api/v1/staff/appeals/{id}": {
+      "get": {
+        "operationId": "StaffAppealController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-appeals"
+        ]
+      }
+    },
+    "/api/v1/staff/appeals/{id}/decide": {
+      "post": {
+        "operationId": "StaffAppealController_decide",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffDecideAppealDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-appeals"
+        ]
+      }
+    },
+    "/api/v1/contracts/{id}/review": {
+      "post": {
+        "operationId": "ReviewController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "reviews"
+        ]
+      }
+    },
+    "/api/v1/sellers/{id}/reviews": {
+      "get": {
+        "operationId": "ReviewController_listForSeller",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "perPage",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "reviews"
+        ]
+      }
+    },
+    "/api/v1/staff/reviews": {
+      "get": {
+        "operationId": "StaffReviewController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "perPage",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-reviews"
+        ]
+      }
+    },
+    "/api/v1/staff/reviews/{id}": {
+      "get": {
+        "operationId": "StaffReviewController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-reviews"
+        ]
+      },
+      "delete": {
+        "operationId": "StaffReviewController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-reviews"
+        ]
+      }
+    },
+    "/api/v1/staff/reviews/{id}/hide": {
+      "post": {
+        "operationId": "StaffReviewController_hide",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-reviews"
         ]
       }
     }
@@ -7267,7 +8514,23 @@
             "type": "string"
           },
           "serviceId": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
+          },
+          "sourceType": {
+            "type": "string",
+            "enum": [
+              "SERVICE",
+              "JOB"
+            ]
+          },
+          "jobId": {
+            "type": "string",
+            "nullable": true
+          },
+          "proposalId": {
+            "type": "string",
+            "nullable": true
           },
           "serviceTitleSnapshot": {
             "type": "string"
@@ -7337,7 +8600,7 @@
           "id",
           "buyerId",
           "sellerId",
-          "serviceId",
+          "sourceType",
           "serviceTitleSnapshot",
           "serviceDescriptionSnapshot",
           "categoryNameSnapshot",
@@ -9044,6 +10307,43 @@
           "createdAt"
         ]
       },
+      "HireMilestoneDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "1-bosqich: Boshlang‘ich ishlar"
+          },
+          "description": {
+            "type": "string",
+            "example": "Bajariladigan ishlar tavsifi"
+          },
+          "amount": {
+            "type": "number",
+            "description": "Butun so‘mda",
+            "example": 500000
+          },
+          "dueDate": {
+            "type": "string",
+            "example": "2026-12-01T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "title",
+          "amount"
+        ]
+      },
+      "HireProposalDto": {
+        "type": "object",
+        "properties": {
+          "milestones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HireMilestoneDto"
+            }
+          }
+        }
+      },
       "CreateProposalDto": {
         "type": "object",
         "properties": {
@@ -9245,6 +10545,557 @@
           "description",
           "budgetMin",
           "budgetMax"
+        ]
+      },
+      "SubmitKycDto": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": "string",
+            "example": "UZ"
+          },
+          "documentType": {
+            "type": "string",
+            "enum": [
+              "PASSPORT",
+              "ID_CARD",
+              "RESIDENCE_PERMIT",
+              "DRIVER_LICENSE"
+            ],
+            "example": "PASSPORT"
+          },
+          "legalName": {
+            "type": "string",
+            "example": "Alisher Navoiy"
+          },
+          "birthDate": {
+            "type": "string",
+            "example": "1995-05-15"
+          },
+          "documents": {
+            "description": "Kamida 2 ta hujjatning base64 ma’lumotlari yoki data-URL",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "passportNumber": {
+            "type": "string",
+            "example": "AA1234567"
+          },
+          "inn": {
+            "type": "string",
+            "example": "123456789"
+          },
+          "companyDetails": {
+            "type": "string",
+            "example": "MChJ \"Bobo-Doda xizmatlari\""
+          }
+        },
+        "required": [
+          "country",
+          "documentType",
+          "legalName",
+          "birthDate",
+          "documents"
+        ]
+      },
+      "StaffKycReviewDto": {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject",
+              "request_resubmission"
+            ],
+            "example": "approve"
+          },
+          "rejectionReason": {
+            "type": "string",
+            "example": "Hujjat rasmi xira, iltimos qaytadan aniqroq surat yuklang"
+          },
+          "note": {
+            "type": "string",
+            "example": "Operator eslatmasi"
+          }
+        },
+        "required": [
+          "outcome"
+        ]
+      },
+      "CreateSupportTicketDto": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "example": "texnik"
+          },
+          "subject": {
+            "type": "string",
+            "example": "Tizimga kirishda xatolik"
+          },
+          "message": {
+            "type": "string",
+            "example": "Telefon raqamimga SMS kod kelmayapti, iltimos tekshiring."
+          },
+          "contactName": {
+            "type": "string"
+          },
+          "contactInfo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "subject",
+          "message"
+        ]
+      },
+      "TicketMessageResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "ticketId": {
+            "type": "string"
+          },
+          "senderId": {
+            "type": "object"
+          },
+          "senderName": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "isAdmin": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ticketId",
+          "senderName",
+          "text",
+          "isAdmin",
+          "createdAt"
+        ]
+      },
+      "SupportTicketResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "object"
+          },
+          "userName": {
+            "type": "object"
+          },
+          "contactName": {
+            "type": "object"
+          },
+          "contactInfo": {
+            "type": "object"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "closedAt": {
+            "type": "object"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TicketMessageResponseDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "topic",
+          "subject",
+          "message",
+          "status",
+          "priority",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateTicketMessageDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "example": "Rahmat, muammo bartaraf etildi."
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "StaffReplyTicketDto": {
+        "type": "object",
+        "properties": {
+          "replyText": {
+            "type": "string",
+            "example": "Sizning murojaatingiz bo‘yicha texnik xizmat ko‘rsatildi."
+          },
+          "newStatus": {
+            "type": "string",
+            "example": "javob_berildi"
+          }
+        },
+        "required": [
+          "replyText"
+        ]
+      },
+      "StaffCloseTicketDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "example": "Murojaat muvaffaqiyatli hal qilindi"
+          }
+        },
+        "required": [
+          "note"
+        ]
+      },
+      "CreateReportDto": {
+        "type": "object",
+        "properties": {
+          "targetType": {
+            "type": "string",
+            "example": "user"
+          },
+          "targetId": {
+            "type": "string",
+            "example": "f87a8b32-..."
+          },
+          "targetTitle": {
+            "type": "string",
+            "example": "Elnur Xatamov (Sotuvchi)"
+          },
+          "reasonType": {
+            "type": "string",
+            "example": "off_platform"
+          },
+          "description": {
+            "type": "string",
+            "example": "Foydalanuvchi Telegram orqali to‘lov qilishni so‘radi."
+          },
+          "evidenceUrl": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "example": "medium"
+          }
+        },
+        "required": [
+          "targetType",
+          "targetId",
+          "targetTitle",
+          "reasonType",
+          "description"
+        ]
+      },
+      "ReportResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reporterId": {
+            "type": "string"
+          },
+          "reporterName": {
+            "type": "string"
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "targetTitle": {
+            "type": "string"
+          },
+          "reasonType": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "evidenceUrl": {
+            "type": "object"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "assignedAdminId": {
+            "type": "object"
+          },
+          "assignedAdminName": {
+            "type": "object"
+          },
+          "resolutionNote": {
+            "type": "object"
+          },
+          "actionTaken": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "resolvedAt": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "reporterId",
+          "reporterName",
+          "targetType",
+          "targetId",
+          "targetTitle",
+          "reasonType",
+          "description",
+          "severity",
+          "status",
+          "actionTaken",
+          "createdAt"
+        ]
+      },
+      "StaffUpdateReportDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "example": "resolved"
+          },
+          "note": {
+            "type": "string",
+            "example": "Foydalanuvchiga qoidalarni buzgani uchun ogohlantirish berildi."
+          },
+          "userAction": {
+            "type": "string",
+            "example": "warned"
+          }
+        },
+        "required": [
+          "action",
+          "note"
+        ]
+      },
+      "CreateAppealDto": {
+        "type": "object",
+        "properties": {
+          "restrictionType": {
+            "type": "string",
+            "example": "blocked"
+          },
+          "originalReason": {
+            "type": "string",
+            "example": "Shubhali faoliyat tufayli"
+          },
+          "appealText": {
+            "type": "string",
+            "example": "Mening hisobim noto‘g‘ri bloklangan, barcha qoidalar bo‘yicha ishlaganman."
+          },
+          "evidenceUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "restrictionType",
+          "originalReason",
+          "appealText"
+        ]
+      },
+      "AppealResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "userName": {
+            "type": "string"
+          },
+          "userRole": {
+            "type": "string"
+          },
+          "restrictionType": {
+            "type": "string"
+          },
+          "originalReason": {
+            "type": "string"
+          },
+          "appealText": {
+            "type": "string"
+          },
+          "evidenceUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "reviewerId": {
+            "type": "object"
+          },
+          "reviewerName": {
+            "type": "object"
+          },
+          "decisionNote": {
+            "type": "object"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "resolvedAt": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "userName",
+          "userRole",
+          "restrictionType",
+          "originalReason",
+          "appealText",
+          "evidenceUrls",
+          "status",
+          "createdAt"
+        ]
+      },
+      "StaffDecideAppealDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "example": "accepted"
+          },
+          "note": {
+            "type": "string",
+            "example": "Foydalanuvchi ma‘lumotlari tasdiqlandi, hisob tiklandi."
+          }
+        },
+        "required": [
+          "decision",
+          "note"
+        ]
+      },
+      "CreateReviewDto": {
+        "type": "object",
+        "properties": {
+          "rating": {
+            "type": "number",
+            "example": 5,
+            "minimum": 1,
+            "maximum": 5
+          },
+          "comment": {
+            "type": "string",
+            "example": "Ajoyib mutaxassis, ishni muddatidan oldin bajardi!"
+          }
+        },
+        "required": [
+          "rating",
+          "comment"
+        ]
+      },
+      "ReviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "contractId": {
+            "type": "string"
+          },
+          "contractTitle": {
+            "type": "string"
+          },
+          "authorId": {
+            "type": "string"
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "targetName": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "number"
+          },
+          "comment": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "reportCount": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "contractId",
+          "contractTitle",
+          "authorId",
+          "authorName",
+          "targetId",
+          "targetName",
+          "rating",
+          "comment",
+          "status",
+          "reportCount",
+          "createdAt"
         ]
       }
     }

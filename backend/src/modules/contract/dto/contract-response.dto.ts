@@ -12,10 +12,10 @@ export class ContractResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() buyerId!: string;
   @ApiProperty() sellerId!: string;
-  @ApiPropertyOptional({ nullable: true }) serviceId!: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) serviceId!: string | null;
   @ApiProperty({ enum: ['SERVICE', 'JOB'] }) sourceType!: string;
-  @ApiPropertyOptional({ nullable: true }) jobId!: string | null;
-  @ApiPropertyOptional({ nullable: true }) proposalId!: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) jobId!: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) proposalId!: string | null;
 
   @ApiProperty() serviceTitleSnapshot!: string;
   @ApiProperty() serviceDescriptionSnapshot!: string;

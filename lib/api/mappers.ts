@@ -300,8 +300,9 @@ export function mapContract(
 
   return {
     id: c.id,
-    sourceType: "xizmat",
-    serviceId: c.serviceId,
+    sourceType: c.sourceType === "JOB" ? "taklif" : "xizmat",
+    serviceId: c.serviceId ?? undefined,
+    jobId: c.jobId ?? undefined,
     buyerId: c.buyerId,
     buyerName: opts.buyerName ?? "Xaridor",
     sellerId: c.sellerId,
