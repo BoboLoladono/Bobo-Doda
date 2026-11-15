@@ -7,6 +7,10 @@ export class GoogleAuthDto {
 
   @IsOptional()
   @IsString()
+  accessToken?: string;
+
+  @IsOptional()
+  @IsString()
   email?: string;
 
   @IsOptional()

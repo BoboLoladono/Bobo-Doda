@@ -91,6 +91,7 @@ export interface AuthService {
   /** Google OAuth / One Tap orqali kirish */
   loginWithGoogle(data: {
     idToken?: string;
+    accessToken?: string;
     email?: string;
     fullName?: string;
     avatarUrl?: string;

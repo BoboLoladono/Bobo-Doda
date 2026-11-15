@@ -229,8 +229,22 @@ export class AuthService {
     let fullName = dto.fullName?.trim();
     let googleId = dto.googleId?.trim();
 
-    // 1. Agar idToken berilgan bo'lsa, Google API orqali tekshirish
-    if (dto.idToken) {
+    // 1. Agar accessToken yoki idToken berilgan bo'lsa, Google API orqali tekshirish
+    if (dto.accessToken) {
+      try {
+        const verifyRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${dto.accessToken}` },
+        });
+        if (verifyRes.ok) {
+          const payload = (await verifyRes.json()) as { email?: string; name?: string; sub?: string; picture?: string };
+          if (payload.email) email = payload.email.toLowerCase();
+          if (payload.name) fullName = payload.name;
+          if (payload.sub) googleId = payload.sub;
+        }
+      } catch {
+        // Tarmoq yoki test muhitida dto maydonlaridan foydalaniladi
+      }
+    } else if (dto.idToken) {
       try {
         const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${dto.idToken}`);
         if (verifyRes.ok) {
