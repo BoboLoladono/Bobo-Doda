@@ -88,6 +88,14 @@ export interface AuthService {
    * "INVALID_CREDENTIALS"` bilan tashlanadi (enumeration-safe).
    */
   login(phone: string, password: string): Promise<Model.Session>;
+  /** Google OAuth / One Tap orqali kirish */
+  loginWithGoogle(data: {
+    idToken?: string;
+    email?: string;
+    fullName?: string;
+    avatarUrl?: string;
+    googleId?: string;
+  }): Promise<Model.Session>;
   /**
    * FORGOT PASSWORD: phone → `requestPasswordResetOtp` → SMS kod (FAQAT
    * hisob mavjud bo'lsa haqiqatan yuboriladi — javob baribir bir xil) →

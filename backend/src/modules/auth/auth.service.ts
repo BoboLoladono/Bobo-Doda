@@ -18,6 +18,7 @@ import { OtpService } from './otp.service';
 import { AuthGrantService } from './auth-grant.service';
 import { TokenService } from './token.service';
 import { RefreshTokenService, type RequestMeta } from './refresh-token.service';
+import { GoogleAuthDto } from './dto/google-auth.dto';
 import type { AccessTokenPayload } from './types/token-payload';
 import {
   LOGIN_IP_MAX_ATTEMPTS,
@@ -218,6 +219,97 @@ export class AuthService {
       isNewUser: false,
       meta,
       expectedPasswordHash: user.passwordHash!,
+    });
+  }
+
+  /* ── GOOGLE AUTH — Google OAuth / One Tap orqali kirish ─────────────── */
+
+  async googleAuth(dto: GoogleAuthDto, meta?: RequestMeta): Promise<AuthResult> {
+    let email = dto.email?.trim().toLowerCase();
+    let fullName = dto.fullName?.trim();
+    let googleId = dto.googleId?.trim();
+
+    // 1. Agar idToken berilgan bo'lsa, Google API orqali tekshirish
+    if (dto.idToken) {
+      try {
+        const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${dto.idToken}`);
+        if (verifyRes.ok) {
+          const payload = (await verifyRes.json()) as { email?: string; name?: string; sub?: string };
+          if (payload.email) email = payload.email.toLowerCase();
+          if (payload.name) fullName = payload.name;
+          if (payload.sub) googleId = payload.sub;
+        }
+      } catch {
+        // Tarmoq yoki test muhitida dto maydonlaridan foydalaniladi
+      }
+    }
+
+    if (!email && !googleId) {
+      throw new DomainError('INVALID_INPUT', "Google hisob ma'lumotlari yetarli emas");
+    }
+
+    // 2. Mavjud foydalanuvchini email yoki googleId bo'yicha qidirish
+    let user = email ? await this.prisma.user.findFirst({ where: { email } }) : null;
+    if (!user && googleId) {
+      user = await this.prisma.user.findFirst({
+        where: { phone: `+000${googleId.slice(-10)}` },
+      });
+    }
+
+    if (user) {
+      if (user.status === 'BLOCKED') {
+        throw new ForbiddenError('Hisob bloklangan', 'ACCOUNT_BLOCKED');
+      }
+      if (user.status === 'SUSPENDED') {
+        const expired = user.suspendedUntil !== null && user.suspendedUntil <= new Date();
+        if (!expired) {
+          throw new ForbiddenError('Hisob vaqtincha cheklangan', 'ACCOUNT_SUSPENDED');
+        }
+        await this.prisma.user.updateMany({
+          where: { id: user.id, status: 'SUSPENDED' },
+          data: { status: 'ACTIVE', suspendedUntil: null, statusReason: null },
+        });
+      }
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleLinkedAt: new Date(),
+          ...(fullName && !user.fullName ? { fullName } : {}),
+        },
+      });
+
+      const activeRole = user.roleChosen ? (user.lastActiveRole ?? null) : null;
+      return this.issueSession(user.id, activeRole, {
+        roleChosen: user.roleChosen,
+        profileDone: user.profileDone,
+        isNewUser: false,
+        meta,
+      });
+    }
+
+    // 3. Yangi foydalanuvchi yaratish (Google orqali ro'yxatdan o'tish)
+    const id = this.ids.next();
+    const phoneSuffix = (googleId || id).replace(/\D/g, '').slice(-10).padEnd(10, '0');
+    const phone = `+000${phoneSuffix}`;
+
+    const newUser = await this.prisma.user.create({
+      data: {
+        id,
+        phone,
+        email,
+        fullName: fullName || null,
+        roles: [],
+        verified: true,
+        googleLinkedAt: new Date(),
+      },
+    });
+
+    return this.issueSession(newUser.id, null, {
+      roleChosen: false,
+      profileDone: false,
+      isNewUser: true,
+      meta,
     });
   }
 

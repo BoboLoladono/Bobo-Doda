@@ -193,7 +193,7 @@ export default function XaridorDashboardPage() {
 
                       <div className="flex items-center gap-2.5 shrink-0">
                         <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary-deep">
-                          {job.proposalsCount || 0} ta ariza
+                          {job.proposalsCount || 0} {t("jobs.proposalsCountLabel")}
                         </span>
                         <Link href={`/xaridor/my-jobs/${job.id}`}>
                           <Button size="sm" variant="secondary" className="text-xs">
@@ -266,7 +266,7 @@ export default function XaridorDashboardPage() {
 
                     <div className="flex items-center justify-between text-2xs text-muted pt-1 border-t border-line/60">
                       <span>Taklif narxi: <strong className="text-ink font-semibold">{formatMoney(prop.bidAmount, lang)}</strong></span>
-                      {prop.estimatedDeliveryDays && <span>Yetkazish: {prop.estimatedDeliveryDays} kun</span>}
+                      {prop.estimatedDeliveryDays && <span>{t("common.delivery") || "Yetkazish"}: {prop.estimatedDeliveryDays} {t("common.days")}</span>}
                       <span>{formatDate(prop.createdAt, lang)}</span>
                     </div>
                   </Card>

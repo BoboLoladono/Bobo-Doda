@@ -8,6 +8,7 @@ import { RequestOtpDto } from './dto/request-otp.dto';
 import { RequestOtpResponseDto } from './dto/request-otp-response.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { LoginDto } from './dto/login.dto';
+import { GoogleAuthDto } from './dto/google-auth.dto';
 import { CompleteRegistrationDto } from './dto/complete-registration.dto';
 import { CompletePasswordResetDto } from './dto/complete-password-reset.dto';
 import { AuthSessionDto } from './dto/auth-session.dto';
@@ -100,6 +101,22 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthSessionDto> {
     const result = await this.auth.login(dto.phone, dto.password, requestMeta(req));
+    this.setCookie(res, result.refreshToken);
+    return toSessionDto(result);
+  }
+
+  /* ── GOOGLE AUTH ──────────────────────────────────────────────────────── */
+
+  @Public()
+  @Post('google')
+  @HttpCode(200)
+  @ApiOkResponse({ type: AuthSessionDto })
+  async googleAuth(
+    @Body() dto: GoogleAuthDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthSessionDto> {
+    const result = await this.auth.googleAuth(dto, requestMeta(req));
     this.setCookie(res, result.refreshToken);
     return toSessionDto(result);
   }

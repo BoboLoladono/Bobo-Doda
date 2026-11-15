@@ -43,6 +43,7 @@ function fakeHash(): HashService {
 
 function buildService(opts: {
   findUniqueResult?: User | null;
+  findFirstResult?: User | null;
   createImpl?: () => Promise<User>;
   otpRequestImpl?: () => Promise<{ devOtp?: string }>;
   otpVerifyImpl?: () => Promise<{ phone: string }>;
@@ -51,6 +52,7 @@ function buildService(opts: {
   hitImpl?: (key: string) => Promise<{ count: number }>;
 } = {}) {
   const findUnique = jest.fn(async () => opts.findUniqueResult ?? null);
+  const findFirst = jest.fn(async () => opts.findFirstResult ?? null);
   const create = jest.fn(opts.createImpl ?? (async () => fakeUser()));
   const update = jest.fn(async () => fakeUser());
   const updateMany = jest.fn(async () => ({ count: 1 }));
@@ -60,7 +62,7 @@ function buildService(opts: {
     cb({ user: txUser, refreshToken: txRefreshToken }),
   );
   const prisma = {
-    user: { findUnique, create, update, updateMany },
+    user: { findUnique, findFirst, create, update, updateMany },
     $transaction,
   } as unknown as PrismaService;
 
@@ -347,6 +349,56 @@ describe('AuthService — parol bilan login (Bosqich 21)', () => {
       (service as unknown as { refreshTokens: { revokeByRawToken: typeof revokeSpy } }).refreshTokens.revokeByRawToken = revokeSpy;
       await service.logout('raw-token-123', 'user-456');
       expect(revokeSpy).toHaveBeenCalledWith('raw-token-123', 'user-456');
+    });
+  });
+
+  describe('googleAuth', () => {
+    it('googleAuth — yangi foydalanuvchi yaratadi va sessiya qaytaradi', async () => {
+      const { service, prisma } = buildService();
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
+      (prisma.user.create as jest.Mock).mockResolvedValue({
+        id: 'new-google-user',
+        phone: '+0001234567890',
+        email: 'test@gmail.com',
+        fullName: 'Google User',
+        roles: [],
+        verified: true,
+        googleLinkedAt: new Date(),
+      });
+
+      const res = await service.googleAuth({
+        email: 'test@gmail.com',
+        fullName: 'Google User',
+        googleId: '1234567890',
+      });
+
+      expect(res.accessToken).toBe('access-token');
+      expect(res.isNewUser).toBe(true);
+      expect(prisma.user.create).toHaveBeenCalled();
+    });
+
+    it('googleAuth — mavjud foydalanuvchini email bo‘yicha topib sessiya beradi', async () => {
+      const { service, prisma } = buildService();
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({
+        id: 'existing-user-id',
+        email: 'test@gmail.com',
+        fullName: 'Existing User',
+        status: 'ACTIVE',
+        roleChosen: true,
+        lastActiveRole: 'SELLER',
+        profileDone: true,
+      });
+      (prisma.user.update as jest.Mock).mockResolvedValue({});
+
+      const res = await service.googleAuth({
+        email: 'test@gmail.com',
+      });
+
+      expect(res.accessToken).toBe('access-token');
+      expect(res.isNewUser).toBe(false);
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'existing-user-id' } }),
+      );
     });
   });
 });

@@ -211,13 +211,13 @@ export default function MutaxassisDashboardPage() {
               </h2>
               {!loading && (
                 <Badge tone="primary">
-                  {filteredJobs.length} ta mos ish
+                  {filteredJobs.length} {t("dash.matchingJobsBadge")}
                 </Badge>
               )}
             </div>
             <p className="text-xs text-muted mt-0.5">
               {matchingJobs.length > 0
-                ? "Sizning ko'nikmalaringiz va kategoriyalaringizga to'g'ri keladigan ishlar"
+                ? t("dash.matchingJobsDesc")
                 : t("dash.availableJobsDesc")}
             </p>
           </div>
@@ -264,7 +264,7 @@ export default function MutaxassisDashboardPage() {
               <div className="text-center pt-2">
                 <Link href="/bozor?tab=jobs">
                   <Button variant="secondary" size="sm">
-                    {t("dash.browseJobBoard")} ({filteredJobs.length} ta loyiha) →
+                    {t("dash.browseJobBoard")} ({filteredJobs.length} {t("dash.projectsSuffix")}) →
                   </Button>
                 </Link>
               </div>
@@ -293,11 +293,11 @@ export default function MutaxassisDashboardPage() {
             <SkeletonCard />
           ) : offers.length === 0 ? (
             <Card className="text-center py-8">
-              <p className="font-heading text-sm font-bold text-ink">Hozircha sizga to'g'ridan-to'g'ri ish taklifi kelmagan.</p>
+              <p className="font-heading text-sm font-bold text-ink">{t("dash.noDirectOffersYet")}</p>
               <div className="mt-4 pt-4 border-t border-line/60">
-                <p className="text-xs text-muted mb-2">Profilni to'ldirish tavsiya etiladi</p>
+                <p className="text-xs text-muted mb-2">{t("dash.fillProfileRecommended")}</p>
                 <Link href="/mutaxassis/settings/profil" className="inline-block text-xs font-semibold text-primary hover:underline">
-                  Profilni to'ldirish →
+                  {t("dash.fillProfileLink")}
                 </Link>
               </div>
             </Card>
@@ -377,7 +377,7 @@ export default function MutaxassisDashboardPage() {
           ) : services.length === 0 ? (
             <Card className="text-center py-8">
               <p className="font-heading text-sm font-bold text-ink">{t("dash.emptyServicesCta")}</p>
-              <p className="mt-1 text-xs text-muted">Xizmat yarating va bozorga taklif qiling.</p>
+              <p className="mt-1 text-xs text-muted">{t("dash.createServiceHint")}</p>
               <Link href="/mutaxassis/services/yangi" className="mt-3 inline-block">
                 <Button size="sm">{t("dash.newService")}</Button>
               </Link>
@@ -392,7 +392,7 @@ export default function MutaxassisDashboardPage() {
                       <div className="flex items-center gap-2 text-2xs text-muted mt-0.5">
                         <Badge tone="primary">{t(`cat.${s.category}`)}</Badge>
                         <span className="font-semibold text-ink">{formatMoney(s.price, lang)}</span>
-                        <span>• {s.deliveryDays} kun</span>
+                        <span>• {s.deliveryDays} {t("common.days")}</span>
                       </div>
                     </div>
                     <ServiceStatusBadge status={s.status} />

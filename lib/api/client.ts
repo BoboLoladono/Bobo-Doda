@@ -197,6 +197,11 @@ export const authService: AuthService = {
       const res = await http<RealAuthSession>("/auth/login", { method: "POST", body: { phone, password } });
       return writeSession(res);
     }),
+  loginWithGoogle: (data) =>
+    call(async () => {
+      const res = await http<RealAuthSession>("/auth/google", { method: "POST", body: data });
+      return writeSession(res);
+    }),
   requestPasswordResetOtp: (phone) =>
     call(async () =>
       http<{ sent: true; devOtp?: string }>("/auth/password-reset/request-otp", {

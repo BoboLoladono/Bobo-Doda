@@ -279,7 +279,7 @@ export default function XizmatTafsilotiPage() {
                   <div className="mt-1 flex items-center gap-2 text-2xs text-muted">
                     <span className="font-bold text-amber-500">★ {specialist.profile.rating > 0 ? specialist.profile.rating.toFixed(1) : "—"}</span>
                     <span>•</span>
-                    <span>{specialist.profile.completedContracts} ta ish</span>
+                    <span>{specialist.profile.completedContracts} {t("jobs.completedCount")}</span>
                   </div>
                 </div>
               </Link>

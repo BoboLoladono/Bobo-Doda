@@ -495,14 +495,14 @@ export default function XaridorMutaxassislarPage() {
                                     <span className="font-semibold text-ink">
                                       {spec.profile.rating.toFixed(1)}
                                     </span>
-                                    <span>({spec.profile.reviewCount} ta sharh)</span>
+                                    <span>({spec.profile.reviewCount} {t("jobs.reviewsCount")})</span>
                                   </>
                                 ) : (
-                                  <span className="text-muted font-normal">Yangi mutaxassis</span>
+                                  <span className="text-muted font-normal">{t("jobs.newSpecialist")}</span>
                                 )}
                                 <span>•</span>
                                 <span className="font-medium text-ink">
-                                  {spec.profile.completedContracts} ta ish
+                                  {spec.profile.completedContracts} {t("jobs.completedCount")}
                                 </span>
                               </div>
                             </div>
@@ -512,7 +512,7 @@ export default function XaridorMutaxassislarPage() {
                           <button
                             type="button"
                             onClick={() => handleToggleSaveSpecialist(spec.user.id)}
-                            aria-label={isSaved ? "Saqlanganlardan o'chirish" : "Saqlab qo'yish"}
+                            aria-label={isSaved ? t("jobs.unsaveAction") : t("jobs.saveAction")}
                             className={`rounded-btn p-1.5 transition-colors shrink-0 ${
                               isSaved ? "text-primary bg-primary/10" : "text-muted hover:text-ink hover:bg-card-hover"
                             }`}
@@ -619,7 +619,7 @@ export default function XaridorMutaxassislarPage() {
                                     </span>
                                     <div className="flex items-center gap-2 shrink-0">
                                       <span className="text-2xs text-muted">
-                                        {svc.deliveryDays} kun
+                                        {svc.deliveryDays} {t("common.days")}
                                       </span>
                                       <span className="font-bold text-primary text-2xs whitespace-nowrap">
                                         {formatMoney(svc.price, lang)}
@@ -632,15 +632,15 @@ export default function XaridorMutaxassislarPage() {
                                     href={`/bozor/mutaxassis/${spec.user.id}`}
                                     className="text-2xs text-primary font-semibold hover:underline text-right mt-0.5"
                                   >
-                                    va yana {specServices.length - 2} ta xizmat →
+                                    {t("jobs.moreServices").replace("{count}", String(specServices.length - 2))}
                                   </Link>
                                 )}
                               </div>
                             </div>
                           ) : (
                             <div className="rounded-card bg-surface/60 border border-line/50 p-2 text-2xs text-muted flex items-center justify-between">
-                              <span>Maxsus buyurtmalar qabul qiladi</span>
-                              <span className="text-ink font-semibold">Kelishilgan narx</span>
+                              <span>{t("jobs.customOrdersAccepted")}</span>
+                              <span className="text-ink font-semibold">{t("jobs.negotiatedPrice")}</span>
                             </div>
                           )}
                         </div>
@@ -760,7 +760,7 @@ export default function XaridorMutaxassislarPage() {
                                 <div className="flex items-center gap-1 text-2xs text-muted">
                                   <span>★ {spec.profile.rating.toFixed(1)}</span>
                                   <span>•</span>
-                                  <span>{spec.profile.completedContracts} ta ish</span>
+                                  <span>{spec.profile.completedContracts} {t("jobs.completedCount")}</span>
                                 </div>
                               </div>
                             </Link>
@@ -769,7 +769,7 @@ export default function XaridorMutaxassislarPage() {
 
                         <div className="mt-auto flex items-center justify-between border-t border-line pt-3 text-xs">
                           <div>
-                            <span className="text-2xs text-muted block">Boshlang&apos;ich narx:</span>
+                            <span className="text-2xs text-muted block">{t("jobs.startingPrice")}</span>
                             <span className="font-heading text-sm font-bold text-primary">
                               {formatMoney(service.price, lang)}
                             </span>

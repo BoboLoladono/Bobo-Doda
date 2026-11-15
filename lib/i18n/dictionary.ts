@@ -540,6 +540,9 @@ export const dictionary: Record<string, Entry> = {
     ru: "Войдите по номеру телефона и паролю",
   },
   "auth.loginBtn": { uz: "Kirish", ru: "Войти" },
+  "auth.continueWithGoogle": { uz: "Google orqali davom etish", ru: "Продолжить через Google" },
+  "auth.orWithPhone": { uz: "yoki telefon raqami orqali", ru: "или через номер телефона" },
+  "auth.googleLoginFailed": { uz: "Google orqali kirishda xatolik yuz berdi", ru: "Ошибка входа через Google" },
   "auth.password": { uz: "Parol", ru: "Пароль" },
   "auth.passwordPh": { uz: "Kamida 6 belgi", ru: "Не менее 6 символов" },
   "auth.errPassword": {
@@ -977,6 +980,17 @@ export const dictionary: Record<string, Entry> = {
   "jobs.sortNew": { uz: "Eng yangi", ru: "Сначала новые" },
   "jobs.sortBudget": { uz: "Eng yuqori byudjet", ru: "Максимальный бюджет" },
   "jobs.proposalsCount": { uz: "ta taklif", ru: "предложений" },
+  "jobs.completedCount": { uz: "ta ish", ru: "работ" },
+  "jobs.reviewsCount": { uz: "ta sharh", ru: "отзывов" },
+  "jobs.newSpecialist": { uz: "Yangi mutaxassis", ru: "Новый специалист" },
+  "jobs.customOrdersAccepted": { uz: "Maxsus buyurtmalar qabul qiladi", ru: "Принимает индивидуальные заказы" },
+  "jobs.negotiatedPrice": { uz: "Kelishilgan narx", ru: "Договорная цена" },
+  "jobs.startingPrice": { uz: "Boshlang'ich narx:", ru: "Начальная цена:" },
+  "jobs.moreServices": { uz: "va yana {count} ta xizmat →", ru: "и ещё {count} услуг →" },
+  "jobs.memberSincePrefix": { uz: "dan beri", ru: "с" },
+  "jobs.proposalsCountLabel": { uz: "ta ariza", ru: "откликов" },
+  "jobs.saveAction": { uz: "Saqlab qo'yish", ru: "Сохранить" },
+  "jobs.unsaveAction": { uz: "Saqlanganlardan o'chirish", ru: "Удалить из сохранённых" },
   "jobs.empty": {
     uz: "Filtrga mos e'lon topilmadi — shartlarni kengaytirib ko'ring",
     ru: "По фильтру ничего не найдено — попробуйте расширить условия",
@@ -1561,6 +1575,25 @@ export const dictionary: Record<string, Entry> = {
   "dash.ckPortfolio": { uz: "Portfolio rasmi qo'shilgan", ru: "Добавлено изображение в портфолио" },
   "dash.completeProfile": { uz: "Profilni to'ldirish", ru: "Заполнить профиль" },
   "dash.matchingJobs": { uz: "Sizga mos e'lonlar", ru: "Подходящие объявления" },
+  "dash.matchingJobsBadge": { uz: "ta mos ish", ru: "подходящих вакансий" },
+  "dash.matchingJobsDesc": {
+    uz: "Sizning ko'nikmalaringiz va kategoriyalaringizga to'g'ri keladigan ishlar",
+    ru: "Проекты, соответствующие вашим навыкам и категориям",
+  },
+  "dash.projectsSuffix": { uz: "ta loyiha", ru: "проектов" },
+  "dash.noDirectOffersYet": {
+    uz: "Hozircha sizga to'g'ridan-to'g'ri ish taklifi kelmagan.",
+    ru: "Пока вам не поступало прямых предложений о работе.",
+  },
+  "dash.fillProfileRecommended": {
+    uz: "Profilni to'ldirish tavsiya etiladi",
+    ru: "Рекомендуется заполнить профиль",
+  },
+  "dash.fillProfileLink": { uz: "Profilni to'ldirish →", ru: "Заполнить профиль →" },
+  "dash.createServiceHint": {
+    uz: "Xizmat yarating va bozorga taklif qiling.",
+    ru: "Создайте услугу и предложите её на бирже.",
+  },
   "dash.noMatchingJobs": {
     uz: "Hozircha mos e'lon yo'q",
     ru: "Пока нет подходящих объявлений",

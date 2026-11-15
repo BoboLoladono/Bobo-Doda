@@ -784,10 +784,10 @@ export default function BozorPage() {
                                     <span>({spec.profile.reviewCount})</span>
                                   </>
                                 ) : (
-                                  <span className="text-muted font-normal">Yangi mutaxassis</span>
+                                  <span className="text-muted font-normal">{t("jobs.newSpecialist")}</span>
                                 )}
                                 <span>•</span>
-                                <span>{spec.profile.completedContracts} ta ish</span>
+                                <span>{spec.profile.completedContracts} {t("jobs.completedCount")}</span>
                               </div>
                             </div>
                           </div>
@@ -848,7 +848,7 @@ export default function BozorPage() {
 
                       <div className="border-t border-line pt-3 mt-1 flex flex-col gap-2.5">
                         <div className="flex items-center justify-between text-2xs text-muted">
-                          <span>{spec.profile.location || "O'zbekiston"} • {formatDate(spec.profile.memberSince, lang)} dan beri</span>
+                          <span>{spec.profile.location || "O'zbekiston"} • {t("job.memberSince")} {formatDate(spec.profile.memberSince, lang)}</span>
                           <span className={spec.profile.available ? "text-success font-semibold" : "text-muted"}>
                             {spec.profile.available ? t("market.readyForJobs") : t("market.statusBusy")}
                           </span>

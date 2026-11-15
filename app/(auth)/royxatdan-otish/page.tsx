@@ -7,6 +7,7 @@ import { authService } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/Button";
 import { CountryPhoneInput } from "@/components/shared/CountryPhoneInput";
+import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { stashDevOtp } from "@/lib/api/dev-otp-bridge";
 
 /** Bosqich 21 — Login'dan ALOHIDA oqim (login endi parol bilan, SMS
@@ -128,7 +129,20 @@ export default function RoyxatdanOtishPage() {
       </h1>
       <p className="mt-2.5 text-sm sm:text-base text-muted leading-relaxed">{t("auth.otpIntro")}</p>
 
-      <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5" noValidate>
+      <div className="mt-8">
+        <GoogleAuthButton onError={(msg) => setError(msg)} />
+
+        <div className="relative my-6 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-line" />
+          </div>
+          <span className="relative bg-card px-4 text-2xs uppercase tracking-wider text-muted font-bold">
+            {t("auth.orWithPhone")}
+          </span>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
         <CountryPhoneInput
           id="register-otp-phone"
           value={phone}

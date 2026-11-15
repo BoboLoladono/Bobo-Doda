@@ -8,6 +8,7 @@ import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { CountryPhoneInput } from "@/components/shared/CountryPhoneInput";
+import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 
 /** Bosqich 21 — telefon + PAROL, SMS ISHTIROK ETMAYDI (asosiy invariant:
     oddiy login uchun SMS soni = 0). Noto'g'ri telefon va noto'g'ri parol
@@ -205,7 +206,20 @@ export default function KirishPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5" noValidate>
+      <div className="mt-8">
+        <GoogleAuthButton onError={(msg) => setError(msg)} />
+
+        <div className="relative my-6 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-line" />
+          </div>
+          <span className="relative bg-card px-4 text-2xs uppercase tracking-wider text-muted font-bold">
+            {t("auth.orWithPhone")}
+          </span>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
         <CountryPhoneInput
           id="login-phone"
           value={phone}

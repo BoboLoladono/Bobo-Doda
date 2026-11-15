@@ -2265,15 +2265,21 @@ export default function LandingPage() {
           <div className="container-yv">
             <div className="footer-grid-yv">
               <div>
-                <div className="footer-logo-title" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div className="footer-logo-title" style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- landing o'z JSX'ini alohida chizadi, statik logotip */}
                   <img
                     src="/logo.png"
                     alt="Bobololadono"
-                    height={32}
-                    style={{ height: 32, width: "auto", objectFit: "contain", display: "block" }}
+                    style={{ height: 38, width: "auto", objectFit: "contain", display: "block" }}
                   />
-                  <span>Bobololadono</span>
+                  <div>
+                    <span style={{ display: "block", fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 800, color: "var(--ink)", lineHeight: 1.1 }}>
+                      Bobololadono
+                    </span>
+                    <span style={{ display: "block", fontSize: 10, letterSpacing: "0.14em", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, marginTop: 3 }}>
+                      — IT mutaxassislar platformasi —
+                    </span>
+                  </div>
                 </div>
                 <p className="footer-desc-p">{t("foot_desc")}</p>
               </div>
