@@ -50,18 +50,19 @@ export function buildCsp(apiUrl = process.env.NEXT_PUBLIC_API_URL) {
 
   /* Bir xil originda turgan backend uchun hech narsa qo'shilmaydi —
      `'self'` allaqachon qamrab oladi. */
-  const connectSrc = ["'self'", apiOrigin, wsOrigin].filter(Boolean).join(" ");
+  const connectSrc = ["'self'", apiOrigin, wsOrigin, "https://accounts.google.com", "https://www.googleapis.com", "https://oauth2.googleapis.com"].filter(Boolean).join(" ");
 
   return [
     "default-src 'self'",
     /* Next.js hidratsiya uchun script'da 'unsafe-inline' talab qiladi */
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com",
     "style-src 'self' 'unsafe-inline'",
     /* Shriftlar `@fontsource` orqali LOKAL — Google Fonts hosti kerak emas */
     "font-src 'self'",
     /* data: — SVG placeholder va portfolio rasmlari uchun */
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https://*.googleusercontent.com",
     `connect-src ${connectSrc}`,
+    "frame-src 'self' https://accounts.google.com",
     /* clickjacking himoyasi */
     "frame-ancestors 'none'",
     "object-src 'none'",
