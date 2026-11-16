@@ -56,15 +56,15 @@ export default function MutaxassisDashboardPage() {
   const load = useCallback(() => {
     setLoadError(null);
     Promise.all([
-      contractsService.list(),
-      milestonesService.listMine(),
-      servicesService.listMine(),
-      jobsService.list(),
-      proposalsService.listMine(),
-      offersService.listIncoming(),
+      contractsService.list().catch((e) => { console.warn("contracts list error:", e); return [] as Contract[]; }),
+      milestonesService.listMine().catch((e) => { console.warn("milestones list error:", e); return [] as Milestone[]; }),
+      servicesService.listMine().catch((e) => { console.warn("services list error:", e); return [] as Service[]; }),
+      jobsService.list().catch((e) => { console.warn("jobs list error:", e); return [] as Job[]; }),
+      proposalsService.listMine().catch((e) => { console.warn("proposals list error:", e); return [] as Proposal[]; }),
+      offersService.listIncoming().catch((e) => { console.warn("offers list error:", e); return [] as Offer[]; }),
       usersService.getSellerProfile().catch(() => null),
-      savedService.listJobIds(),
-      usersService.getCurrent(),
+      savedService.listJobIds().catch(() => [] as string[]),
+      usersService.getCurrent().catch(() => null),
     ])
       .then(([contractList, milestoneList, serviceList, jobList, proposalList, offerList, prof, ids, user]) => {
         setContracts(contractList);

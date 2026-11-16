@@ -47,15 +47,28 @@ export default function TakliflarimPage() {
   const load = useCallback(() => {
     setLoadError(null);
     Promise.all([
-      proposalsService.listMine(),
-      jobsService.list(),
-      offersService.listIncoming(),
+      proposalsService.listMine().catch((err) => {
+        console.warn("proposalsService.listMine failed:", err);
+        return [] as Proposal[];
+      }),
+      jobsService.list().catch((err) => {
+        console.warn("jobsService.list failed:", err);
+        return [] as Job[];
+      }),
+      offersService.listIncoming().catch((err) => {
+        console.warn("offersService.listIncoming failed:", err);
+        return [] as Offer[];
+      }),
     ])
       .then(async ([proposalList, jobList, offerList]) => {
-        setProposals(proposalList);
-        const map = new Map(jobList.map((j) => [j.id, j]));
-        for (const p of proposalList) {
-          if (!map.has(p.jobId)) {
+        const safeProposals = Array.isArray(proposalList) ? proposalList : [];
+        const safeJobs = Array.isArray(jobList) ? jobList : [];
+        const safeOffers = Array.isArray(offerList) ? offerList : [];
+
+        setProposals(safeProposals);
+        const map = new Map(safeJobs.map((j) => [j.id, j]));
+        for (const p of safeProposals) {
+          if (p?.jobId && !map.has(p.jobId)) {
             try {
               const found = await jobsService.get(p.jobId);
               if (found) map.set(p.jobId, found);
@@ -63,7 +76,7 @@ export default function TakliflarimPage() {
           }
         }
         setJobs(Array.from(map.values()));
-        setOffers(offerList);
+        setOffers(safeOffers);
       })
       .catch(setLoadError);
   }, []);

@@ -815,7 +815,10 @@ export const jobsService: JobsService = {
 };
 
 export const proposalsService: ProposalsService = {
-  listMine: () => call(() => http<Model.Proposal[]>("/jobs/proposals/mine")),
+  listMine: () => call(async () => {
+    const res = await http<Model.Proposal[]>("/jobs/proposals/mine");
+    return Array.isArray(res) ? res : [];
+  }),
   get: (id) => call(async () => {
     try { return await http<Model.Proposal>(`/jobs/proposals/${id}`); }
     catch (error) {
