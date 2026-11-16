@@ -190,6 +190,24 @@ export default function RoyxatPage() {
       <h1 className="font-heading text-xl font-bold text-ink">{t("onboard.title")}</h1>
       <p className="mt-2 text-sm text-muted">{t("onboard.applicationSubtitle")}</p>
 
+      {/* Google bilan muvaffaqiyatli kirilganini tasdiqlovchi status kartochkasi */}
+      <div className="mt-4 flex items-center justify-between rounded-2xl border border-line bg-card/60 p-3.5 shadow-sm">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 font-bold">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-muted font-medium">{t("onboard.accountBadge") || "Tizimga kirilgan hisob"}:</p>
+            <p className="truncate text-sm font-bold text-ink">{fullName || displayName || "Foydalanuvchi"}</p>
+          </div>
+        </div>
+        <span className="shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600">
+          Google ✓
+        </span>
+      </div>
+
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4" noValidate>
         <Input
           label={t("onboard.fullName")}
@@ -228,6 +246,37 @@ export default function RoyxatPage() {
           {isReapply ? t("onboard.reapplyBtn") : t("onboard.submitApplication")}
         </Button>
       </form>
+
+      {/* Rolni almashtirish yoki xaridor rejimiga o'tish imkoniyati */}
+      <div className="mt-6 pt-4 border-t border-line text-center">
+        <p className="text-xs text-muted mb-2">
+          Xizmat buyurtma qilmoqchi yoki mutaxassis yollamoqchimisiz?
+        </p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await authService.chooseRole("xaridor");
+                router.push("/xaridor");
+              } catch {
+                router.push("/rol-tanlash");
+              }
+            }}
+            className="text-xs font-semibold text-primary hover:underline py-1 px-2"
+          >
+            {t("onboard.switchToBuyer") || "Xaridor (Buyurtmachi) sifatida davom etish"} →
+          </button>
+          <span className="hidden sm:inline text-muted">•</span>
+          <button
+            type="button"
+            onClick={() => router.push("/rol-tanlash")}
+            className="text-xs font-semibold text-muted hover:text-ink py-1 px-2"
+          >
+            {t("onboard.changeRole") || "Rolni o'zgartirish"}
+          </button>
+        </div>
+      </div>
     </Card>
   );
 }

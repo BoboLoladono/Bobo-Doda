@@ -42,9 +42,9 @@ export default function MainLayout({ children }: { children: ReactNode }) {
           return;
         }
         
-        // Enforce onboarding boundary for mutaxassis
+        // Enforce onboarding boundary for mutaxassis (faqat mutaxassis ichki yo'llari uchun)
         const isOnboarding = pathname === "/mutaxassis/settings/royxat";
-        if (session.role === "mutaxassis" && !session.profileDone && !isOnboarding) {
+        if (session.role === "mutaxassis" && !session.profileDone && !isOnboarding && isMutaxassisRoute) {
           router.replace("/mutaxassis/settings/royxat");
           return;
         }
