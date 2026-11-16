@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" fill="none">
+  <!-- HUMO Bird Icon -->
+  <g fill="#CA8A24" transform="translate(14, 2)">
+    <path d="M18 1C16.8 3.5 13.8 6.5 9.5 7.5C6.5 8 3.5 7 0 6C2 8.5 5 10 8.5 10.5C6 12 3.5 12.5 1 12C3.5 14 7 14.5 10 13.5C8 15.5 5.5 16.5 2.5 16.5C5.5 18 9.5 18 13 16C12 18 10 19.5 7.5 20C11.5 21 16 19 18.5 15.5C19.5 14 20 12 20 10C20.5 9 21.5 8 23 7C25 6 28 7.5 30 10C31 8 31 6 30 4.5C28.5 2 24 0.5 20 0C19.2 0 18.5 0.3 18 1Z"/>
+    <path d="M13 17C11 20 8 23 5 24C8 24 11 22.5 13.5 20.5C13 22 12 24 10 25.5C13 25 15.5 23 16.5 20.5C17.5 23 17 25.5 15 27C18 26 20 23.5 20 20L18 17H13Z"/>
+  </g>
+  <!-- HUMO Text -->
+  <text x="32" y="42" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="900" fill="#CA8A24" letter-spacing="1">HUMO</text>
+</svg>

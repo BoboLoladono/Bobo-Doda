@@ -1585,55 +1585,64 @@ export default function LandingPage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 16px 22px;
-          background: var(--card);
+          padding: 16px 24px;
+          background: #ffffff;
           border: 1px solid var(--hair);
-          border-radius: 16px;
-          margin-bottom: 32px;
+          border-radius: 20px;
+          margin-bottom: 36px;
           flex-wrap: wrap;
-          gap: 16px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+          gap: 20px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.02);
         }
         .footer-pay-wrap {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          flex-wrap: wrap;
+        }
+        .footer-pay-label {
+          font-size: 14.5px;
+          font-weight: 600;
+          color: var(--n700);
+          white-space: nowrap;
+          letter-spacing: -0.01em;
+        }
+        .footer-pay-cards {
           display: flex;
           align-items: center;
           gap: 12px;
           flex-wrap: wrap;
         }
-        .footer-pay-label {
-          font-size: 12.5px;
-          font-weight: 600;
-          color: var(--n500);
-        }
-        .footer-pay-badges {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          flex-wrap: wrap;
-        }
-        .pay-badge {
+        .pay-card-item {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          padding: 4px 10px;
-          border-radius: 7px;
-          font-size: 11.5px;
-          font-weight: 700;
-          letter-spacing: -0.01em;
-          border: 1px solid var(--hair);
+          height: 60px;
+          min-width: 96px;
+          padding: 6px 16px;
+          border-radius: 14px;
+          border: 1px solid #e2e8f0;
           background: #ffffff;
-          box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-          transition: transform 0.2s ease;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+          transition: transform 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+          cursor: default;
         }
-        .pay-badge:hover {
-          transform: translateY(-1px);
+        .pay-card-item:hover {
+          transform: translateY(-2px);
+          border-color: #cbd5e1;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
-        .pay-payme { color: #00b4b4; border-color: rgba(0, 204, 204, 0.3); background: #f0fdfd; }
-        .pay-click { color: #0077ff; border-color: rgba(0, 119, 255, 0.3); background: #f0f7ff; }
-        .pay-uzcard { color: #432b7b; border-color: rgba(67, 43, 123, 0.3); background: #f8f6fc; }
-        .pay-humo { color: #ff6600; border-color: rgba(255, 102, 0, 0.3); background: #fff8f2; }
-        .pay-visa { color: #1a1f71; border-color: rgba(26, 31, 113, 0.3); font-weight: 800; font-style: italic; }
-        .pay-mc { color: #eb001b; border-color: rgba(235, 0, 27, 0.3); font-weight: 800; }
+        .pay-card-img {
+          width: auto;
+          object-fit: contain;
+          display: block;
+        }
+        .pay-img-payme { height: 26px; }
+        .pay-img-click { height: 24px; }
+        .pay-img-uzcard { height: 42px; }
+        .pay-img-humo { height: 42px; }
+        .pay-img-visa { height: 22px; }
+        .pay-img-mastercard { height: 42px; }
 
         .footer-trust-right {
           display: flex;
@@ -1733,6 +1742,15 @@ export default function LandingPage() {
           .footer-brand-wrap { grid-column: span 1; }
           .hero-cta { flex-direction: column; width: 100%; }
           .hero-cta a { width: 100%; justify-content: center; }
+          .footer-trust-banner { padding: 14px 16px; }
+          .footer-pay-cards { gap: 8px; }
+          .pay-card-item { height: 50px; min-width: 84px; padding: 4px 12px; border-radius: 12px; }
+          .pay-img-payme { height: 22px; }
+          .pay-img-click { height: 20px; }
+          .pay-img-uzcard { height: 36px; }
+          .pay-img-humo { height: 36px; }
+          .pay-img-visa { height: 18px; }
+          .pay-img-mastercard { height: 36px; }
         }
 
         /* ── Reduced Motion Accessibility ──────────────────────────── */
@@ -2680,13 +2698,31 @@ export default function LandingPage() {
                 <span className="footer-pay-label">
                   {tr("Ishonchli to'lov tizimlari:", "Платёжные системы:", "Payment Methods:")}
                 </span>
-                <div className="footer-pay-badges">
-                  <span className="pay-badge pay-payme">Payme</span>
-                  <span className="pay-badge pay-click">Click</span>
-                  <span className="pay-badge pay-uzcard">Uzcard</span>
-                  <span className="pay-badge pay-humo">Humo</span>
-                  <span className="pay-badge pay-visa">VISA</span>
-                  <span className="pay-badge pay-mc">Mastercard</span>
+                <div className="footer-pay-cards">
+                  <div className="pay-card-item" title="Payme">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/payments/payme.svg" alt="Payme" className="pay-card-img pay-img-payme" />
+                  </div>
+                  <div className="pay-card-item" title="Click">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/payments/click.svg" alt="Click" className="pay-card-img pay-img-click" />
+                  </div>
+                  <div className="pay-card-item" title="Uzcard">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/payments/uzcard.svg" alt="Uzcard" className="pay-card-img pay-img-uzcard" />
+                  </div>
+                  <div className="pay-card-item" title="Humo">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/payments/humo.svg" alt="Humo" className="pay-card-img pay-img-humo" />
+                  </div>
+                  <div className="pay-card-item" title="Visa">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/payments/visa.svg" alt="Visa" className="pay-card-img pay-img-visa" />
+                  </div>
+                  <div className="pay-card-item" title="Mastercard">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/payments/mastercard.svg" alt="Mastercard" className="pay-card-img pay-img-mastercard" />
+                  </div>
                 </div>
               </div>
 

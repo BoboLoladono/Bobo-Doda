@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 115 32" fill="none">
+  <!-- Click 'C' ring -->
+  <path d="M22.5 8.2 A 12 12 0 1 0 22.5 23.8 L 18.5 20.3 A 7 7 0 1 1 18.5 11.7 Z" fill="#0073FF"/>
+  <!-- Click play arrow inside -->
+  <polygon points="12,11.5 12,20.5 18,16" fill="#0073FF"/>
+  <!-- CLICK wordmark -->
+  <text x="36" y="23" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="19" font-weight="900" fill="#0073FF" letter-spacing="0.8">CLICK</text>
+</svg>
