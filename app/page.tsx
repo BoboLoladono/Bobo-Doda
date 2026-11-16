@@ -1407,44 +1407,161 @@ export default function LandingPage() {
           margin: 0 auto 20px;
         }
 
-        /* ── Footer (Yoshlar Ventures uslubi) ──────────────────────── */
+        /* ── Footer (Mukammal va Foydalanuvchiga Qulay Dizayn) ────────────── */
         .footer-yv {
           border-top: 1px solid var(--hair);
-          background: var(--card);
-          padding: 60px 0 36px;
+          background: #fafbfc;
+          padding: 68px 0 60px;
           position: relative;
           z-index: 1;
         }
         .footer-grid-yv {
           display: grid;
-          grid-template-columns: 1.6fr 1fr 1fr 1fr;
-          gap: 40px;
-          margin-bottom: 48px;
+          grid-template-columns: 2fr 1fr 1fr 1fr 1.1fr;
+          gap: 36px;
+          margin-bottom: 44px;
         }
-        .footer-logo-title {
+        .footer-brand-wrap {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .footer-brand-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 12px;
+          text-decoration: none;
+        }
+        .footer-brand-logo-img {
+          height: 46px;
+          width: auto;
+          object-fit: contain;
+          display: block;
+          filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.08));
+          transition: transform 0.25s var(--ease);
+        }
+        .footer-brand-link:hover .footer-brand-logo-img {
+          transform: translateY(-1px) scale(1.04);
+        }
+        .footer-brand-title {
           font-family: var(--font-display);
-          font-size: 18px;
-          font-weight: 800;
-          margin-bottom: 12px;
+          font-size: 23px;
+          font-weight: 850;
+          letter-spacing: -0.02em;
+          color: var(--ink);
+          line-height: 1.1;
+          display: block;
         }
-        .footer-desc-p {
-          font-size: 14px;
-          color: var(--n500);
-          line-height: 1.6;
-          max-width: 280px;
-        }
-        .footer-col-yv h4 {
-          font-size: 12px;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
+        .footer-brand-badge {
+          display: inline-block;
+          font-size: 11px;
           font-weight: 700;
-          color: var(--n500);
-          margin-bottom: 16px;
+          color: var(--orange-ink);
+          background: var(--warm);
+          padding: 2px 9px;
+          border-radius: 9999px;
+          border: 1px solid rgba(255, 122, 26, 0.25);
+          margin-top: 5px;
+          letter-spacing: 0.02em;
         }
-        .footer-col-yv ul { display: flex; flex-direction: column; gap: 10px; }
-        .footer-col-yv a, .footer-col-yv button {
+        .footer-brand-desc {
+          font-size: 13.5px;
+          color: var(--n500);
+          line-height: 1.65;
+          max-width: 340px;
+          margin: 0;
+        }
+        .footer-trust-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 7px;
+          margin-top: 2px;
+        }
+        .footer-trust-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 11.5px;
+          font-weight: 600;
           color: var(--n700);
-          font-size: 14px;
+          background: var(--card);
+          border: 1px solid var(--hair);
+          padding: 3px 9px;
+          border-radius: 8px;
+        }
+        .footer-social-row {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          margin-top: 4px;
+          flex-wrap: wrap;
+        }
+        .footer-social-btn {
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          background: var(--card);
+          border: 1px solid var(--hair);
+          color: var(--n700);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          text-decoration: none;
+          transition: all 0.2s var(--ease);
+          box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .footer-social-btn:hover {
+          color: #ffffff;
+          background: var(--orange);
+          border-color: var(--orange);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 10px rgba(255, 122, 26, 0.25);
+        }
+        .footer-support-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          height: 36px;
+          padding: 0 12px;
+          border-radius: 10px;
+          background: var(--card);
+          border: 1px solid var(--hair);
+          color: var(--n700);
+          font-size: 12px;
+          font-weight: 600;
+          text-decoration: none;
+          transition: all 0.2s var(--ease);
+          box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .footer-support-pill:hover {
+          color: var(--orange-ink);
+          border-color: var(--orange);
+          background: var(--warm);
+          transform: translateY(-1px);
+        }
+
+        .footer-col-yv h4 {
+          font-size: 12.5px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          font-weight: 800;
+          color: var(--ink);
+          margin-bottom: 18px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .footer-col-yv ul {
+          display: flex;
+          flex-direction: column;
+          gap: 11px;
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+        .footer-col-yv a, .footer-col-yv button {
+          color: var(--n500);
+          font-size: 13.5px;
           font-weight: 500;
           background: none;
           border: none;
@@ -1452,9 +1569,132 @@ export default function LandingPage() {
           cursor: pointer;
           text-align: left;
           font-family: inherit;
+          text-decoration: none;
+          transition: all 0.18s var(--ease);
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
         }
         .footer-col-yv a:hover, .footer-col-yv button:hover {
           color: var(--orange-ink);
+          transform: translateX(2px);
+        }
+
+        /* ── To'lov tizimlari va Xavfsizlik bar ── */
+        .footer-trust-banner {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px 22px;
+          background: var(--card);
+          border: 1px solid var(--hair);
+          border-radius: 16px;
+          margin-bottom: 32px;
+          flex-wrap: wrap;
+          gap: 16px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        }
+        .footer-pay-wrap {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+        .footer-pay-label {
+          font-size: 12.5px;
+          font-weight: 600;
+          color: var(--n500);
+        }
+        .footer-pay-badges {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .pay-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 4px 10px;
+          border-radius: 7px;
+          font-size: 11.5px;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+          border: 1px solid var(--hair);
+          background: #ffffff;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+          transition: transform 0.2s ease;
+        }
+        .pay-badge:hover {
+          transform: translateY(-1px);
+        }
+        .pay-payme { color: #00b4b4; border-color: rgba(0, 204, 204, 0.3); background: #f0fdfd; }
+        .pay-click { color: #0077ff; border-color: rgba(0, 119, 255, 0.3); background: #f0f7ff; }
+        .pay-uzcard { color: #432b7b; border-color: rgba(67, 43, 123, 0.3); background: #f8f6fc; }
+        .pay-humo { color: #ff6600; border-color: rgba(255, 102, 0, 0.3); background: #fff8f2; }
+        .pay-visa { color: #1a1f71; border-color: rgba(26, 31, 113, 0.3); font-weight: 800; font-style: italic; }
+        .pay-mc { color: #eb001b; border-color: rgba(235, 0, 27, 0.3); font-weight: 800; }
+
+        .footer-trust-right {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+        .trust-badge-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--n700);
+        }
+
+        /* ── Sub-footer Pastki chiziq ── */
+        .footer-bottom-bar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-top: 1px solid var(--hair);
+          padding-top: 24px;
+          font-size: 13px;
+          color: var(--n500);
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+        .footer-copyright-left {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .footer-sep {
+          color: var(--n300);
+        }
+        .footer-status-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 4px 12px;
+          border-radius: 9999px;
+          background: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          color: #065f46;
+          font-size: 11.5px;
+          font-weight: 600;
+        }
+        .status-dot-pulse {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #10b981;
+          box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+          animation: pulseGreen 2s infinite;
+        }
+        @keyframes pulseGreen {
+          0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+          70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
 
         /* ── Mobile Responsive ─────────────────────────────────────── */
@@ -1465,6 +1705,7 @@ export default function LandingPage() {
         }
         @media (max-width: 1240px) {
           .nav-menu-links { display: none; }
+          .footer-grid-yv { grid-template-columns: 1.5fr 1fr 1fr 1fr; }
         }
         @media (max-width: 980px) {
           .hero-grid { grid-template-columns: 1fr; }
@@ -1476,7 +1717,10 @@ export default function LandingPage() {
           .barriers-grid { grid-template-columns: 1fr; }
           .cat-grid-yv { grid-template-columns: repeat(2, 1fr); }
           .calc-box-yv { grid-template-columns: 1fr; }
-          .footer-grid-yv { grid-template-columns: 1fr 1fr; }
+          .footer-grid-yv { grid-template-columns: 1fr 1fr; gap: 32px; }
+          .footer-brand-wrap { grid-column: span 2; }
+          .footer-trust-banner { flex-direction: column; align-items: flex-start; gap: 14px; }
+          .footer-bottom-bar { flex-direction: column; align-items: flex-start; gap: 14px; padding-bottom: 70px; }
           .nav-actions-group .btn-find-work,
           .nav-actions-group .btn-apply-header,
           .nav-actions-group .nav-btn-login,
@@ -1485,7 +1729,8 @@ export default function LandingPage() {
         }
         @media (max-width: 640px) {
           .cat-grid-yv { grid-template-columns: 1fr; }
-          .footer-grid-yv { grid-template-columns: 1fr; }
+          .footer-grid-yv { grid-template-columns: 1fr; gap: 28px; }
+          .footer-brand-wrap { grid-column: span 1; }
           .hero-cta { flex-direction: column; width: 100%; }
           .hero-cta a { width: 100%; justify-content: center; }
         }
@@ -2264,44 +2509,144 @@ export default function LandingPage() {
         <footer className="footer-yv">
           <div className="container-yv">
             <div className="footer-grid-yv">
-              <div>
-                <div className="footer-logo-title" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- landing o'z JSX'ini alohida chizadi, statik logotip */}
+              {/* 1. Brend & Missiya */}
+              <div className="footer-brand-wrap">
+                <Link href="/" className="footer-brand-link" aria-label="Bobololadono">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src="/logo.png"
                     alt="Bobololadono"
-                    style={{ height: 38, width: "auto", objectFit: "contain", display: "block" }}
+                    className="footer-brand-logo-img"
                   />
                   <div>
-                    <span style={{ display: "block", fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 800, color: "var(--ink)", lineHeight: 1.1 }}>
-                      Bobololadono
-                    </span>
-                    <span style={{ display: "block", fontSize: 10, letterSpacing: "0.14em", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, marginTop: 3 }}>
-                      — IT mutaxassislar platformasi —
+                    <span className="footer-brand-title">Bobololadono</span>
+                    <span className="footer-brand-badge">
+                      {tr("Raqamli Xizmatlar Birjasi", "Биржа цифровых услуг", "Digital Services Marketplace")}
                     </span>
                   </div>
+                </Link>
+
+                <p className="footer-brand-desc">
+                  {tr(
+                    "O'zbekiston va Markaziy Osiyodagi buyurtmachilar hamda eng kuchli IT mutaxassislarni 100% Escrow kafolati bilan bog'lovchi rasmiy platforma.",
+                    "Официальная платформа для безопасного сотрудничества заказчиков и ведущих IT-специалистов Центральной Азии со 100% Escrow защитой.",
+                    "The official marketplace connecting clients and top IT specialists across Central Asia with 100% Escrow payment protection."
+                  )}
+                </p>
+
+                {/* Xavfsizlik va Ishonch nishonlari */}
+                <div className="footer-trust-chips">
+                  <span className="footer-trust-chip">🛡️ 100% Escrow</span>
+                  <span className="footer-trust-chip">⚡ Tezkor to&apos;lov</span>
+                  <span className="footer-trust-chip">🤝 Xolis arbitraj</span>
                 </div>
-                <p className="footer-desc-p">{t("foot_desc")}</p>
+
+                {/* Ijtimoiy tarmoqlar va Telegram qo'llab-quvvatlash */}
+                <div className="footer-social-row">
+                  <a
+                    href="https://t.me/bobololadono"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="footer-social-btn"
+                    aria-label="Telegram"
+                    title="Telegram kanal"
+                  >
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z" />
+                    </svg>
+                  </a>
+                  <a
+                    href="https://instagram.com/bobololadono"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="footer-social-btn"
+                    aria-label="Instagram"
+                    title="Instagram"
+                  >
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                    </svg>
+                  </a>
+                  <a
+                    href="https://linkedin.com/company/bobololadono"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="footer-social-btn"
+                    aria-label="LinkedIn"
+                    title="LinkedIn"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+                    </svg>
+                  </a>
+                  <a
+                    href="https://t.me/bobololadono_support"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="footer-support-pill"
+                    title="Telegram Yordamchi"
+                  >
+                    <span>💬 @bobololadono_support</span>
+                  </a>
+                </div>
               </div>
 
+              {/* 2. Bozor & Loyihalar */}
               <div className="footer-col-yv">
-                <h4>{t("f_product")}</h4>
+                <h4>{tr("Bozor", "Маркетплейс", "Marketplace")}</h4>
                 <ul>
-                  <li><a href="#portfolio">{tr("Buyurtmalar", "Проекты", "Projects")}</a></li>
-                  <li><a href="#stages">{t("f_how")}</a></li>
-                  <li><a href="#categories">{t("nav_cats")}</a></li>
+                  <li>
+                    <a href="#portfolio">{tr("Ochiq buyurtmalar", "Открытые проекты", "Open Projects")}</a>
+                  </li>
+                  <li>
+                    <Link href="/bozor?tab=jobs">{tr("Ish e'lonlari", "Вакансии", "Job Listings")}</Link>
+                  </li>
+                  <li>
+                    <Link href="/bozor?tab=specialists">{tr("Mutaxassislar", "Специалисты", "Specialists")}</Link>
+                  </li>
+                  <li>
+                    <Link href="/bozor?tab=services">{tr("Xizmatlar katalogi", "Каталог услуг", "Services Catalog")}</Link>
+                  </li>
+                  <li>
+                    <a href="#categories">{t("nav_cats")}</a>
+                  </li>
                 </ul>
               </div>
 
+              {/* 3. Imkoniyatlar */}
+              <div className="footer-col-yv">
+                <h4>{tr("Imkoniyatlar", "Возможности", "Solutions")}</h4>
+                <ul>
+                  <li>
+                    <Link href="/kirish?tab=register&role=xaridor">{tr("E'lon joylashtirish", "Разместить заказ", "Post a Project")}</Link>
+                  </li>
+                  <li>
+                    <Link href="/kirish?tab=register&role=mutaxassis">{tr("Mutaxassis bo'lish", "Стать исполнителем", "Become a Specialist")}</Link>
+                  </li>
+                  <li>
+                    <a href="#stages">{t("f_how")}</a>
+                  </li>
+                  <li>
+                    <a href="#calc">{tr("Komissiya kalkulyatori", "Калькулятор комиссии", "Fee Calculator")}</a>
+                  </li>
+                  <li>
+                    <Link href="/shartlar">{tr("Xavfsiz shartnomalar", "Безопасные контракты", "Safe Contracts")}</Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* 4. Huquqiy */}
               <div className="footer-col-yv">
                 <h4>{t("f_legal")}</h4>
                 <ul>
                   <li><Link href="/shartlar">{t("f_terms")}</Link></li>
                   <li><Link href="/maxfiylik">{t("f_privacy")}</Link></li>
                   <li><Link href="/oferta">{t("f_offer")}</Link></li>
+                  <li><Link href="/yordam-markazi">{tr("Xavfsizlik qoidalari", "Правила безопасности", "Security Rules")}</Link></li>
                 </ul>
               </div>
 
+              {/* 5. Yordam */}
               <div className="footer-col-yv">
                 <h4>{t("f_support")}</h4>
                 <ul>
@@ -2329,8 +2674,53 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--hair)", paddingTop: 24, fontSize: 13, color: "var(--n500)", flexWrap: "wrap", gap: 14 }}>
-              <div>&copy; 2026 Bobololadono. {t("foot_rights")}</div>
+            {/* To'lov tizimlari va Xavfsizlik bar */}
+            <div className="footer-trust-banner">
+              <div className="footer-pay-wrap">
+                <span className="footer-pay-label">
+                  {tr("Ishonchli to'lov tizimlari:", "Платёжные системы:", "Payment Methods:")}
+                </span>
+                <div className="footer-pay-badges">
+                  <span className="pay-badge pay-payme">Payme</span>
+                  <span className="pay-badge pay-click">Click</span>
+                  <span className="pay-badge pay-uzcard">Uzcard</span>
+                  <span className="pay-badge pay-humo">Humo</span>
+                  <span className="pay-badge pay-visa">VISA</span>
+                  <span className="pay-badge pay-mc">Mastercard</span>
+                </div>
+              </div>
+
+              <div className="footer-trust-right">
+                <span className="trust-badge-item">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                  <span>{tr("100% Escrow Kafolati", "100% Escrow Защита", "100% Escrow Protection")}</span>
+                </span>
+                <span className="trust-badge-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  <span>256-bit SSL Shifrlash</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Pastki qism / Sub-footer */}
+            <div className="footer-bottom-bar">
+              <div className="footer-copyright-left">
+                <span>&copy; 2026 Bobololadono. {t("foot_rights")}</span>
+                <span className="footer-sep">•</span>
+                <span className="hidden sm:inline">O&apos;zbekistonda mehr bilan yaratilgan 🇺🇿</span>
+              </div>
+
+              <div className="footer-status-pill">
+                <span className="status-dot-pulse"></span>
+                <span>{tr("Barcha tizimlar barqaror ishlamoqda", "Все системы в норме", "All systems operational")}</span>
+              </div>
+
               <div className="lang-capsule" role="group" aria-label={t("a11y.language")}>
                 {langOptions.map((opt) => (
                   <button
