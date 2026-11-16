@@ -10,42 +10,9 @@ interface GoogleAuthButtonProps {
   className?: string;
 }
 
-interface GoogleTokenResponse {
-  access_token?: string;
-  error?: string;
-  error_description?: string;
-}
-
-interface GoogleTokenClient {
-  requestAccessToken: (overrideConfig?: { prompt?: string }) => void;
-}
-
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id?: {
-          initialize: (config: {
-            client_id: string;
-            callback: (res: { credential: string }) => void;
-            auto_select?: boolean;
-          }) => void;
-          prompt: () => void;
-        };
-        oauth2?: {
-          initTokenClient: (config: {
-            client_id: string;
-            scope: string;
-            callback: (res: GoogleTokenResponse) => void;
-            error_callback?: (err: { type: string; message?: string }) => void;
-          }) => GoogleTokenClient;
-        };
-      };
-    };
-  }
-}
-
 const DEFAULT_CLIENT_ID = "704156190740-1sqmtp49e3v5fa6kujjl6cdtv1af6rl3.apps.googleusercontent.com";
+const AUTH_CHANNEL_NAME = "bobo_google_oauth_channel";
+const AUTH_STORAGE_KEY = "bobo_google_oauth_event";
 
 export function GoogleAuthButton({ onError, className = "" }: GoogleAuthButtonProps) {
   const { t } = useT();
@@ -77,7 +44,7 @@ export function GoogleAuthButton({ onError, className = "" }: GoogleAuthButtonPr
         let googleId: string | undefined;
         let avatarUrl: string | undefined;
 
-        // 1. Agar accessToken bo'lsa, Google UserInfo API orqali ma'lumotlarni olish
+        // 1. Agar accessToken bo'lsa, Google UserInfo API orqali profil ma'lumotlarini olish
         if (params.accessToken) {
           try {
             const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
@@ -138,21 +105,7 @@ export function GoogleAuthButton({ onError, className = "" }: GoogleAuthButtonPr
     [navigateAfterLogin, onError, t]
   );
 
-  // Google GSI (Google Identity Services) kutubxonasini yuklash
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    if (!document.getElementById("google-gsi-client")) {
-      const script = document.createElement("script");
-      script.id = "google-gsi-client";
-      script.src = "https://accounts.google.com/gsi/client";
-      script.async = true;
-      script.defer = true;
-      document.body.appendChild(script);
-    }
-  }, []);
-
-  // Popup callbackdan postMessage qabul qilish (/google-callback oynasi orqali)
+  // 1-KANAL: PostMessage tinglovchisi (/google-callback oynasidan)
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (!event.data || typeof event.data !== "object") return;
@@ -173,61 +126,82 @@ export function GoogleAuthButton({ onError, className = "" }: GoogleAuthButtonPr
     return () => window.removeEventListener("message", handleMessage);
   }, [onError, processGoogleLogin]);
 
-  // Google tugmasi bosilganda - Upwork kabi to'liq pop-up oynani ochish
-  function handleButtonClick() {
-    setLoading(true);
+  // 2-KANAL: BroadcastChannel tinglovchisi (opener bloklangan holatlar uchun)
+  useEffect(() => {
+    if (typeof window === "undefined" || !("BroadcastChannel" in window)) return;
+    const channel = new BroadcastChannel(AUTH_CHANNEL_NAME);
+    channel.onmessage = (event) => {
+      if (!event.data || typeof event.data !== "object") return;
+      if (event.data.type === "BOBO_GOOGLE_AUTH_CALLBACK") {
+        const { accessToken, idToken, error } = event.data;
+        if (error) {
+          onError?.(error);
+          setLoading(false);
+          return;
+        }
+        if (accessToken || idToken) {
+          void processGoogleLogin({ accessToken, idToken });
+        }
+      }
+    };
+    return () => channel.close();
+  }, [onError, processGoogleLogin]);
 
-    // 1-USUL: Google Identity Services (GSI) initTokenClient orqali popup
-    if (window.google?.accounts?.oauth2) {
+  // 3-KANAL: LocalStorage tinglovchisi (barcha brauzerlar va tablararo ishonchli zaxira)
+  useEffect(() => {
+    function handleStorage(event: StorageEvent) {
+      if (event.key !== AUTH_STORAGE_KEY || !event.newValue) return;
       try {
-        const tokenClient = window.google.accounts.oauth2.initTokenClient({
-          client_id: clientId,
-          scope: "openid email profile",
-          callback: (tokenResponse) => {
-            if (tokenResponse.error) {
-              onError?.(
-                tokenResponse.error_description || "Google hisobini tanlashda xatolik yuz berdi"
-              );
-              setLoading(false);
-              return;
-            }
-            if (tokenResponse.access_token) {
-              void processGoogleLogin({ accessToken: tokenResponse.access_token });
-            }
-          },
-          error_callback: (err) => {
-            setLoading(false);
-            if (err.type === "popup_closed") {
-              return; // Foydalanuvchi o'zi oynani yopdi
-            }
-            onError?.("Google popup xatoligi: " + (err.message || err.type));
-          },
-        });
-
-        // select_account - Upwork kabi to'g'ridan-to'g'ri hisob tanlash sahifasini ochadi
-        tokenClient.requestAccessToken({ prompt: "select_account" });
-        return;
+        const data = JSON.parse(event.newValue);
+        if (data.error) {
+          onError?.(data.error);
+          setLoading(false);
+          return;
+        }
+        if (data.accessToken || data.idToken) {
+          void processGoogleLogin({ accessToken: data.accessToken, idToken: data.idToken });
+        }
       } catch {
-        // Fallback orqali davom etamiz
+        /* Ignore */
+      } finally {
+        try {
+          localStorage.removeItem(AUTH_STORAGE_KEY);
+        } catch {
+          /* Ignore */
+        }
       }
     }
 
-    // 2-USUL: Standart OAuth 2.0 Popup oynasi (to'g'ridan-to'g'ri accounts.google.com ochiladi)
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [onError, processGoogleLogin]);
+
+  // Google tugmasi bosilganda - Upwork kabi to'liq OAuth 2.0 pop-up oynasini ochish
+  function handleButtonClick() {
+    setLoading(true);
+
     const callbackUrl = `${window.location.origin}/google-callback`;
     const width = 500;
     const height = 650;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
+    const left = Math.max(0, Math.round(window.screenX + (window.outerWidth - width) / 2));
+    const top = Math.max(0, Math.round(window.screenY + (window.outerHeight - height) / 2));
+    const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
+
+    // To'g'ridan-to'g'ri Google OAuth 2.0 endpoint ochiladi.
+    // Bu usulda JavaScript Origin talab qilinmaydi, faqat Google Cloud Console'da ro'yxatdan o'tgan
+    // "Authorised redirect URIs" (https://bobololadono.uz/google-callback) tekshiriladi.
     const popupUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
       clientId
     )}&redirect_uri=${encodeURIComponent(
       callbackUrl
-    )}&response_type=token%20id_token&scope=openid%20email%20profile&prompt=select_account&nonce=${Math.random().toString(36).slice(2)}`;
+    )}&response_type=token%20id_token&scope=${encodeURIComponent(
+      "openid email profile"
+    )}&prompt=select_account&nonce=${nonce}`;
 
     const popup = window.open(
       popupUrl,
       "google_oauth_popup",
-      `width=${width},height=${height},left=${left},top=${top},status=no,menubar=no,toolbar=no`
+      `width=${width},height=${height},left=${left},top=${top},status=no,menubar=no,toolbar=no,location=yes,resizable=yes`
     );
 
     if (!popup) {
@@ -240,7 +214,8 @@ export function GoogleAuthButton({ onError, className = "" }: GoogleAuthButtonPr
     const timer = setInterval(() => {
       if (popup.closed) {
         clearInterval(timer);
-        setLoading(false);
+        // Agar callbackdan hali javob kelmagan bo'lsa, loadingni bekor qilamiz
+        setTimeout(() => setLoading(false), 800);
       }
     }, 1000);
   }

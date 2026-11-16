@@ -1,67 +1,200 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { authService } from "@/lib/api";
+
+const AUTH_CHANNEL_NAME = "bobo_google_oauth_channel";
+const AUTH_STORAGE_KEY = "bobo_google_oauth_event";
 
 export default function GoogleCallbackPage() {
+  const router = useRouter();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    try {
-      // 1. Fragment (#access_token=...&id_token=...) yoki query param (?code=...) o'qish
-      const hash = window.location.hash.startsWith("#")
-        ? window.location.hash.substring(1)
-        : window.location.hash;
-      const search = window.location.search.startsWith("?")
-        ? window.location.search.substring(1)
-        : window.location.search;
+    async function handleAuth() {
+      try {
+        const hash = window.location.hash.startsWith("#")
+          ? window.location.hash.substring(1)
+          : window.location.hash;
+        const search = window.location.search.startsWith("?")
+          ? window.location.search.substring(1)
+          : window.location.search;
 
-      const params = new URLSearchParams(hash || search);
-      const accessToken = params.get("access_token");
-      const idToken = params.get("id_token");
-      const code = params.get("code");
-      const error = params.get("error");
-      const errorDescription = params.get("error_description");
+        const hashParams = new URLSearchParams(hash);
+        const searchParams = new URLSearchParams(search);
 
-      if (error) {
-        setStatus("error");
-        setErrorMessage(errorDescription || error);
-        if (window.opener) {
-          window.opener.postMessage(
-            {
-              type: "BOBO_GOOGLE_AUTH_CALLBACK",
-              error: errorDescription || error,
-            },
-            "*"
-          );
-          setTimeout(() => window.close(), 2000);
+        const accessToken = hashParams.get("access_token") || searchParams.get("access_token");
+        const idToken = hashParams.get("id_token") || searchParams.get("id_token");
+        const code = hashParams.get("code") || searchParams.get("code");
+        const error = hashParams.get("error") || searchParams.get("error");
+        const errorDescription =
+          hashParams.get("error_description") || searchParams.get("error_description");
+
+        if (error) {
+          const errText = errorDescription || error;
+          setStatus("error");
+          setErrorMessage(errText);
+
+          // 1. PostMessage
+          try {
+            window.opener?.postMessage(
+              { type: "BOBO_GOOGLE_AUTH_CALLBACK", error: errText },
+              "*"
+            );
+          } catch {
+            /* Ignore */
+          }
+
+          // 2. BroadcastChannel
+          try {
+            if ("BroadcastChannel" in window) {
+              const ch = new BroadcastChannel(AUTH_CHANNEL_NAME);
+              ch.postMessage({ type: "BOBO_GOOGLE_AUTH_CALLBACK", error: errText });
+              ch.close();
+            }
+          } catch {
+            /* Ignore */
+          }
+
+          // 3. LocalStorage
+          try {
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ error: errText }));
+          } catch {
+            /* Ignore */
+          }
+
+          setTimeout(() => window.close(), 2500);
+          return;
         }
-        return;
-      }
 
-      if (accessToken || idToken || code) {
-        setStatus("success");
-        if (window.opener) {
-          window.opener.postMessage(
-            {
-              type: "BOBO_GOOGLE_AUTH_CALLBACK",
-              accessToken: accessToken || undefined,
-              idToken: idToken || undefined,
-              code: code || undefined,
-            },
-            "*"
-          );
-          setTimeout(() => window.close(), 300);
+        if (accessToken || idToken) {
+          setStatus("success");
+
+          // 1. PostMessage
+          try {
+            window.opener?.postMessage(
+              {
+                type: "BOBO_GOOGLE_AUTH_CALLBACK",
+                accessToken: accessToken || undefined,
+                idToken: idToken || undefined,
+                code: code || undefined,
+              },
+              "*"
+            );
+          } catch {
+            /* Ignore */
+          }
+
+          // 2. BroadcastChannel
+          try {
+            if ("BroadcastChannel" in window) {
+              const ch = new BroadcastChannel(AUTH_CHANNEL_NAME);
+              ch.postMessage({
+                type: "BOBO_GOOGLE_AUTH_CALLBACK",
+                accessToken: accessToken || undefined,
+                idToken: idToken || undefined,
+                code: code || undefined,
+              });
+              ch.close();
+            }
+          } catch {
+            /* Ignore */
+          }
+
+          // 3. LocalStorage
+          try {
+            localStorage.setItem(
+              AUTH_STORAGE_KEY,
+              JSON.stringify({
+                accessToken: accessToken || undefined,
+                idToken: idToken || undefined,
+                timestamp: Date.now(),
+              })
+            );
+          } catch {
+            /* Ignore */
+          }
+
+          // Agar bu oyna popup bo'lsa (opener mavjud bo'lsa) — avtomatik yopamiz
+          if (window.opener && window.opener !== window) {
+            setTimeout(() => window.close(), 400);
+            return;
+          }
+
+          // Fallback: Agar opener bo'lmasa (masalan, to'liq sahifada ochilgan bo'lsa)
+          let email: string | undefined;
+          let fullName: string | undefined;
+          let googleId: string | undefined;
+          let avatarUrl: string | undefined;
+
+          if (accessToken) {
+            try {
+              const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                headers: { Authorization: `Bearer ${accessToken}` },
+              });
+              if (userRes.ok) {
+                const profile = (await userRes.json()) as {
+                  sub?: string;
+                  email?: string;
+                  name?: string;
+                  picture?: string;
+                };
+                email = profile.email;
+                fullName = profile.name;
+                googleId = profile.sub;
+                avatarUrl = profile.picture;
+              }
+            } catch {
+              /* Ignore */
+            }
+          }
+
+          if (idToken && !email) {
+            try {
+              const parts = idToken.split(".");
+              if (parts.length === 3) {
+                const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+                email = payload.email;
+                fullName = payload.name;
+                googleId = payload.sub;
+                avatarUrl = payload.picture;
+              }
+            } catch {
+              /* Ignore */
+            }
+          }
+
+          const session = await authService.loginWithGoogle({
+            accessToken: accessToken || undefined,
+            idToken: idToken || undefined,
+            email,
+            fullName,
+            googleId,
+            avatarUrl,
+          });
+
+          const dest = !session.role
+            ? "/rol-tanlash"
+            : session.role === "xaridor"
+              ? "/xaridor"
+              : session.profileDone
+                ? "/mutaxassis"
+                : "/mutaxassis/settings/royxat";
+          router.push(dest);
+        } else {
+          setStatus("error");
+          setErrorMessage("Google hisob ma'lumotlari topilmadi");
         }
-      } else {
+      } catch (err: unknown) {
         setStatus("error");
-        setErrorMessage("Token topilmadi");
+        setErrorMessage(err instanceof Error ? err.message : "Avtorizatsiyada xatolik");
       }
-    } catch (err: unknown) {
-      setStatus("error");
-      setErrorMessage(err instanceof Error ? err.message : "Avtorizatsiyada xatolik");
     }
-  }, []);
+
+    void handleAuth();
+  }, [router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface p-4 font-sans text-ink">
