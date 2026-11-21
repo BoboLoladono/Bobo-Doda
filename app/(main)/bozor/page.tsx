@@ -35,7 +35,7 @@ type SpecialistSort = "rating" | "contracts";
 export default function BozorPage() {
   const { t, lang } = useT();
 
-  const [tab, setTab] = useState<TabKey>("services");
+  const [tab, setTab] = useState<TabKey>("jobs");
   const [services, setServices] = useState<Service[] | null>(null);
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [specialists, setSpecialists] = useState<Specialist[] | null>(null);
@@ -93,10 +93,8 @@ export default function BozorPage() {
       const cat = sp.get("cat");
       if (urlTab && ["services", "jobs", "specialists"].includes(urlTab)) {
         setTab(urlTab as TabKey);
-      } else if (role === "mutaxassis") {
-        setTab("jobs");
       } else {
-        setTab("services");
+        setTab("jobs");
       }
       if (q !== null) setSearch(q);
       if (cat !== null) setCategory(cat);
@@ -115,7 +113,7 @@ export default function BozorPage() {
   useEffect(() => {
     if (!isInitialized.current || typeof window === "undefined") return;
     const sp = new URLSearchParams(window.location.search);
-    const defaultTab = userRole === "mutaxassis" ? "jobs" : "services";
+    const defaultTab = "jobs";
     if (tab !== defaultTab) {
       sp.set("tab", tab);
     } else {
@@ -342,14 +340,14 @@ export default function BozorPage() {
           }}
           items={[
             {
-              value: "services",
-              label: t("market.tabServices"),
-              count: services?.filter((s) => !isTestService(s)).length,
-            },
-            {
               value: "jobs",
               label: t("market.tabJobs"),
               count: jobs?.length,
+            },
+            {
+              value: "services",
+              label: t("market.tabServices"),
+              count: services?.filter((s) => !isTestService(s)).length,
             },
             {
               value: "specialists",
@@ -649,16 +647,32 @@ export default function BozorPage() {
                 </Card>
               ) : (
                 <div className="flex flex-col gap-4">
-                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-muted">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">💼</span>
-                        <span className="font-semibold text-ink">{t("market.jobsBetaBannerTitle")}</span>
-                        <span className="text-2xs text-muted">— {t("market.jobsBetaBannerDesc")}</span>
+                  <div className="rounded-xl border border-line bg-surface p-3 sm:p-4 text-xs text-muted shadow-sm flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary text-base font-bold shrink-0">💼</span>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-ink text-sm sm:text-base">
+                            {lang === "ru" ? "Удаленная и онлайн работа" : lang === "en" ? "Online & Remote Jobs" : "Onlayn va masofaviy ishlar"}
+                          </span>
+                          <span className="text-2xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary-deep">
+                            {jobs?.length ?? 0} {lang === "ru" ? "активных вакансий" : lang === "en" ? "active jobs" : "ta faol e'lon"}
+                          </span>
+                        </div>
+                        <p className="text-2xs text-muted mt-0.5">
+                          {lang === "ru"
+                            ? "Проверенные удаленные вакансии и проекты от компаний с безопасной сделкой"
+                            : lang === "en"
+                            ? "Verified remote jobs and projects with 100% Escrow protection"
+                            : "O'zbekiston va xalqaro kompaniyalardan tasdiqlangan loyihalar va masofaviy vakansiyalar"}
+                        </p>
                       </div>
-                      <Link href="/bozor?tab=services" className="text-2xs font-semibold text-primary hover:underline">
-                        {t("market.viewServicesCta")}
-                      </Link>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xs font-semibold px-2.5 py-1 rounded-full bg-success/10 text-success border border-success/20 flex items-center gap-1">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                        {lang === "ru" ? "100% Escrow защита" : lang === "en" ? "100% Escrow Protection" : "100% Escrow kafolati"}
+                      </span>
                     </div>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">

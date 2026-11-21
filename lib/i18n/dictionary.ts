@@ -1761,22 +1761,22 @@ export const dictionary: Record<string, Entry> = {
   },
 
   /* Bozor (katalog) */
-  "market.title": { uz: "Bozor", ru: "Маркет" },
+  "market.title": { uz: "Onlayn ishlar va xizmatlar bozori", ru: "Рынок удаленной работы и услуг" },
   "market.subtitle": {
-    uz: "Tayyor xizmatni buyurtma qiling, ish e'lonlariga ariza bering yoki mutaxassis tanlang",
-    ru: "Закажите готовую услугу, откликнитесь на заказ или выберите специалиста",
+    uz: "Masofaviy ish e'lonlari, loyihalar va professional xizmatlar platformasi",
+    ru: "Платформа удаленных вакансий, проектов и профессиональных услуг",
   },
   "market.filtersTitle": { uz: "Filtrlar", ru: "Фильтры" },
   "market.tabServices": { uz: "Xizmatlar", ru: "Услуги" },
-  "market.tabJobs": { uz: "Ishlar", ru: "Заказы / Ishlar" },
+  "market.tabJobs": { uz: "Onlayn ishlar", ru: "Удаленная работа" },
   "market.tabSpecialists": { uz: "Mutaxassislar", ru: "Специалисты" },
   "market.searchPh": {
     uz: "Xizmatlarni qidirish...",
     ru: "Поиск услуг...",
   },
   "market.searchJobsPh": {
-    uz: "Ish e'lonlarini qidirish...",
-    ru: "Поиск вакансий и заказов...",
+    uz: "Onlayn ish e'lonlarini qidirish...",
+    ru: "Поиск удаленной работы и заказов...",
   },
   "market.searchSpecsPh": {
     uz: "Mutaxassislarni qidirish...",
@@ -1830,10 +1830,10 @@ export const dictionary: Record<string, Entry> = {
   "market.sortBudgetAsc": { uz: "Kam byudjetdan", ru: "Сначала низкий бюджет" },
   "market.sortContracts": { uz: "Ko'p yakunlangan loyihalar", ru: "Больше завершённых проектов" },
   "market.specSortLabel": { uz: "Mutaxassislarni saralash tartibi", ru: "Порядок сортировки специалистов" },
-  "market.jobsBetaBannerTitle": { uz: "Ish e'lonlari (Beta)", ru: "Объявления о работе (Beta)" },
+  "market.jobsBetaBannerTitle": { uz: "Onlayn va masofaviy ishlar", ru: "Онлайн и удаленная работа" },
   "market.jobsBetaBannerDesc": {
-    uz: "To'liq Escrow himoyasi uchun xizmatlar (giglar) orqali buyurtma berishingiz mumkin",
-    ru: "Для полной защиты Эскроу вы можете заказывать через готовые услуги (гиги)",
+    uz: "Tasdiqlangan ish e'lonlari va 100% Escrow kafolati bilan xavfsiz shartnomalar",
+    ru: "Проверенные вакансии и безопасные контракты со 100% Escrow защитой",
   },
   "market.viewServicesCta": { uz: "Xizmatlarni ko'rish →", ru: "Смотреть услуги →" },
   "market.servicesCountLabel": { uz: "Xizmatlari ({count}):", ru: "Услуги ({count}):" },

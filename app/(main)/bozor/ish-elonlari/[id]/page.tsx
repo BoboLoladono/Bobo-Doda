@@ -110,13 +110,19 @@ export default function IshEloniPage() {
         </h1>
       </div>
 
-      <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-xs text-muted">
+      <div className="rounded-xl border border-success/20 bg-success/5 p-4 text-xs text-muted">
         <div className="flex items-start gap-2.5">
-          <span className="text-base">ℹ️</span>
+          <span className="text-base">🛡️</span>
           <div>
-            <p className="font-semibold text-ink">MVP Sinov Rejimi — Ish e&apos;lonlariga takliflar</p>
+            <p className="font-semibold text-ink">
+              {lang === "ru" ? "100% Escrow kafolati va xavfsiz bitim" : lang === "en" ? "100% Escrow Guarantee & Safe Deal" : "100% Escrow kafolati va xavfsiz bitim"}
+            </p>
             <p className="mt-0.5 leading-relaxed text-muted">
-              Ushbu bosqichda ish e&apos;lonlariga taklif yuborish sinov (Beta) rejimida ishlaydi. To&apos;liq kafolatlangan xavfsiz to&apos;lov va rasmiy Escrow kafolati uchun xizmatlar (giglar) orqali buyurtma berish yoki qabul qilish tavsiya etiladi.
+              {lang === "ru"
+                ? "Заказчик замораживает средства на Escrow счете до полного выполнения работы. Ваши выплаты и авторские права защищены."
+                : lang === "en"
+                ? "The employer funds the Escrow deposit before work begins. Your payment and deliverables are fully secured."
+                : "Buyurtmachi mablag'ni Escrow hisobida muzlatib qo'yadi. Ish to'liq topshirilgunga qadar to'lovingiz kafolatlangan va xavfsiz saqlanadi."}
             </p>
           </div>
         </div>

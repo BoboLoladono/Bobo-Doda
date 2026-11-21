@@ -108,7 +108,7 @@ export default function MutaxassisDashboardPage() {
   const jobsToFilter = matchingJobs.length > 0 ? matchingJobs : openJobs;
   const filteredJobs = jobsToFilter.sort((a, b) => b.postedAt.localeCompare(a.postedAt));
 
-  const displayedJobs = filteredJobs.slice(0, 4);
+  const displayedJobs = filteredJobs.slice(0, 6);
   const recentContracts = [...(contracts ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4);
 
   if (loadError) return <ErrorState error={loadError} onRetry={load} />;
