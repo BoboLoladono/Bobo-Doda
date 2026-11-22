@@ -3,7 +3,7 @@
 import Script from "next/script";
 
 export function GoogleTagManager() {
-  const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
+  const gtmId = process.env.NEXT_PUBLIC_GTM_ID || "GTM-TFPLMKX4";
 
   if (!gtmId) {
     return null;
