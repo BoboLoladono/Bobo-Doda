@@ -50,19 +50,29 @@ export function buildCsp(apiUrl = process.env.NEXT_PUBLIC_API_URL) {
 
   /* Bir xil originda turgan backend uchun hech narsa qo'shilmaydi —
      `'self'` allaqachon qamrab oladi. */
-  const connectSrc = ["'self'", apiOrigin, wsOrigin, "https://accounts.google.com", "https://www.googleapis.com", "https://oauth2.googleapis.com"].filter(Boolean).join(" ");
+  const connectSrc = [
+    "'self'",
+    apiOrigin,
+    wsOrigin,
+    "https://accounts.google.com",
+    "https://www.googleapis.com",
+    "https://oauth2.googleapis.com",
+    "https://*.google-analytics.com",
+    "https://*.analytics.google.com",
+    "https://*.googletagmanager.com",
+  ].filter(Boolean).join(" ");
 
   return [
     "default-src 'self'",
     /* Next.js hidratsiya uchun script'da 'unsafe-inline' talab qiladi */
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://www.googletagmanager.com",
     "style-src 'self' 'unsafe-inline'",
     /* Shriftlar `@fontsource` orqali LOKAL — Google Fonts hosti kerak emas */
     "font-src 'self'",
     /* data: — SVG placeholder va portfolio rasmlari uchun */
-    "img-src 'self' data: blob: https://*.googleusercontent.com",
+    "img-src 'self' data: blob: https://*.googleusercontent.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com",
     `connect-src ${connectSrc}`,
-    "frame-src 'self' https://accounts.google.com",
+    "frame-src 'self' https://accounts.google.com https://www.googletagmanager.com",
     /* clickjacking himoyasi */
     "frame-ancestors 'none'",
     "object-src 'none'",

@@ -28,6 +28,7 @@ import { ApiError } from "@/lib/api/errors";
 import type { Contract, Dispute, Milestone } from "@/lib/types";
 import { formatDate, formatFileSize, formatMoney, triggerFileDownload } from "@/lib/format";
 import { useT } from "@/lib/i18n";
+import { trackPaymentComplete } from "@/lib/analytics";
 
 /** Bounded polling — real to'lov holati webhook orqali keladi, query
     parametridan HECH QACHON o'qilmaydi (bo'lim 24). 5s x 24 = ~2 daqiqa. */
@@ -123,6 +124,11 @@ export default function XaridorWorkroomPage() {
         if (cancelled) return;
         if (payment?.status === "SUCCEEDED") {
           clearInterval(timer);
+          trackPaymentComplete({
+            contractId: contract.id,
+            amount: payment.amount,
+            provider: payment.provider,
+          });
           setWatchingPayment(false);
           setPaymentState("idle");
           reload();

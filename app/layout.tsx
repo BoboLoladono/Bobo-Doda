@@ -14,6 +14,7 @@ import { OfflineSupport } from "@/components/shared/OfflineSupport";
 import { SupportModalProvider } from "@/components/shared/SupportModalProvider";
 import { PageFeedbackWidget } from "@/components/shared/PageFeedbackWidget";
 import { InactivityTimeout } from "@/components/shared/InactivityTimeout";
+import { GoogleTagManager } from "@/components/analytics/GoogleTagManager";
 
 const SITE_URL = "https://bobololadono.uz";
 const TITLE = "Bobololadono — Mutaxassislar bozori";
@@ -83,6 +84,7 @@ export default async function RootLayout({
   return (
     <html lang={initialLang} suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
+        <GoogleTagManager />
         <LanguageProvider initialLang={initialLang}>
           <ToastProvider>
             <SupportModalProvider>

@@ -26,6 +26,7 @@ import { formatDate, formatMoney } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { CATEGORIES } from "@/lib/category-fields";
 import { isTestService } from "@/lib/validate";
+import { trackJobSearch } from "@/lib/analytics";
 
 type TabKey = "services" | "jobs" | "specialists";
 type ServiceSort = "new" | "cheap" | "expensive";
@@ -286,6 +287,17 @@ export default function BozorPage() {
       if (specSort === "contracts") return b.profile.completedContracts - a.profile.completedContracts;
       return b.profile.rating - a.profile.rating;
     });
+
+  useEffect(() => {
+    if (!isInitialized.current) return;
+    if (tab === "jobs" && (debouncedSearch.trim() || category !== "all")) {
+      trackJobSearch({
+        query: debouncedSearch.trim(),
+        category,
+        resultsCount: filteredJobs.length,
+      });
+    }
+  }, [debouncedSearch, category, tab, filteredJobs.length]);
 
   const loading = !services || !jobs || !specialists;
 

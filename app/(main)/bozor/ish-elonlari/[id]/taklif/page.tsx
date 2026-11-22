@@ -16,6 +16,7 @@ import { jobsService, proposalsService, servicesService } from "@/lib/api";
 import type { Job } from "@/lib/types";
 import { formatMoney } from "@/lib/format";
 import { useT } from "@/lib/i18n";
+import { trackProposalSubmit } from "@/lib/analytics";
 
 export default function TaklifYuborishPage() {
   const { t, lang } = useT();
@@ -106,6 +107,7 @@ export default function TaklifYuborishPage() {
         attachedImages: [...selectedImages, ...uploadedImages],
         estimatedDeliveryDays: Number(deliveryDays),
       });
+      trackProposalSubmit({ jobId: job.id, amount: Number(bid) });
       toast(t("prop.sent"));
       router.push("/mutaxassis/applications");
     } catch (err) {

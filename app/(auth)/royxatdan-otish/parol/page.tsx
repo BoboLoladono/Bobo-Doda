@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { authService } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { trackSignUp } from "@/lib/analytics";
 
 /** Bosqich 21 — ro'yxatdan o'tishning YAKUNIY bosqichi: OTP tasdiqlangan
     (`registrationToken` sessionStorage'da), endi parol so'raladi. Muvaffaqi-
@@ -56,6 +57,7 @@ export default function RoyxatdanOtishParolPage() {
     setLoading(true);
     try {
       const session = await authService.completeRegistration(registrationToken, password, confirmPassword);
+      trackSignUp("phone", session.role || undefined);
       window.sessionStorage.removeItem("bd_registration_token");
       window.sessionStorage.removeItem("bd_register_otp_phone");
       router.push(!session.role ? "/rol-tanlash" : session.role === "xaridor" ? "/xaridor" : "/mutaxassis");

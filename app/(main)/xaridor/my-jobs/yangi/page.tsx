@@ -20,6 +20,7 @@ import { useT } from "@/lib/i18n";
 import { useFormDraft } from "@/lib/hooks/useFormDraft";
 import { checkCircumvention, reportCircumventionViolation } from "@/lib/chat-filter";
 import { MIN_JOB_BUDGET } from "@/lib/validate";
+import { trackJobCreated } from "@/lib/analytics";
 
 const MAX_QUESTIONS = 3;
 
@@ -184,6 +185,12 @@ export default function YangiElonPage() {
         screeningQuestions: questions.map((q) => q.trim()).filter(Boolean),
         deadline: deadline || undefined,
         attachedImages,
+      });
+      trackJobCreated({
+        category,
+        budgetMin: Number(budgetMin),
+        budgetMax: Number(budgetMax),
+        title: title.trim(),
       });
       clearDraft();
       toast(t("jwiz.published"));
