@@ -132,7 +132,7 @@ jobs:
       # dev bundle'ni emas). Job darajasida qat'iy qiymat qo'ysak ikkalasi
       # BIR XIL qiymatga majburlanardi.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
