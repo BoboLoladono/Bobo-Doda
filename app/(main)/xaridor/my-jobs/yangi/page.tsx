@@ -47,6 +47,7 @@ export default function YangiElonPage() {
   const [deadline, setDeadline] = useState("");
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const draftValue = useMemo(
     () => ({
@@ -135,9 +136,9 @@ export default function YangiElonPage() {
     if (current === 3) {
       const min = Number(budgetMin);
       const max = Number(budgetMax);
-      if (!min || Number.isNaN(min) || min < MIN_JOB_BUDGET) {
+      if (!min || !Number.isSafeInteger(min) || min < MIN_JOB_BUDGET) {
         next.budget = t("jwiz.errBudgetMin");
-      } else if (!max || Number.isNaN(max) || max < min) {
+      } else if (!max || !Number.isSafeInteger(max) || max < min) {
         next.budget = t("jwiz.errBudget");
       }
       if (deadline) {
@@ -172,7 +173,8 @@ export default function YangiElonPage() {
   }
 
   async function handlePublish() {
-    if (!category) return;
+    if (!category || publishing) return;
+    setSubmitError(null);
     setPublishing(true);
     try {
       const job = await jobsService.create({
@@ -196,6 +198,7 @@ export default function YangiElonPage() {
       toast(t("jwiz.published"));
       router.push(`/xaridor/my-jobs/${job.id}`);
     } catch {
+      setSubmitError("E'lonni saqlashda server yoki tarmoq xatoligi yuz berdi. Kiritilgan ma'lumotlaringiz saqlandi — qayta urinib ko'ring.");
       toast(t("common.error"), "error");
       setPublishing(false);
     }
@@ -439,6 +442,15 @@ export default function YangiElonPage() {
       </Card>
 
       {/* Boshqaruv tugmalari */}
+      {submitError && (
+        <div
+          role="alert"
+          className="rounded-xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger-deep"
+        >
+          {submitError}
+        </div>
+      )}
+
       <div className="relative z-10 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           {step > 0 && (

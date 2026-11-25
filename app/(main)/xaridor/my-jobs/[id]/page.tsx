@@ -57,7 +57,7 @@ export default function ElonTafsilotiPage() {
           if (s.user.phone) specMap.set(s.user.phone, s);
         }
         for (const p of list) {
-          if (!specMap.has(p.sellerId)) {
+          if (!p.sellerName && !specMap.has(p.sellerId)) {
             try {
               const fetched = await catalogService.getSpecialist(p.sellerId);
               if (fetched) specMap.set(p.sellerId, fetched);
@@ -66,12 +66,7 @@ export default function ElonTafsilotiPage() {
         }
         setSpecialists(specMap);
         setContract(allContracts.find((c) => c.jobId === params.id) ?? null);
-        /* Ochilganda yangi takliflar "ko'rib chiqilmoqda"ga o'tadi (Upwork: viewed) */
-        const fresh = list.filter((p) => p.status === "yuborilgan");
-        for (const p of fresh) {
-          await proposalsService.setStatus(p.id, "korib_chiqilmoqda");
-        }
-        setProposals(fresh.length ? await proposalsService.listForJob(params.id) : list);
+        setProposals(list);
       })
       .catch(setLoadError);
   }, [params.id]);
@@ -239,9 +234,10 @@ export default function ElonTafsilotiPage() {
             {visible.map((proposal) => {
               const spec = specialists.get(proposal.sellerId);
               const specialistName =
-                spec?.user?.fullName && spec.user.fullName !== "—"
+                proposal.sellerName?.trim() ||
+                (spec?.user?.fullName && spec.user.fullName !== "—"
                   ? spec.user.fullName
-                  : "Mutaxassis";
+                  : "Mutaxassis");
               const actionable =
                 job.status === "ochiq" && ACTIONABLE.includes(proposal.status);
               const daysLeft = job.deadline

@@ -25,6 +25,12 @@ type MainTab = "my_jobs" | "proposals";
 type JobFilter = "all" | JobStatus;
 type ProposalFilter = "all" | "yuborilgan" | "suhbat" | "yollandi" | "rad_etildi";
 
+function matchesProposalFilter(status: Proposal["status"], filter: ProposalFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "yuborilgan") return status === "yuborilgan" || status === "korib_chiqilmoqda";
+  return status === filter;
+}
+
 interface ProposalWithJob {
   proposal: Proposal;
   job: Job;
@@ -122,8 +128,8 @@ export default function ElonlarimPage() {
 
   // Filtrlangan arizalar
   const filteredProposals = useMemo(() => {
-    return allProposalsWithJobs.filter(
-      (item) => proposalFilter === "all" || item.proposal.status === proposalFilter
+    return allProposalsWithJobs.filter((item) =>
+      matchesProposalFilter(item.proposal.status, proposalFilter)
     );
   }, [allProposalsWithJobs, proposalFilter]);
 
@@ -270,7 +276,9 @@ export default function ElonlarimPage() {
                   {
                     value: "yuborilgan",
                     label: "Yangi",
-                    count: allProposalsWithJobs.filter((p) => p.proposal.status === "yuborilgan").length,
+                    count: allProposalsWithJobs.filter(
+                      (p) => p.proposal.status === "yuborilgan" || p.proposal.status === "korib_chiqilmoqda"
+                    ).length,
                   },
                   {
                     value: "suhbat",
@@ -318,6 +326,7 @@ export default function ElonlarimPage() {
                 <div className="flex flex-col gap-4">
                   {filteredProposals.map(({ proposal, job }) => {
                     const spec = specialists.get(proposal.sellerId);
+                    const specialistName = proposal.sellerName?.trim() || spec?.user.fullName || "Mutaxassis";
                     return (
                       <Card key={proposal.id} padding="lg" className="flex flex-col gap-4 shadow-2xs">
                         {/* E'lon havolasi va Kategoriya */}
@@ -342,11 +351,11 @@ export default function ElonlarimPage() {
                             href={`/bozor/mutaxassis/${proposal.sellerId}`}
                             className="group flex items-center gap-3"
                           >
-                            <Avatar name={spec?.user.fullName ?? "?"} />
+                            <Avatar name={specialistName} />
                             <div>
                               <div className="flex flex-wrap items-center gap-1.5">
                                 <span className="text-sm font-bold text-ink transition-colors duration-150 group-hover:text-primary">
-                                  {spec?.user.fullName ?? "—"}
+                                  {specialistName}
                                 </span>
                                 {spec && <TrustBadge badge={spec.profile.badge} />}
                               </div>

@@ -162,6 +162,8 @@ export interface Proposal {
   id: string;
   jobId: string;
   sellerId: string;
+  sellerName?: string;
+  sellerAvatar?: string | null;
   bidAmount: number;
   coverLetter: string;
   screeningAnswers: { question: string; answer: string }[];

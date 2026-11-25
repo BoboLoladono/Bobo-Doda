@@ -299,30 +299,70 @@ export class JobsService {
       if (count >= 2) throw new DomainError('INVALID_INPUT', 'Bir kunda ko‘pi bilan 2 ta ariza topshirish mumkin');
       const existing = await tx.jobProposal.findUnique({ where: { jobId_sellerId: { jobId, sellerId } } });
       if (existing) throw new DomainError('DUPLICATE', 'Bu ishga allaqachon ariza topshirilgan');
+      const trimmedCoverLetter = dto.coverLetter.trim();
       const proposal = {
         id: `prop_${this.ids.next()}`, jobId, jobTitle: job.title, sellerId,
-        sellerName: seller.fullName, sellerAvatar: seller.avatarKey,
-        bidAmount: dto.bidAmount, coverLetter: dto.coverLetter.trim(),
+        sellerName: seller.fullName?.trim() || 'Mutaxassis', sellerAvatar: seller.avatarKey,
+        bidAmount: dto.bidAmount, coverLetter: trimmedCoverLetter,
         screeningAnswers: (dto.screeningAnswers || []).map(({ question, answer }) => ({ question, answer })), attachedImages: dto.attachedImages || [],
         status: 'korib_chiqilmoqda', createdAt: now.toISOString(),
         ...(dto.estimatedDeliveryDays === undefined ? {} : { estimatedDeliveryDays: dto.estimatedDeliveryDays }),
       };
-      await tx.jobProposal.create({ data: {
-        id: proposal.id, jobId, sellerId, payload: proposal, createdAt: now,
-      } });
+      try {
+        await tx.jobProposal.create({
+          data: {
+            id: proposal.id,
+            jobId,
+            sellerId,
+            bidAmount: BigInt(dto.bidAmount),
+            estimatedDeliveryDays: dto.estimatedDeliveryDays ?? null,
+            coverLetter: trimmedCoverLetter,
+            payload: proposal,
+            createdAt: now,
+          },
+        });
+      } catch (err) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          throw new DomainError('DUPLICATE', 'Bu ishga allaqachon ariza topshirilgan');
+        }
+        throw err;
+      }
       await tx.job.update({ where: { id: jobId }, data: { proposalsCount: { increment: 1 } } });
       return proposal;
     });
   }
 
-  private proposalResponse(row: { payload: Prisma.JsonValue; status: string }): Record<string, unknown> {
-    return { ...(row.payload as Record<string, unknown>), status: row.status };
+  private proposalResponse(row: {
+    payload: Prisma.JsonValue;
+    status: string;
+    bidAmount?: bigint;
+    coverLetter?: string;
+    estimatedDeliveryDays?: number | null;
+    seller?: { fullName: string | null; avatarKey: string | null } | null;
+  }): Record<string, unknown> {
+    const payload = (row.payload as Record<string, unknown>) ?? {};
+    const liveSellerName = row.seller?.fullName?.trim();
+    return {
+      ...payload,
+      ...(row.bidAmount !== undefined ? { bidAmount: Number(row.bidAmount) } : {}),
+      ...(row.coverLetter !== undefined ? { coverLetter: row.coverLetter } : {}),
+      ...(row.estimatedDeliveryDays !== undefined && row.estimatedDeliveryDays !== null
+        ? { estimatedDeliveryDays: row.estimatedDeliveryDays }
+        : {}),
+      ...(liveSellerName ? { sellerName: liveSellerName } : {}),
+      ...(row.seller?.avatarKey !== undefined ? { sellerAvatar: row.seller.avatarKey } : {}),
+      status: row.status,
+    };
   }
 
   async listProposalsForJob(jobId: string, buyerId: string): Promise<Record<string, unknown>[]> {
     const job = await this.getByIdOrThrow(jobId);
     if (job.buyerId !== buyerId) throw new ForbiddenError();
-    const rows = await this.prisma.jobProposal.findMany({ where: { jobId }, orderBy: { createdAt: 'desc' } });
+    const rows = await this.prisma.jobProposal.findMany({
+      where: { jobId },
+      orderBy: { createdAt: 'desc' },
+      include: { seller: { select: { fullName: true, avatarKey: true } } },
+    });
     return rows.map((row) => this.proposalResponse(row));
   }
 
@@ -332,7 +372,10 @@ export class JobsService {
   }
 
   async getProposal(proposalId: string, userId: string): Promise<Record<string, unknown>> {
-    const row = await this.prisma.jobProposal.findUnique({ where: { id: proposalId }, include: { job: true } });
+    const row = await this.prisma.jobProposal.findUnique({
+      where: { id: proposalId },
+      include: { job: true, seller: { select: { fullName: true, avatarKey: true } } },
+    });
     if (!row) throw new NotFoundError('Taklif topilmadi');
     if (row.sellerId !== userId && row.job.buyerId !== userId) throw new ForbiddenError();
     return this.proposalResponse(row);

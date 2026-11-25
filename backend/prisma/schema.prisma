@@ -1862,20 +1862,24 @@ model FinancialAnomaly {
 
 /// Durable proposal source of truth. Redis is never the authoritative job store.
 model JobProposal {
-  id String @id
-  jobId String @db.Uuid
-  job Job @relation(fields: [jobId], references: [id])
-  sellerId String @db.Uuid
-  seller User @relation(fields: [sellerId], references: [id])
-  status String @default("korib_chiqilmoqda")
-  payload Json
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  id                    String   @id
+  jobId                 String   @db.Uuid
+  job                   Job      @relation(fields: [jobId], references: [id])
+  sellerId              String   @db.Uuid
+  seller                User     @relation(fields: [sellerId], references: [id])
+  status                String   @default("korib_chiqilmoqda")
+  bidAmount             BigInt
+  estimatedDeliveryDays Int?
+  coverLetter           String
+  payload               Json
+  createdAt             DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime @updatedAt @db.Timestamptz(6)
 
   contract Contract?
 
   @@unique([jobId, sellerId])
   @@index([sellerId, createdAt])
+  @@index([jobId, createdAt])
   @@map("job_proposals")
 }
 
