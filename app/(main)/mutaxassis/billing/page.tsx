@@ -43,8 +43,9 @@ export default function DaromadPage() {
   const [withdrawBusy, setWithdrawBusy] = useState(false);
   const [withdrawError, setWithdrawError] = useState("");
 
-  // Yangi rekvizit qo'shish modali (CVV/PIN/OTP SO'RALMAYDI)
+  // Yangi rekvizit qo'shish / almashtirish modali (CVV/PIN/OTP SO'RALMAYDI)
   const [destModalOpen, setDestModalOpen] = useState(false);
+  const [editingDestId, setEditingDestId] = useState<string | null>(null);
   const [destType, setDestType] = useState<"BANK_CARD" | "BANK_ACCOUNT">("BANK_CARD");
   const [destProvider, setDestProvider] = useState("Uzcard");
   const [destRawValue, setDestRawValue] = useState("");
@@ -67,8 +68,11 @@ export default function DaromadPage() {
         setContracts(contractList);
         setBreakdown(nextBreakdown);
         setDestinations(nextDests);
-        const def = nextDests.find((d) => d.isDefault) ?? nextDests[0];
-        if (def) setSelectedDestId(def.id);
+        const verifiedOnly = nextDests.filter(
+          (d) => d.isVerified && d.verificationStatus === "VERIFIED",
+        );
+        const def = verifiedOnly.find((d) => d.isDefault) ?? verifiedOnly[0];
+        setSelectedDestId(def?.id ?? "");
       })
       .catch(setLoadError);
   }, []);
@@ -92,6 +96,10 @@ export default function DaromadPage() {
     .filter((m) => m.status === "qabul_qilindi")
     .sort((a, b) => (b.approvedAt ?? "").localeCompare(a.approvedAt ?? ""));
 
+  const verifiedDestinations = destinations.filter(
+    (d) => d.isVerified && d.verificationStatus === "VERIFIED",
+  );
+
   async function handleAddDestination() {
     const cleanDigits = destRawValue.replace(/\D/g, "");
     if (destType === "BANK_CARD" && cleanDigits.length !== 16) {
@@ -110,7 +118,7 @@ export default function DaromadPage() {
     setDestBusy(true);
     setDestError("");
     try {
-      const created = await paymentsService.addPayoutDestination({
+      const payload = {
         type: destType,
         providerLabel: destType === "BANK_CARD" ? destProvider : "Bank hisob raqami",
         rawAccountOrCard: cleanDigits,
@@ -118,14 +126,20 @@ export default function DaromadPage() {
         bankName: destType === "BANK_ACCOUNT" ? destBankName.trim() || undefined : undefined,
         mfo: destType === "BANK_ACCOUNT" ? destMfo.trim() || undefined : undefined,
         isDefault: true,
-      });
-      toast("To'lov rekviziti xavfsiz maskalanib saqlandi");
+      };
+      if (editingDestId) {
+        await paymentsService.replacePayoutDestination(editingDestId, payload);
+        toast("Rekvizit yangilandi va qayta tekshiruvga yuborildi");
+      } else {
+        await paymentsService.addPayoutDestination(payload);
+        toast("Rekvizit xavfsiz maskalanib saqlandi va moliya tekshiruviga yuborildi");
+      }
       setDestModalOpen(false);
+      setEditingDestId(null);
       setDestRawValue("");
       setDestHolder("");
       setDestBankName("");
       setDestMfo("");
-      setSelectedDestId(created.id);
       load();
     } catch (err) {
       setDestError(err instanceof Error ? err.message : "Saqlashda xatolik yuz berdi");
@@ -172,7 +186,7 @@ export default function DaromadPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <BackButton href="/mutaxassis" label={t("nav.dashboard")} />
-        <Button size="sm" variant="secondary" onClick={() => { setDestError(""); setDestModalOpen(true); }}>
+        <Button size="sm" variant="secondary" onClick={() => { setEditingDestId(null); setDestRawValue(""); setDestHolder(""); setDestBankName(""); setDestMfo(""); setDestError(""); setDestModalOpen(true); }}>
           + Rekvizit qo&apos;shish
         </Button>
       </div>
@@ -253,30 +267,75 @@ export default function DaromadPage() {
               </Card>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                {destinations.map((d) => (
-                  <Card key={d.id} className="p-4 flex items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-ink">{d.providerLabel}</span>
-                        <span className="font-mono text-xs text-ink">{d.maskedValue}</span>
-                        {d.isDefault && <Badge tone="success">Asosiy</Badge>}
+                {destinations.map((d) => {
+                  const statusTone: BadgeTone =
+                    d.verificationStatus === "VERIFIED"
+                      ? "success"
+                      : d.verificationStatus === "REJECTED"
+                        ? "danger"
+                        : "warning";
+                  const statusText =
+                    d.verificationStatus === "VERIFIED"
+                      ? "Tasdiqlangan"
+                      : d.verificationStatus === "REJECTED"
+                        ? "Rad etilgan"
+                        : "Tekshiruvda";
+                  return (
+                    <Card key={d.id} className="p-4 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-sm text-ink">{d.providerLabel}</span>
+                          <span className="font-mono text-xs text-ink">{d.maskedValue}</span>
+                          <Badge tone={statusTone}>{statusText}</Badge>
+                          {d.isDefault && <Badge tone="info">Asosiy</Badge>}
+                        </div>
+                        <p className="mt-1 text-2xs text-muted">{d.holderName}</p>
+                        {d.verificationStatus === "VERIFIED" && d.bankRecipientId && (
+                          <p className="mt-0.5 text-2xs text-success">Bank oluvchi ID: {d.bankRecipientId}</p>
+                        )}
+                        {d.verificationStatus === "PENDING_REVIEW" && (
+                          <p className="mt-0.5 text-2xs text-warning-deep">
+                            Moliya operatori bank kabinetida oluvchini tasdiqlagach pul yechish ochiladi.
+                          </p>
+                        )}
+                        {d.verificationStatus === "REJECTED" && d.rejectionReason && (
+                          <p className="mt-0.5 text-2xs text-danger">Sabab: {d.rejectionReason}</p>
+                        )}
                       </div>
-                      <p className="mt-1 text-2xs text-muted">{d.holderName}</p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-danger"
-                      onClick={async () => {
-                        await paymentsService.removePayoutDestination(d.id);
-                        toast("Rekvizit o'chirildi");
-                        load();
-                      }}
-                    >
-                      O&apos;chirish
-                    </Button>
-                  </Card>
-                ))}
+                      <div className="flex shrink-0 flex-col gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingDestId(d.id);
+                            setDestType(d.type);
+                            setDestProvider(d.type === "BANK_CARD" ? d.providerLabel : "Uzcard");
+                            setDestRawValue("");
+                            setDestHolder(d.holderName);
+                            setDestBankName(d.bankName ?? "");
+                            setDestMfo(d.mfo ?? "");
+                            setDestError("");
+                            setDestModalOpen(true);
+                          }}
+                        >
+                          Almashtirish
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-danger"
+                          onClick={async () => {
+                            await paymentsService.removePayoutDestination(d.id);
+                            toast("Rekvizit o'chirildi");
+                            load();
+                          }}
+                        >
+                          O&apos;chirish
+                        </Button>
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -469,7 +528,7 @@ export default function DaromadPage() {
       <Modal
         open={destModalOpen}
         onClose={() => !destBusy && setDestModalOpen(false)}
-        title="To'lov qabul qilish rekviziti"
+        title={editingDestId ? "To'lov rekvizitini almashtirish" : "To'lov qabul qilish rekviziti"}
         footer={
           <>
             <Button variant="ghost" onClick={() => setDestModalOpen(false)} disabled={destBusy}>
@@ -539,7 +598,7 @@ export default function DaromadPage() {
             <Button variant="ghost" onClick={() => setWithdrawOpen(false)} disabled={withdrawBusy}>
               Bekor qilish
             </Button>
-            <Button loading={withdrawBusy} disabled={withdrawBusy || summary.available <= 0 || destinations.length === 0} onClick={handleWithdrawSubmit}>
+            <Button loading={withdrawBusy} disabled={withdrawBusy || summary.available <= 0 || verifiedDestinations.length === 0} onClick={handleWithdrawSubmit}>
               So&apos;rov yuborish
             </Button>
           </>
@@ -555,24 +614,28 @@ export default function DaromadPage() {
             </p>
           </div>
 
-          {destinations.length === 0 ? (
+          {verifiedDestinations.length === 0 ? (
             <div className="rounded-input border border-warning/40 bg-warning/10 p-3 text-xs">
-              Avval kamida bitta karta yoki hisob raqamini qo&apos;shing.
-              <Button size="sm" className="mt-2" onClick={() => { setWithdrawOpen(false); setDestModalOpen(true); }}>
-                + Rekvizit qo&apos;shish
-              </Button>
+              {destinations.length === 0
+                ? "Avval kamida bitta karta yoki bank hisob raqamini qo'shing."
+                : "Saqlangan rekvizitingiz hali moliya operatori tomonidan bank kabinetida tasdiqlanmagan («Tekshiruvda»). Faqat «Tasdiqlangan» rekvizitga pul yechish mumkin."}
+              {destinations.length === 0 && (
+                <Button size="sm" className="mt-2" onClick={() => { setWithdrawOpen(false); setDestModalOpen(true); }}>
+                  + Rekvizit qo&apos;shish
+                </Button>
+              )}
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-ink">Qabul qiluvchi rekvizit</label>
+              <label className="text-xs font-medium text-ink">Tasdiqlangan qabul qiluvchi rekvizit</label>
               <select
                 value={selectedDestId}
                 onChange={(e) => setSelectedDestId(e.target.value)}
                 className="rounded-input border border-line bg-card px-3 py-2 text-xs text-ink"
               >
-                {destinations.map((d) => (
+                {verifiedDestinations.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.providerLabel} {d.maskedValue} ({d.holderName})
+                    {d.providerLabel} {d.maskedValue} ({d.holderName}){d.bankRecipientId ? ` · ID: ${d.bankRecipientId}` : ""}
                   </option>
                 ))}
               </select>

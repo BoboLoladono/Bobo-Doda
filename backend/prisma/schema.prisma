@@ -573,6 +573,7 @@ model User {
   payouts            Payout[]
   payoutDestinations SellerPayoutDestination[]
   bankTransferProofs BankTransferProof[]
+  uploadedFiles      UploadedFile[]
   disputesOpened     Dispute[]
   authGrants         AuthGrant[]
   kycVerification    KycVerification?
@@ -2172,26 +2173,67 @@ enum PayoutDestinationType {
   BANK_ACCOUNT
 }
 
+enum PayoutDestinationVerificationStatus {
+  PENDING_REVIEW
+  VERIFIED
+  REJECTED
+}
+
 model SellerPayoutDestination {
-  id            String                @id @db.Uuid
-  sellerId      String                @db.Uuid
-  seller        User                  @relation(fields: [sellerId], references: [id])
-  type          PayoutDestinationType
-  providerLabel String
-  maskedValue   String
-  holderName    String
-  bankName      String?
-  mfo           String?
-  isDefault     Boolean               @default(false)
-  isVerified    Boolean               @default(true)
-  deletedAt     DateTime?             @db.Timestamptz(6)
-  createdAt     DateTime              @default(now()) @db.Timestamptz(6)
-  updatedAt     DateTime              @updatedAt @db.Timestamptz(6)
+  id                      String                              @id @db.Uuid
+  sellerId                String                              @db.Uuid
+  seller                  User                                @relation(fields: [sellerId], references: [id])
+  type                    PayoutDestinationType
+  providerLabel           String
+  maskedValue             String
+  holderName              String
+  bankName                String?
+  mfo                     String?
+  isDefault               Boolean                             @default(false)
+  isVerified              Boolean                             @default(false)
+  verificationStatus      PayoutDestinationVerificationStatus @default(PENDING_REVIEW)
+  bankRecipientId         String?
+  verificationMethod      String?
+  verificationEvidenceRef String?
+  verificationNote        String?
+  rejectionReason         String?
+  verifiedByStaffId       String?                             @db.Uuid
+  verifiedAt              DateTime?                           @db.Timestamptz(6)
+  deletedAt               DateTime?                           @db.Timestamptz(6)
+  createdAt               DateTime                            @default(now()) @db.Timestamptz(6)
+  updatedAt               DateTime                            @updatedAt @db.Timestamptz(6)
 
   payouts Payout[]
 
   @@index([sellerId, deletedAt, isDefault])
+  @@index([verificationStatus, createdAt])
   @@map("seller_payout_destinations")
+}
+
+enum UploadedFilePurpose {
+  BANK_PROOF
+  DELIVERABLE
+  GENERAL
+}
+
+model UploadedFile {
+  id             String              @id @db.Uuid
+  storedName     String              @unique
+  originalName   String
+  mimeType       String
+  sizeBytes      Int
+  uploaderUserId String?             @db.Uuid
+  uploader       User?               @relation(fields: [uploaderUserId], references: [id])
+  purpose        UploadedFilePurpose @default(GENERAL)
+  contractId     String?             @db.Uuid
+  milestoneId    String?             @db.Uuid
+  bankProofId    String?             @db.Uuid
+  createdAt      DateTime            @default(now()) @db.Timestamptz(6)
+
+  @@index([uploaderUserId, createdAt])
+  @@index([contractId, purpose])
+  @@index([milestoneId])
+  @@map("uploaded_files")
 }
 
 /// Append-only audit correction log when staff corrects an erroneous manual payout entry.

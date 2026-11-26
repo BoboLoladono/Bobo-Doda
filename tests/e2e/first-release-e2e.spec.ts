@@ -190,17 +190,33 @@ test.describe("First Release Marketplace Full UI E2E (Buyer, Specialist, Admin)"
     await pageA.reload({ waitUntil: "networkidle" });
     await expect(pageA.getByText(/BD-/).first()).toBeVisible({ timeout: 15_000 });
 
+    const receiptUploadPromise = pageA.waitForResponse(
+      (res) => res.url().includes("/uploads") && res.request().method() === "POST",
+    );
     await pageA.locator('input[type="file"]').setInputFiles({
       name: "bank-chek.png",
       mimeType: "image/png",
       buffer: TINY_PNG,
     });
+    const receiptUploadRes = await receiptUploadPromise;
+    expect(receiptUploadRes.ok()).toBeTruthy();
+    const receiptUploadJson = (await receiptUploadRes.json()) as { url: string };
+    const receiptDownloadUrl = receiptUploadJson.url.startsWith("http")
+      ? receiptUploadJson.url
+      : `${EFFECTIVE_API.replace(/\/api\/v1\/?$/, "")}${receiptUploadJson.url}`;
+
     await expect(pageA.getByText(/Yuklandi: bank-chek\.png/i)).toBeVisible({ timeout: 10_000 });
     await pageA.getByPlaceholder(/To'lov topshiriqnomasi/i).fill(`To'lov ${suffix}`);
     await pageA.getByRole("button", { name: /Chekni tekshirishga yuborish/i }).click();
     await expect(pageA.getByText(/Chek tekshirilmoqda/i)).toBeVisible({ timeout: 10_000 });
 
-    // 6. Isolated Context C (Admin) logs into /rahbariyat/kirish, verifies bank proof -> Contract funded!
+    // Unauthenticated direct access to buyer's receipt upload must be denied (401)
+    const unauthContext = await browser.newContext();
+    const unauthReceiptRes = await unauthContext.request.get(receiptDownloadUrl);
+    expect(unauthReceiptRes.status()).toBe(401);
+    await unauthContext.close();
+
+    // 6. Isolated Context C (Admin) logs into /rahbariyat/kirish, downloads private receipt, & verifies bank proof -> Contract funded!
     const contextC = await browser.newContext();
     const pageC = await contextC.newPage();
     flushStaffLoginRateLimit();
@@ -211,9 +227,14 @@ test.describe("First Release Marketplace Full UI E2E (Buyer, Specialist, Admin)"
     await pageC.waitForURL((url) => !url.pathname.includes("/kirish"), { timeout: 15_000 });
     await pageC.goto("/admin/tolovlar", { waitUntil: "networkidle" });
 
-    // Bank kirim cheklari tab is default; find our job title row and click Tekshirish
+    // Bank kirim cheklari tab is default; find our job title row and test protected download + Tekshirish
     const proofRow = pageC.locator("tr", { hasText: jobTitle }).first();
     await expect(proofRow).toBeVisible({ timeout: 15_000 });
+    const receiptDownloadPromise = pageC.waitForEvent("download");
+    await proofRow.getByRole("button", { name: /Chek fayli/i }).click();
+    const receiptDownload = await receiptDownloadPromise;
+    expect(receiptDownload.suggestedFilename()).toContain(".png");
+
     await proofRow.getByRole("button", { name: /Tekshirish/i }).click();
 
     await pageC.getByLabel(/Unikal bank operatsiya raqami/i).fill(bankInRef);
@@ -262,7 +283,7 @@ test.describe("First Release Marketplace Full UI E2E (Buyer, Specialist, Admin)"
     await pageA.locator('div[role="dialog"]').getByRole("button", { name: /Qabul qilish/i }).click();
     await expect(pageA.getByText(/Yakunlangan/i).first()).toBeVisible({ timeout: 15_000 });
 
-    // 9. Specialist opens /mutaxassis/billing -> verifies 100k gross / 10k (10%) commission / 90k net available -> adds masked card -> requests 60,000 payout
+    // 9. Specialist opens /mutaxassis/billing -> verifies 100k gross / 10k (10%) commission / 90k net available -> adds masked card -> MUST wait for finance staff verification!
     await pageB.goto("/mutaxassis/billing", { waitUntil: "networkidle" });
     await expect(pageB.getByText(/90\s*000/).first()).toBeVisible({ timeout: 15_000 });
     await expect(pageB.getByText(/10\s*000/).first()).toBeVisible();
@@ -272,6 +293,28 @@ test.describe("First Release Marketplace Full UI E2E (Buyer, Specialist, Admin)"
     await pageB.getByPlaceholder("ALISHER VALIYEV").fill(sellerName.toUpperCase());
     await pageB.locator('div[role="dialog"]').getByRole("button", { name: /^Saqlash$/i }).click();
     await expect(pageB.getByText(/9012/).first()).toBeVisible({ timeout: 10_000 });
+    await expect(pageB.getByText(/Tekshiruvda/i).first()).toBeVisible();
+
+    // Opening withdraw modal while unverified MUST keep submit disabled and show pending notice
+    await pageB.getByRole("button", { name: /Mablag'ni yechish/i }).click();
+    await expect(pageB.getByRole("button", { name: /So'rov yuborish/i })).toBeDisabled();
+    await pageB.locator('div[role="dialog"]').getByRole("button", { name: /Bekor qilish/i }).click();
+
+    // Admin verifies recipient in "Oluvchilarni tekshirish" tab and links bankRecipientId
+    const bankRecipientId = `CORP-BEN-${suffix}`;
+    await pageC.getByRole("button", { name: /Oluvchilarni tekshirish/i }).click();
+    const destRow = pageC.locator("tr", { hasText: sellerName }).first();
+    await expect(destRow).toBeVisible({ timeout: 15_000 });
+    await destRow.getByRole("button", { name: /Oluvchini tasdiqlash/i }).click();
+    await pageC.getByLabel(/Bank kabinetidagi saqlangan oluvchi ID/i).fill(bankRecipientId);
+    await pageC.getByLabel(/Egalik va bank tekshiruvi izohi/i).fill(`KYC va bank kabineti bilan solishtirildi (${suffix})`);
+    await pageC.locator('div[role="dialog"]').getByRole("button", { name: /Oluvchini tasdiqlash/i }).click();
+    await expect(pageC.getByText(bankRecipientId).first()).toBeVisible({ timeout: 15_000 });
+
+    // Specialist reloads -> sees Tasdiqlangan + Bank oluvchi ID -> requests 60,000 payout
+    await pageB.reload({ waitUntil: "networkidle" });
+    await expect(pageB.getByText(/Tasdiqlangan/i).first()).toBeVisible({ timeout: 15_000 });
+    await expect(pageB.getByText(bankRecipientId).first()).toBeVisible();
 
     await pageB.getByRole("button", { name: /Mablag'ni yechish/i }).click();
     await pageB.locator('div[role="dialog"] input[type="number"]').fill("60000");

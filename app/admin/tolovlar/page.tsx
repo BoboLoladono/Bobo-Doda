@@ -21,28 +21,34 @@ import {
   staffCreateRefund,
   staffConfirmManualBankRefund,
   staffListPayouts,
+  staffListPayoutDestinations,
+  staffVerifyPayoutDestination,
+  staffRejectPayoutDestination,
   staffStartPayoutProcessing,
   staffMarkPayoutPaid,
   staffRejectPayout,
   staffCorrectPayout,
   staffListSpecialistsPayoutSummary,
   staffListLedgerTransactions,
+  staffDownloadUpload,
   type StaffPayment,
   type StaffBankProof,
   type StaffRefund,
   type StaffPayout,
+  type StaffPayoutDestination,
   type StaffSpecialistPayoutSummary,
   type StaffLedgerTransaction,
 } from "@/lib/api/admin";
 import { adminErrorText } from "@/lib/admin-error-text";
 import { formatDate, formatMoney } from "@/lib/format";
 
-type Tab = "bank-proofs" | "payouts" | "specialists" | "payments" | "refunds" | "ledger";
+type Tab = "bank-proofs" | "destinations" | "payouts" | "specialists" | "payments" | "refunds" | "ledger";
 type PageResult<T> = { items: T[]; page: number; perPage: number; total: number; totalPages: number };
 
 const TONE: Record<string, BadgeTone> = {
   SUCCEEDED: "success",
   APPROVED: "success",
+  VERIFIED: "success",
   PENDING: "warning",
   PENDING_REVIEW: "warning",
   PROCESSING: "info",
@@ -58,6 +64,7 @@ export default function PaymentsPage() {
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("bank-proofs");
   const [bankProofPage, setBankProofPage] = useState<PageResult<StaffBankProof> | null>(null);
+  const [destPage, setDestPage] = useState<PageResult<StaffPayoutDestination> | null>(null);
   const [payoutPage, setPayoutPage] = useState<PageResult<StaffPayout> | null>(null);
   const [specialistsSummary, setSpecialistsSummary] = useState<StaffSpecialistPayoutSummary[] | null>(null);
   const [paymentPage, setPaymentPage] = useState<PageResult<StaffPayment> | null>(null);
@@ -67,6 +74,17 @@ export default function PaymentsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [busy, setBusy] = useState(false);
+
+  // Payout recipient verification modals
+  const [verifyDestTarget, setVerifyDestTarget] = useState<StaffPayoutDestination | null>(null);
+  const [destMethod, setDestMethod] = useState<"BANK_PORTAL_BENEFICIARY" | "BANK_DOCUMENT_AND_MICRO_TRANSFER">("BANK_PORTAL_BENEFICIARY");
+  const [destBankRecipientId, setDestBankRecipientId] = useState("");
+  const [destEvidenceRef, setDestEvidenceRef] = useState("");
+  const [destVerifyNote, setDestVerifyNote] = useState("");
+  const [destVerifyError, setDestVerifyError] = useState("");
+  const [rejectDestTarget, setRejectDestTarget] = useState<StaffPayoutDestination | null>(null);
+  const [rejectDestReason, setRejectDestReason] = useState("");
+  const [rejectDestError, setRejectDestError] = useState("");
 
   // Verify incoming bank proof modal
   const [verifyProofTarget, setVerifyProofTarget] = useState<StaffBankProof | null>(null);
@@ -113,20 +131,75 @@ export default function PaymentsPage() {
     const req =
       tab === "bank-proofs"
         ? staffListBankProofs(query).then(setBankProofPage)
-        : tab === "payouts"
-          ? staffListPayouts(query).then(setPayoutPage)
-          : tab === "specialists"
-            ? staffListSpecialistsPayoutSummary().then(setSpecialistsSummary)
-            : tab === "payments"
-              ? staffListPayments(query).then(setPaymentPage)
-              : tab === "refunds"
-                ? staffListRefunds(query).then(setRefundPage)
-                : staffListLedgerTransactions(query).then(setLedgerPage);
+        : tab === "destinations"
+          ? staffListPayoutDestinations(query).then(setDestPage)
+          : tab === "payouts"
+            ? staffListPayouts(query).then(setPayoutPage)
+            : tab === "specialists"
+              ? staffListSpecialistsPayoutSummary().then(setSpecialistsSummary)
+              : tab === "payments"
+                ? staffListPayments(query).then(setPaymentPage)
+                : tab === "refunds"
+                  ? staffListRefunds(query).then(setRefundPage)
+                  : staffListLedgerTransactions(query).then(setLedgerPage);
     req.catch(setLoadError);
   }, [tab, currentPage, rowsPerPage]);
 
   useEffect(load, [load]);
   useEffect(() => { setCurrentPage(1); }, [tab, rowsPerPage]);
+
+  async function handleVerifyDestination() {
+    if (!verifyDestTarget) return;
+    if (destMethod === "BANK_PORTAL_BENEFICIARY" && destBankRecipientId.trim().length < 3) {
+      setDestVerifyError("Tashkilot bank kabinetidagi oluvchi ID sini kiriting.");
+      return;
+    }
+    if (destMethod === "BANK_DOCUMENT_AND_MICRO_TRANSFER" && destEvidenceRef.trim().length < 3) {
+      setDestVerifyError("Bank ko'chirmasi yoki mikro-o'tkazma tasdiq hujjati raqamini kiriting.");
+      return;
+    }
+    if (destVerifyNote.trim().length < 5) {
+      setDestVerifyError("Egalik tekshiruvi izohi kamida 5 belgi bo'lishi kerak.");
+      return;
+    }
+    setBusy(true);
+    setDestVerifyError("");
+    try {
+      await staffVerifyPayoutDestination(verifyDestTarget.id, {
+        verificationMethod: destMethod,
+        bankRecipientId: destMethod === "BANK_PORTAL_BENEFICIARY" ? destBankRecipientId.trim() : undefined,
+        verificationEvidenceRef: destMethod === "BANK_DOCUMENT_AND_MICRO_TRANSFER" ? destEvidenceRef.trim() : undefined,
+        verificationNote: destVerifyNote.trim(),
+      });
+      toast("Oluvchi rekviziti bank kabineti bilan bog'lanib tasdiqlandi.");
+      setVerifyDestTarget(null);
+      load();
+    } catch (err) {
+      setDestVerifyError(adminErrorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRejectDestination() {
+    if (!rejectDestTarget) return;
+    if (rejectDestReason.trim().length < 5) {
+      setRejectDestError("Rad etish sababini kamida 5 ta belgi bilan yozing.");
+      return;
+    }
+    setBusy(true);
+    setRejectDestError("");
+    try {
+      await staffRejectPayoutDestination(rejectDestTarget.id, rejectDestReason.trim());
+      toast("Oluvchi rekviziti rad etildi.");
+      setRejectDestTarget(null);
+      load();
+    } catch (err) {
+      setRejectDestError(adminErrorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleStartProcessing(payout: StaffPayout) {
     setBusy(true);
@@ -248,7 +321,24 @@ export default function PaymentsPage() {
     { key: "code", header: "Kod", render: (b) => <span className="font-mono text-2xs font-bold">{b.paymentPurposeCode}</span> },
     { key: "contract", header: "Buyurtma / Xaridor", render: (b) => <div><p className="text-xs font-medium">{b.contractTitle || b.contractId.slice(0, 8)}</p><p className="text-2xs text-muted">{b.buyerName || b.buyerId.slice(0, 8)}</p></div> },
     { key: "amounts", header: "Summa", render: (b) => <div className="text-xs"><p>Shartnoma: <strong>{formatMoney(b.contractAgreedAmount ?? b.declaredAmount)}</strong></p>{b.receivedAmount !== null && b.receivedAmount !== undefined && <p>Tushdi: {formatMoney(b.receivedAmount)}</p>}{b.mismatchAmount !== 0 && <p className="text-danger">Farq: {formatMoney(b.mismatchAmount)}</p>}</div> },
-    { key: "proof", header: "Chek", render: (b) => <div className="text-2xs">{b.receiptFileUrl && <a href={b.receiptFileUrl} target="_blank" rel="noreferrer" className="text-primary underline block">Chek fayli</a>}{b.receiptNote && <span className="text-muted">{b.receiptNote}</span>}</div> },
+    {
+      key: "proof",
+      header: "Chek",
+      render: (b) => (
+        <div className="text-2xs">
+          {b.receiptFileUrl && (
+            <button
+              type="button"
+              onClick={() => void staffDownloadUpload(b.receiptFileUrl!, `chek-${b.paymentPurposeCode}`).catch((err) => toast(adminErrorText(err), "error"))}
+              className="text-primary underline block cursor-pointer"
+            >
+              Chek fayli
+            </button>
+          )}
+          {b.receiptNote && <span className="text-muted">{b.receiptNote}</span>}
+        </div>
+      ),
+    },
     { key: "status", header: "Holat", render: (b) => <Badge tone={TONE[b.status] ?? "neutral"}>{b.status}</Badge> },
     {
       key: "actions",
@@ -364,6 +454,85 @@ export default function PaymentsPage() {
     { key: "createdAt", header: "Sana", render: (t) => formatDate(t.createdAt) },
   ];
 
+  const destColumns: TableColumn<StaffPayoutDestination>[] = [
+    {
+      key: "seller",
+      header: "Mutaxassis",
+      render: (d) => (
+        <div className="text-xs">
+          <p className="font-medium">{d.sellerName || d.sellerId.slice(0, 8)}</p>
+          <p className="text-2xs text-muted">{d.sellerPhone || ""}</p>
+        </div>
+      ),
+    },
+    {
+      key: "dest",
+      header: "Maskalangan rekvizit",
+      render: (d) => (
+        <div className="text-xs">
+          <p className="font-medium">{d.providerLabel} · <span className="font-mono">{d.maskedValue}</span></p>
+          <p className="text-2xs text-muted">{d.holderName}{d.bankName ? ` · ${d.bankName}` : ""}{d.mfo ? ` (MFO ${d.mfo})` : ""}</p>
+        </div>
+      ),
+    },
+    {
+      key: "verification",
+      header: "Bank oluvchi / dalil",
+      render: (d) => (
+        <div className="text-2xs">
+          {d.bankRecipientId && <p className="font-mono font-semibold text-ink">Bank ID: {d.bankRecipientId}</p>}
+          {d.verificationEvidenceRef && <p className="font-mono text-ink">Hujjat: {d.verificationEvidenceRef}</p>}
+          {d.verificationNote && <p className="text-muted">{d.verificationNote}</p>}
+          {d.rejectionReason && <p className="text-danger">{d.rejectionReason}</p>}
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Holat",
+      render: (d) => <Badge tone={TONE[d.verificationStatus] ?? "neutral"}>{d.verificationStatus}</Badge>,
+    },
+    {
+      key: "actions",
+      header: "Amallar",
+      render: (d) => (
+        <div className="flex flex-wrap gap-1.5">
+          {d.verificationStatus !== "VERIFIED" && (
+            <Button
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setVerifyDestTarget(d);
+                setDestMethod("BANK_PORTAL_BENEFICIARY");
+                setDestBankRecipientId(d.bankRecipientId ?? "");
+                setDestEvidenceRef(d.verificationEvidenceRef ?? "");
+                setDestVerifyNote(d.verificationNote ?? "");
+                setDestVerifyError("");
+              }}
+            >
+              Oluvchini tasdiqlash
+            </Button>
+          )}
+          {d.verificationStatus === "PENDING_REVIEW" && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-danger"
+              disabled={busy}
+              onClick={() => {
+                setRejectDestTarget(d);
+                setRejectDestReason("");
+                setRejectDestError("");
+              }}
+            >
+              Rad etish
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   const header = (
     <AdminPageHeader
       title="Moliya, Kirim Cheklari & Qo'lda Bank Payout"
@@ -390,6 +559,7 @@ export default function PaymentsPage() {
             {(
               [
                 { id: "bank-proofs", label: "Bank kirim cheklari" },
+                { id: "destinations", label: "Oluvchilarni tekshirish" },
                 { id: "payouts", label: "Pul yechish (Payout)" },
                 { id: "specialists", label: "Mutaxassislar hisoboti" },
                 { id: "payments", label: "To'lovlar" },
@@ -430,11 +600,27 @@ export default function PaymentsPage() {
             </>
           ))}
 
+        {tab === "destinations" &&
+          (!destPage ? (
+            <LoadingState message="Oluvchilar rekvizitlari yuklanmoqda..." />
+          ) : (
+            <>
+              <Card padding="md" className="mb-3 bg-surface text-xs text-muted">
+                <strong>Operatsion qoida:</strong> Maskalangan karta/hisob va ismning o&apos;zi egalik dalili emas. Moliya xodimi mutaxassisni tashkilot bank kabinetida tekshiradi, bankdagi oluvchi shablon identifikatorini (yoki mikro-o&apos;tkazma / bank ko&apos;chirmasi dalilini) bog&apos;laydi — faqat shundan keyin mutaxassis payout so&apos;rovi yubora oladi.
+              </Card>
+              <Table columns={destColumns} rows={destPage.items} rowKey={(d) => d.id} />
+              <Pagination currentPage={destPage.page} totalPages={destPage.totalPages} onPageChange={setCurrentPage} totalRows={destPage.total} rowsPerPage={destPage.perPage} onRowsPerPageChange={setRowsPerPage} />
+            </>
+          ))}
+
         {tab === "payouts" &&
           (!payoutPage ? (
             <LoadingState message="Pul yechish so'rovlari yuklanmoqda..." />
           ) : (
             <>
+              <Card padding="md" className="mb-3 bg-surface text-xs text-muted">
+                <strong>Bank o&apos;tkazmasi tartibi:</strong> Avval <em>Ishlovga olish</em> bosing, tashkilot bank kabinetida <em>Rekvizit</em> ustunida ko&apos;rsatilgan tasdiqlangan Bank ID / oluvchiga pul o&apos;tkazing va so&apos;ng unikal bank operatsiya raqami bilan <em>Bank orqali o&apos;tkazildi</em> ni qayd eting.
+              </Card>
               <Table columns={payoutColumns} rows={payoutPage.items} rowKey={(p) => p.id} />
               <Pagination currentPage={payoutPage.page} totalPages={payoutPage.totalPages} onPageChange={setCurrentPage} totalRows={payoutPage.total} rowsPerPage={payoutPage.perPage} onRowsPerPageChange={setRowsPerPage} />
             </>
@@ -653,6 +839,79 @@ export default function PaymentsPage() {
         }
       >
         <Input label="Bank qaytarish hujjat raqami *" value={refundBankRef} onChange={(e) => setRefundBankRef(e.target.value)} />
+      </Modal>
+
+      {/* Oluvchi rekvizitini bankda tasdiqlash */}
+      <Modal
+        open={!!verifyDestTarget}
+        onClose={() => !busy && setVerifyDestTarget(null)}
+        title="Payout oluvchisini bankda tasdiqlash"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setVerifyDestTarget(null)} disabled={busy}>Bekor qilish</Button>
+            <Button loading={busy} onClick={handleVerifyDestination}>Oluvchini tasdiqlash</Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3 text-xs">
+          {verifyDestTarget && (
+            <p className="text-muted">
+              Mutaxassis: <strong>{verifyDestTarget.sellerName || verifyDestTarget.sellerPhone}</strong> · {verifyDestTarget.providerLabel} <span className="font-mono">{verifyDestTarget.maskedValue}</span> ({verifyDestTarget.holderName})
+            </p>
+          )}
+          <div className="flex flex-col gap-1">
+            <label className="font-medium text-ink">Tasdiqlash usuli</label>
+            <select
+              value={destMethod}
+              onChange={(e) => setDestMethod(e.target.value as "BANK_PORTAL_BENEFICIARY" | "BANK_DOCUMENT_AND_MICRO_TRANSFER")}
+              className="rounded-input border border-line bg-card px-3 py-2 text-xs text-ink"
+            >
+              <option value="BANK_PORTAL_BENEFICIARY">Tashkilot bank kabinetidagi oluvchi ID (shablon)</option>
+              <option value="BANK_DOCUMENT_AND_MICRO_TRANSFER">Bank ko&apos;chirmasi / mikro-o&apos;tkazma dalili</option>
+            </select>
+          </div>
+          {destMethod === "BANK_PORTAL_BENEFICIARY" ? (
+            <Input
+              label="Bank kabinetidagi saqlangan oluvchi ID *"
+              placeholder="Masalan: CORP-BEN-10492"
+              value={destBankRecipientId}
+              onChange={(e) => setDestBankRecipientId(e.target.value)}
+            />
+          ) : (
+            <Input
+              label="Bank ko'chirmasi / mikro-o'tkazma hujjat raqami *"
+              placeholder="Masalan: MICRO-TX-2026-091"
+              value={destEvidenceRef}
+              onChange={(e) => setDestEvidenceRef(e.target.value)}
+            />
+          )}
+          <Textarea
+            label="Egalik va bank tekshiruvi izohi (kamida 5 belgi) *"
+            placeholder="Karta/hisob egasi KYC hujjati va bank kabinetidagi oluvchi bilan solishtirildi."
+            value={destVerifyNote}
+            onChange={(e) => setDestVerifyNote(e.target.value)}
+            rows={2}
+          />
+          {destVerifyError && <p className="text-danger">{destVerifyError}</p>}
+        </div>
+      </Modal>
+
+      {/* Oluvchi rekvizitini rad etish */}
+      <Modal
+        open={!!rejectDestTarget}
+        onClose={() => !busy && setRejectDestTarget(null)}
+        title="Payout oluvchisini rad etish"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setRejectDestTarget(null)} disabled={busy}>Bekor qilish</Button>
+            <Button variant="danger" loading={busy} onClick={handleRejectDestination}>Rad etish</Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <Textarea label="Rad etish sababi (kamida 5 belgi) *" value={rejectDestReason} onChange={(e) => setRejectDestReason(e.target.value)} rows={3} />
+          {rejectDestError && <p className="text-xs text-danger">{rejectDestError}</p>}
+        </div>
       </Modal>
     </>
   );

@@ -222,7 +222,7 @@ describe('First Release Marketplace E2E (10% fee, negotiation, manual bank inflo
       .expect(200);
     expect(propBState.body.status).toBe('rad_etilgan');
 
-    // Buyer uploads bank receipt image and submits manual bank proof
+    // Buyer uploads bank receipt image (purpose=BANK_PROOF) and submits manual bank proof
     const tinyPng = Buffer.from(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
       'base64',
@@ -234,6 +234,8 @@ describe('First Release Marketplace E2E (10% fee, negotiation, manual bank inflo
         fileName: 'bank-chek.png',
         mimeType: 'image/png',
         dataBase64: tinyPng,
+        purpose: 'BANK_PROOF',
+        contractId,
       })
       .expect(200);
     expect(uploadedReceipt.body.url).toMatch(/^\/api\/v1\/uploads\//);
@@ -249,6 +251,40 @@ describe('First Release Marketplace E2E (10% fee, negotiation, manual bank inflo
       })
       .expect(200);
     expect(proofRes.body.status).toBe('PENDING_REVIEW');
+
+    // Privacy checks for BANK_PROOF file:
+    // 1) Unauthenticated -> 401
+    await request(app!.getHttpServer()).get(uploadedReceipt.body.url).expect(401);
+    // 2) Same contract's specialist MUST NOT view buyer's private bank receipt -> 403
+    await request(app!.getHttpServer())
+      .get(uploadedReceipt.body.url)
+      .set('Authorization', `Bearer ${sellerA.accessToken}`)
+      .expect(403);
+    // 3) Stranger marketplace user -> 403
+    await request(app!.getHttpServer())
+      .get(uploadedReceipt.body.url)
+      .set('Authorization', `Bearer ${sellerB.accessToken}`)
+      .expect(403);
+    // 4) Staff with only ORDERS permission (no PAYMENTS) -> 403
+    const ordersOnlyStaff = await createStaffSession(app!, db!, ['ORDERS']);
+    await request(app!.getHttpServer())
+      .get(uploadedReceipt.body.url)
+      .set('Authorization', `Bearer ${ordersOnlyStaff.accessToken}`)
+      .expect(403);
+    // 5) Genuine buyer & PAYMENTS staff succeed with private non-cacheable headers
+    const buyerReceiptRes = await request(app!.getHttpServer())
+      .get(uploadedReceipt.body.url)
+      .set('Authorization', `Bearer ${buyer.accessToken}`)
+      .expect(200);
+    expect(buyerReceiptRes.headers['cache-control']).toContain('no-store');
+    expect(buyerReceiptRes.headers['cache-control']).toContain('private');
+    expect(buyerReceiptRes.headers['cache-control']).not.toContain('public');
+
+    const staffReceiptRes = await request(app!.getHttpServer())
+      .get(uploadedReceipt.body.url)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .expect(200);
+    expect(staffReceiptRes.headers['cache-control']).toContain('no-store');
 
     const buyerContractBeforeVerify = await request(app!.getHttpServer())
       .get(`/api/v1/me/contracts/${contractId}`)
@@ -338,11 +374,11 @@ describe('First Release Marketplace E2E (10% fee, negotiation, manual bank inflo
         fileName: 'sayt-maket-v1.pdf',
         mimeType: 'application/pdf',
         dataBase64: Buffer.from('%PDF-1.4\n%test deliverable v1\n').toString('base64'),
+        purpose: 'DELIVERABLE',
+        contractId,
+        milestoneId,
       })
       .expect(200);
-
-    // Verify buyer can fetch the uploaded file URL safely
-    await request(app!.getHttpServer()).get(deliverableUpload.body.url).expect(200);
 
     await request(app!.getHttpServer())
       .post(`/api/v1/seller/contracts/${contractId}/milestones/${milestoneId}/submit`)
@@ -352,6 +388,45 @@ describe('First Release Marketplace E2E (10% fee, negotiation, manual bank inflo
         deliverableUrls: [deliverableUpload.body.url],
       })
       .expect(200);
+
+    // Deliverable file privacy:
+    // - Unauthenticated -> 401
+    // - Stranger (sellerB) -> 403
+    // - PAYMENTS-only staff (without ORDERS/DISPUTES) -> 403
+    // - Buyer, SellerA, and ORDERS staff -> 200 + private non-cacheable headers
+    await request(app!.getHttpServer()).get(deliverableUpload.body.url).expect(401);
+    await request(app!.getHttpServer())
+      .get(deliverableUpload.body.url)
+      .set('Authorization', `Bearer ${sellerB.accessToken}`)
+      .expect(403);
+    const paymentsOnlyStaff = await createStaffSession(app!, db!, ['PAYMENTS']);
+    await request(app!.getHttpServer())
+      .get(deliverableUpload.body.url)
+      .set('Authorization', `Bearer ${paymentsOnlyStaff.accessToken}`)
+      .expect(403);
+    const buyerWorkRes = await request(app!.getHttpServer())
+      .get(deliverableUpload.body.url)
+      .set('Authorization', `Bearer ${buyer.accessToken}`)
+      .expect(200);
+    expect(buyerWorkRes.headers['cache-control']).toContain('no-store');
+    await request(app!.getHttpServer())
+      .get(deliverableUpload.body.url)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .expect(200);
+
+    // Unowned legacy orphan disk file stays private & is never deleted
+    const orphanName = `${uuidv7()}.png`;
+    fs.writeFileSync(path.join(tmpUploadDir, orphanName), Buffer.from(tinyPng, 'base64'));
+    await request(app!.getHttpServer()).get(`/api/v1/uploads/${orphanName}`).expect(401);
+    await request(app!.getHttpServer())
+      .get(`/api/v1/uploads/${orphanName}`)
+      .set('Authorization', `Bearer ${buyer.accessToken}`)
+      .expect(403);
+    await request(app!.getHttpServer())
+      .get(`/api/v1/uploads/${orphanName}`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .expect(403);
+    expect(fs.existsSync(path.join(tmpUploadDir, orphanName))).toBe(true);
 
     // Buyer requests 1st revision (within revisionsIncluded: 1)
     await request(app!.getHttpServer())
@@ -417,7 +492,7 @@ describe('First Release Marketplace E2E (10% fee, negotiation, manual bank inflo
       paid: 0,
     });
 
-    // Save verified masked Uzcard destination
+    // Add masked Uzcard destination -> MUST start as PENDING_REVIEW (isVerified=false)
     const destRes = await request(app!.getHttpServer())
       .post('/api/v1/seller/payout-destinations')
       .set('Authorization', `Bearer ${sellerA.accessToken}`)
@@ -431,8 +506,57 @@ describe('First Release Marketplace E2E (10% fee, negotiation, manual bank inflo
       .expect(200);
     expect(destRes.body.maskedValue).toContain('9012');
     expect(destRes.body.maskedValue).not.toContain('12345678');
+    expect(destRes.body.isVerified).toBe(false);
+    expect(destRes.body.verificationStatus).toBe('PENDING_REVIEW');
 
-    // Specialist requests 60,000 manual payout -> zero external HTTP calls!
+    // Payout request against unverified recipient MUST fail 409 PAYOUT_DESTINATION_NOT_VERIFIED
+    const unverifiedPayout = await request(app!.getHttpServer())
+      .post('/api/v1/seller/payouts')
+      .set('Authorization', `Bearer ${sellerA.accessToken}`)
+      .set('Idempotency-Key', uuidv7())
+      .send({ amount: 60_000, destinationId: destRes.body.id })
+      .expect(409);
+    expect(unverifiedPayout.body.code).toBe('PAYOUT_DESTINATION_NOT_VERIFIED');
+
+    // Legacy record lacking independent staff proof cannot pass either
+    await db!.sellerPayoutDestination.update({
+      where: { id: destRes.body.id },
+      data: { isVerified: true, verificationStatus: 'VERIFIED', verifiedByStaffId: null },
+    });
+    await request(app!.getHttpServer())
+      .post('/api/v1/seller/payouts')
+      .set('Authorization', `Bearer ${sellerA.accessToken}`)
+      .set('Idempotency-Key', uuidv7())
+      .send({ amount: 60_000, destinationId: destRes.body.id })
+      .expect(409);
+    await db!.sellerPayoutDestination.update({
+      where: { id: destRes.body.id },
+      data: { isVerified: false, verificationStatus: 'PENDING_REVIEW' },
+    });
+
+    // Authorized finance staff verifies recipient in bank cabinet & links bankRecipientId
+    const verifiedDestRes = await request(app!.getHttpServer())
+      .post(`/api/v1/staff/payout-destinations/${destRes.body.id}/verify`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({
+        verificationMethod: 'BANK_PORTAL_BENEFICIARY',
+        bankRecipientId: 'CORP-REC-8801',
+        verificationNote: 'Tashkilot bank kabinetida oluvchi sifatida tasdiqlandi va KYC bilan moslandi',
+      })
+      .expect(200);
+    expect(verifiedDestRes.body.isVerified).toBe(true);
+    expect(verifiedDestRes.body.verificationStatus).toBe('VERIFIED');
+    expect(verifiedDestRes.body.bankRecipientId).toBe('CORP-REC-8801');
+
+    // Verify audit log recorded staff verification WITHOUT storing full card digits
+    const destAudit = await db!.auditLog.findFirst({
+      where: { resourceId: destRes.body.id, action: 'PAYOUT_DESTINATION_VERIFIED' },
+    });
+    expect(destAudit).toBeTruthy();
+    expect(JSON.stringify(destAudit)).not.toContain('8600123456789012');
+    expect(JSON.stringify(destAudit)).toContain('CORP-REC-8801');
+
+    // Specialist requests 60,000 manual payout on verified recipient -> zero external HTTP calls!
     const callsBeforePayout = fetchSpy.mock.calls.length;
     const payoutRes = await request(app!.getHttpServer())
       .post('/api/v1/seller/payouts')
@@ -443,6 +567,7 @@ describe('First Release Marketplace E2E (10% fee, negotiation, manual bank inflo
     const payoutId = payoutRes.body.id as string;
     expect(fetchSpy.mock.calls.length).toBe(callsBeforePayout);
     expect(payoutRes.body.status).toBe('PENDING');
+    expect(payoutRes.body.destinationReference).toContain('CORP-REC-8801');
 
     const balAfterRequest = await request(app!.getHttpServer())
       .get('/api/v1/seller/balance')
@@ -530,12 +655,53 @@ describe('First Release Marketplace E2E (10% fee, negotiation, manual bank inflo
     expect(corrected.body.bankOperationRef).toBe('PAYOUT-REF-60000-CORR');
     expect(corrected.body.corrections).toHaveLength(1);
 
+    // Replacing destination requires re-verification while leaving prior 60,000 payout pointing at old verified recipient
+    const replacedDest = await request(app!.getHttpServer())
+      .patch(`/api/v1/seller/payout-destinations/${destRes.body.id}`)
+      .set('Authorization', `Bearer ${sellerA.accessToken}`)
+      .send({
+        type: 'BANK_CARD',
+        providerLabel: 'Humo',
+        rawAccountOrCard: '9860999988887777',
+        holderName: 'Dilshodbek Karimov',
+        isDefault: true,
+      })
+      .expect(200);
+    expect(replacedDest.body.verificationStatus).toBe('PENDING_REVIEW');
+    expect(replacedDest.body.isVerified).toBe(false);
+
+    // Prior 60,000 payout STILL keeps the historical verified recipient (9012 / CORP-REC-8801)
+    const historicalPayout = await request(app!.getHttpServer())
+      .get(`/api/v1/staff/payouts/${payoutId}`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .expect(200);
+    expect(historicalPayout.body.destinationReference).toContain('9012');
+    expect(historicalPayout.body.destinationReference).toContain('CORP-REC-8801');
+
+    // Requesting 30,000 on unverified replacement fails until staff re-verifies
+    await request(app!.getHttpServer())
+      .post('/api/v1/seller/payouts')
+      .set('Authorization', `Bearer ${sellerA.accessToken}`)
+      .set('Idempotency-Key', uuidv7())
+      .send({ amount: 30_000, destinationId: replacedDest.body.id })
+      .expect(409);
+
+    await request(app!.getHttpServer())
+      .post(`/api/v1/staff/payout-destinations/${replacedDest.body.id}/verify`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({
+        verificationMethod: 'BANK_DOCUMENT_AND_MICRO_TRANSFER',
+        verificationEvidenceRef: 'MICRO-TX-7777',
+        verificationNote: 'Almashtirilgan Humo karta mikro-o‘tkazma bilan tasdiqlandi',
+      })
+      .expect(200);
+
     // Remaining 30,000 requested then rejected -> reserved returns to available (30,000), paid stays 60,000
     const payout2 = await request(app!.getHttpServer())
       .post('/api/v1/seller/payouts')
       .set('Authorization', `Bearer ${sellerA.accessToken}`)
       .set('Idempotency-Key', uuidv7())
-      .send({ amount: 30_000, destinationId: destRes.body.id })
+      .send({ amount: 30_000, destinationId: replacedDest.body.id })
       .expect(200);
 
     await request(app!.getHttpServer())

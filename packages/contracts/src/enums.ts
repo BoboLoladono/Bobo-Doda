@@ -413,3 +413,19 @@ export const PayoutDestinationType = {
 } as const;
 export type PayoutDestinationType = (typeof PayoutDestinationType)[keyof typeof PayoutDestinationType];
 export const PayoutDestinationTypeValues = ['BANK_CARD', 'BANK_ACCOUNT'] as const;
+
+export const PayoutDestinationVerificationStatus = {
+  PENDING_REVIEW: 'PENDING_REVIEW',
+  VERIFIED: 'VERIFIED',
+  REJECTED: 'REJECTED',
+} as const;
+export type PayoutDestinationVerificationStatus = (typeof PayoutDestinationVerificationStatus)[keyof typeof PayoutDestinationVerificationStatus];
+export const PayoutDestinationVerificationStatusValues = ['PENDING_REVIEW', 'VERIFIED', 'REJECTED'] as const;
+
+export const UploadedFilePurpose = {
+  BANK_PROOF: 'BANK_PROOF',
+  DELIVERABLE: 'DELIVERABLE',
+  GENERAL: 'GENERAL',
+} as const;
+export type UploadedFilePurpose = (typeof UploadedFilePurpose)[keyof typeof UploadedFilePurpose];
+export const UploadedFilePurposeValues = ['BANK_PROOF', 'DELIVERABLE', 'GENERAL'] as const;

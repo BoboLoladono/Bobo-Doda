@@ -30,7 +30,7 @@ import type { CompanyBankDetails } from "@/lib/company-bank-details";
 import { getPaymentPurpose } from "@/lib/company-bank-details";
 import { PLATFORM_FEE_PERCENT } from "@/lib/fees";
 import type { Contract, Dispute, Milestone } from "@/lib/types";
-import { formatDate, formatFileSize, formatMoney, triggerFileDownload } from "@/lib/format";
+import { formatDate, formatFileSize, formatMoney } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { trackPaymentComplete } from "@/lib/analytics";
 
@@ -221,10 +221,13 @@ export default function XaridorWorkroomPage() {
     if (!file) return;
     setReceiptUploading(true);
     try {
-      const uploaded = await filesService.upload(file);
+      const uploaded = await filesService.upload(file, {
+        purpose: "BANK_PROOF",
+        contractId: contract?.id,
+      });
       setReceiptUrl(uploaded.url);
       setReceiptName(uploaded.name);
-      toast("Chek fayli yuklandi");
+      toast("Chek fayli xavfsiz yuklandi");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Fayl yuklashda xatolik", "error");
     } finally {
@@ -685,7 +688,7 @@ export default function XaridorWorkroomPage() {
                             </div>
                             <button
                               type="button"
-                              onClick={() => triggerFileDownload(file)}
+                              onClick={() => void filesService.download(file.url, file.name)}
                               className="shrink-0 rounded-btn bg-surface hover:bg-card-hover px-2 py-1 text-[11px] font-medium text-primary border border-line cursor-pointer"
                             >
                               {t("workroom.download")}
@@ -760,11 +763,22 @@ export default function XaridorWorkroomPage() {
                           {sub.message && <p className="mt-1 whitespace-pre-line text-ink">{sub.message}</p>}
                           {sub.deliverableUrls.length > 0 && (
                             <div className="mt-1 flex flex-wrap gap-2">
-                              {sub.deliverableUrls.map((url, uIdx) => (
-                                <a key={uIdx} href={url} target="_blank" rel="noreferrer noopener" className="text-2xs font-medium text-primary hover:underline break-all">
-                                  Natija #{uIdx + 1}
-                                </a>
-                              ))}
+                              {sub.deliverableUrls.map((url, uIdx) =>
+                                url.includes("/uploads/") ? (
+                                  <button
+                                    key={uIdx}
+                                    type="button"
+                                    onClick={() => void filesService.download(url, `natija-${uIdx + 1}`)}
+                                    className="text-2xs font-medium text-primary hover:underline cursor-pointer"
+                                  >
+                                    Natija #{uIdx + 1}
+                                  </button>
+                                ) : (
+                                  <a key={uIdx} href={url} target="_blank" rel="noreferrer noopener" className="text-2xs font-medium text-primary hover:underline break-all">
+                                    Natija #{uIdx + 1}
+                                  </a>
+                                ),
+                              )}
                             </div>
                           )}
                         </div>

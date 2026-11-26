@@ -214,6 +214,34 @@ export async function http<T>(path: string, init: HttpInit = {}, allowRetry = tr
   return JSON.parse(text) as T;
 }
 
+function normalizeProtectedPath(pathOrUrl: string): string {
+  const apiMatch = pathOrUrl.match(/\/api\/v1(\/.*)$/);
+  if (apiMatch) return apiMatch[1]!;
+  return pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+}
+
+export async function httpBlob(pathOrUrl: string, allowRetry = true): Promise<Blob> {
+  const path = normalizeProtectedPath(pathOrUrl);
+  if (!accessToken && readSession()) {
+    await refreshOnce();
+  }
+  const headers = new Headers();
+  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { headers, credentials: "include" });
+  } catch (cause) {
+    throw toNetworkError(cause);
+  }
+  if (res.status === 401 && allowRetry) {
+    const token = await refreshOnce();
+    if (token) return httpBlob(path, false);
+    throw await toApiError(res);
+  }
+  if (!res.ok) throw await toApiError(res);
+  return res.blob();
+}
+
 /** Query-string qurish — `undefined`/`""` maydonlar tashlab ketiladi. */
 export function toQuery(params: Record<string, string | number | boolean | undefined>): string {
   const qs = new URLSearchParams();

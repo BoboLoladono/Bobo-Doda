@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { UploadedFilePurpose } from '@prisma/client';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class UploadFileDto {
   @ApiProperty({ example: 'receipt.pdf' })
@@ -19,6 +20,21 @@ export class UploadFileDto {
   @IsNotEmpty()
   @MaxLength(8_000_000)
   dataBase64!: string;
+
+  @ApiPropertyOptional({ enum: UploadedFilePurpose })
+  @IsOptional()
+  @IsEnum(UploadedFilePurpose)
+  purpose?: UploadedFilePurpose;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  contractId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  milestoneId?: string;
 }
 
 export class UploadFileResponseDto {
@@ -28,4 +44,5 @@ export class UploadFileResponseDto {
   @ApiProperty() mimeType!: string;
   @ApiProperty() size!: number;
   @ApiProperty() url!: string;
+  @ApiProperty({ enum: UploadedFilePurpose }) purpose!: UploadedFilePurpose;
 }

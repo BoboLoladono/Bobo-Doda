@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { StaffAuthModule } from '@/modules/staff-auth/staff-auth.module';
 import { GuardsModule } from '@/common/guards/guards.module';
+import { UploadsModule } from '@/modules/uploads/uploads.module';
 import { AppConfigService } from '@/config/app-config.service';
 import { PAYMENT_PROVIDER } from './providers/payment-provider.interface';
 import { TestPaymentProvider } from './providers/test/test-payment.provider';
@@ -29,7 +30,7 @@ const DEV_ONLY_TEST_SECRET = 'test-only-insecure-secret-change-me';
  * to'liq chiqarilgan va uning o'rniga faqat Payme ishlatiladi.
  */
 @Module({
-  imports: [AuthModule, StaffAuthModule, GuardsModule],
+  imports: [AuthModule, StaffAuthModule, GuardsModule, UploadsModule],
   controllers: [
     PaymentController,
     MePaymentController,

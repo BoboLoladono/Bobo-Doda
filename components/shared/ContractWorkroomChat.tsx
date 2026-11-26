@@ -13,6 +13,7 @@ import { AntiCircumventionModal } from "@/components/shared/AntiCircumventionMod
 import { MilestoneStatusBadge } from "@/components/shared/StatusBadge";
 import {
   authService,
+  filesService,
   messagesService,
   DATA_CHANGED_EVENT,
 } from "@/lib/api";
@@ -325,7 +326,7 @@ export function ContractWorkroomChat({
                                 </div>
                                 <button
                                   type="button"
-                                  onClick={() => triggerFileDownload(file)}
+                                  onClick={() => (file.url.includes("/uploads/") ? void filesService.download(file.url, file.name) : triggerFileDownload(file))}
                                   className={`shrink-0 rounded-md px-2 py-1 text-2xs font-semibold transition-colors duration-150 ${
                                     mine
                                       ? "bg-white/20 text-white hover:bg-white/30"
@@ -538,7 +539,7 @@ export function ContractWorkroomChat({
                               </div>
                               <button
                                 type="button"
-                                onClick={() => triggerFileDownload(file)}
+                                onClick={() => (file.url.includes("/uploads/") ? void filesService.download(file.url, file.name) : triggerFileDownload(file))}
                                 className="shrink-0 rounded-btn bg-card hover:bg-card-hover px-2.5 py-1 text-2xs font-semibold text-primary border border-line transition-colors shadow-2xs"
                               >
                                 {t("workroom.download")}

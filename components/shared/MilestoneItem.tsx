@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/Button";
 import { CountdownBadge } from "@/components/ui/CountdownBadge";
 import { MilestoneStatusBadge } from "@/components/shared/StatusBadge";
 import type { Contract, Milestone } from "@/lib/types";
-import { formatDate, formatFileSize, formatMoney, triggerFileDownload } from "@/lib/format";
+import { filesService } from "@/lib/api";
+import { formatDate, formatFileSize, formatMoney } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 
 export interface MilestoneItemProps {
@@ -208,7 +209,7 @@ export function MilestoneItem({
                     </div>
                     <button
                       type="button"
-                      onClick={() => triggerFileDownload(file)}
+                      onClick={() => void filesService.download(file.url, file.name)}
                       className="shrink-0 rounded-btn bg-surface hover:bg-card-hover px-2.5 py-1 text-[11px] font-medium text-primary border border-line cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary min-h-[32px] sm:min-h-0"
                       title={t("sm.downloadFile")}
                       aria-label={`${file.name} (${formatFileSize(file.size)}) — ${t("sm.downloadFile")}`}
@@ -241,17 +242,28 @@ export function MilestoneItem({
                   {sub.message && <p className="mt-1 whitespace-pre-line text-ink">{sub.message}</p>}
                   {sub.deliverableUrls.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-2">
-                      {sub.deliverableUrls.map((url, uIdx) => (
-                        <a
-                          key={uIdx}
-                          href={url}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          className="text-2xs font-medium text-primary hover:underline break-all"
-                        >
-                          Natija havolasi / fayl #{uIdx + 1}
-                        </a>
-                      ))}
+                      {sub.deliverableUrls.map((url, uIdx) =>
+                        url.includes("/uploads/") ? (
+                          <button
+                            key={uIdx}
+                            type="button"
+                            onClick={() => void filesService.download(url, `natija-${uIdx + 1}`)}
+                            className="text-2xs font-medium text-primary hover:underline cursor-pointer"
+                          >
+                            Natija havolasi / fayl #{uIdx + 1}
+                          </button>
+                        ) : (
+                          <a
+                            key={uIdx}
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="text-2xs font-medium text-primary hover:underline break-all"
+                          >
+                            Natija havolasi / fayl #{uIdx + 1}
+                          </a>
+                        ),
+                      )}
                     </div>
                   )}
                 </div>

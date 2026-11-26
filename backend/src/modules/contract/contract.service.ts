@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import {
   JobStatus,
   Prisma,
@@ -18,6 +18,7 @@ import { somToTiyin } from '@/common/money/money.util';
 import { PLATFORM_FEE_RATE_BPS, computePlatformFee } from '@/common/money/fee.constant';
 import { buildPage, type Page } from '@/common/pagination/page-query.dto';
 import { LedgerService } from '@/modules/ledger/ledger.service';
+import { UploadsService } from '@/modules/uploads/uploads.service';
 import type { CreateContractDto } from './dto/create-contract.dto';
 import type { SubmitMilestoneDto } from './dto/submit-milestone.dto';
 import type { RequestRevisionDto } from './dto/request-revision.dto';
@@ -78,6 +79,7 @@ export class ContractService {
     private readonly audit: AuditService,
     private readonly outbox: OutboxService,
     private readonly ledger: LedgerService,
+    @Optional() private readonly uploads?: UploadsService,
   ) {}
 
   // ── Yaratish ──────────────────────────────────────────────────────────
@@ -605,6 +607,15 @@ export class ContractService {
           deliverableUrls: cleanedUrls,
         },
       });
+
+      if (cleanedUrls.length > 0 && this.uploads) {
+        await this.uploads.attachDeliverableUploads(tx, {
+          deliverableUrls: cleanedUrls,
+          contractId,
+          milestoneId,
+          sellerId,
+        });
+      }
 
       await this.audit.record(
         {

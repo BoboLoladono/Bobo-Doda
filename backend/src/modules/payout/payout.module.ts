@@ -9,7 +9,7 @@ import { DisabledPayoutProvider } from './providers/disabled/disabled-payout.pro
 import { PaymePayoutProvider } from './providers/payme/payme-payout.provider';
 import { PayoutService } from './payout.service';
 import { SellerPayoutController } from './seller-payout.controller';
-import { SellerPayoutDestinationController } from './payout-destination.controller';
+import { SellerPayoutDestinationController, StaffPayoutDestinationController } from './payout-destination.controller';
 import { StaffPayoutController } from './staff-payout.controller';
 import { PayoutWebhookController } from './payout-webhook.controller';
 import { ManualPayoutProvider } from './providers/manual/manual-payout.provider';
@@ -28,6 +28,7 @@ const DEV_ONLY_TEST_SECRET = 'test-only-insecure-payout-secret-change-me';
   controllers: [
     SellerPayoutController,
     SellerPayoutDestinationController,
+    StaffPayoutDestinationController,
     StaffPayoutController,
     PayoutWebhookController,
   ],

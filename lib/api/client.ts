@@ -22,7 +22,7 @@ import type {
   VerificationService,
 } from "./contracts";
 import { ApiError, withNormalizedErrors } from "./errors";
-import { http, toQuery, sessionStore, setAccessToken, decodeJwtSub, refreshSession } from "./http";
+import { http, httpBlob, toQuery, sessionStore, setAccessToken, decodeJwtSub, refreshSession } from "./http";
 import {
   asStr,
   mapContract,
@@ -965,7 +965,7 @@ export const milestonesService: MilestonesService = {
 };
 
 export const filesService: FilesService = {
-  upload: (file) =>
+  upload: (file, options) =>
     call(async () => {
       const dataBase64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -986,6 +986,9 @@ export const filesService: FilesService = {
           fileName: file.name,
           mimeType: file.type || undefined,
           dataBase64,
+          purpose: options?.purpose,
+          contractId: options?.contractId,
+          milestoneId: options?.milestoneId,
         },
       });
       const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
@@ -998,6 +1001,23 @@ export const filesService: FilesService = {
         type: res.mimeType,
         url: absoluteUrl,
       };
+    }),
+  download: (url, fileName) =>
+    call(async () => {
+      if (typeof window === "undefined") return;
+      if (url.includes("/uploads/")) {
+        const blob = await httpBlob(url);
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = fileName || url.split("/").pop() || "fayl";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+        return;
+      }
+      window.open(url, "_blank", "noopener,noreferrer");
     }),
 };
 
@@ -1089,6 +1109,13 @@ export const paymentsService: PaymentsService = {
     call(() =>
       http<Model.PayoutDestination>("/seller/payout-destinations", {
         method: "POST",
+        body: input,
+      })
+    ),
+  replacePayoutDestination: (id, input) =>
+    call(() =>
+      http<Model.PayoutDestination>(`/seller/payout-destinations/${id}`, {
+        method: "PATCH",
         body: input,
       })
     ),

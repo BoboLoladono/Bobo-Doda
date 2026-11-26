@@ -1188,6 +1188,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["UploadsController_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/uploads/{storedName}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["UploadsController_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/contracts/{contractId}/payment": {
         parameters: {
             query?: never;
@@ -1588,6 +1620,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/seller/payout-destinations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["SellerPayoutDestinationController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["SellerPayoutDestinationController_replace"];
+        trace?: never;
+    };
     "/api/v1/seller/payout-destinations/{id}/default": {
         parameters: {
             query?: never;
@@ -1604,7 +1652,23 @@ export interface paths {
         patch: operations["SellerPayoutDestinationController_setDefault"];
         trace?: never;
     };
-    "/api/v1/seller/payout-destinations/{id}": {
+    "/api/v1/staff/payout-destinations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffPayoutDestinationController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/payout-destinations/{id}/verify": {
         parameters: {
             query?: never;
             header?: never;
@@ -1613,8 +1677,24 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
-        delete: operations["SellerPayoutDestinationController_remove"];
+        post: operations["StaffPayoutDestinationController_verify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/payout-destinations/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffPayoutDestinationController_reject"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2956,38 +3036,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/me/uploads": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["UploadsController_upload"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/uploads/{storedName}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["UploadsController_download"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3469,6 +3517,28 @@ export interface components {
             message?: string;
             deliverableUrls?: string[];
         };
+        UploadFileDto: {
+            /** @example receipt.pdf */
+            fileName: string;
+            /** @example application/pdf */
+            mimeType?: string;
+            /** @description Base64 string or data: URL */
+            dataBase64: string;
+            /** @enum {string} */
+            purpose?: "BANK_PROOF" | "DELIVERABLE" | "GENERAL";
+            contractId?: string;
+            milestoneId?: string;
+        };
+        UploadFileResponseDto: {
+            id: string;
+            storedName: string;
+            originalName: string;
+            mimeType: string;
+            size: number;
+            url: string;
+            /** @enum {string} */
+            purpose: "BANK_PROOF" | "DELIVERABLE" | "GENERAL";
+        };
         PaymentResponseDto: {
             id: string;
             contractId: string;
@@ -3789,8 +3859,58 @@ export interface components {
             mfo?: string | null;
             isDefault: boolean;
             isVerified: boolean;
+            /** @enum {string} */
+            verificationStatus: "PENDING_REVIEW" | "VERIFIED" | "REJECTED";
+            bankRecipientId?: string | null;
+            verificationMethod?: string | null;
+            verificationEvidenceRef?: string | null;
+            verificationNote?: string | null;
+            rejectionReason?: string | null;
+            verifiedByStaffId?: string | null;
+            /** Format: date-time */
+            verifiedAt?: string | null;
             /** Format: date-time */
             createdAt: string;
+        };
+        VerifyPayoutDestinationDto: {
+            /** @enum {string} */
+            verificationMethod: "BANK_PORTAL_BENEFICIARY" | "BANK_DOCUMENT_AND_MICRO_TRANSFER";
+            /** @description Tashkilot bank kabinetida saqlangan oluvchi/shablon identifikatori */
+            bankRecipientId?: string;
+            /** @description Mikro-o‘tkazma yoki bank ko‘chirmasi/shartnoma tasdiq hujjati raqami */
+            verificationEvidenceRef?: string;
+            /** @description Egalik qanday tekshirilgani haqida izoh */
+            verificationNote: string;
+        };
+        StaffPayoutDestinationResponseDto: {
+            id: string;
+            /** @enum {string} */
+            type: "BANK_CARD" | "BANK_ACCOUNT";
+            providerLabel: string;
+            maskedValue: string;
+            holderName: string;
+            bankName?: string | null;
+            mfo?: string | null;
+            isDefault: boolean;
+            isVerified: boolean;
+            /** @enum {string} */
+            verificationStatus: "PENDING_REVIEW" | "VERIFIED" | "REJECTED";
+            bankRecipientId?: string | null;
+            verificationMethod?: string | null;
+            verificationEvidenceRef?: string | null;
+            verificationNote?: string | null;
+            rejectionReason?: string | null;
+            verifiedByStaffId?: string | null;
+            /** Format: date-time */
+            verifiedAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            sellerId: string;
+            sellerName?: string | null;
+            sellerPhone?: string | null;
+        };
+        RejectPayoutDestinationDto: {
+            reason: string;
         };
         PayoutCorrectionItemDto: {
             id: string;
@@ -4390,22 +4510,6 @@ export interface components {
             status: string;
             reportCount: number;
             createdAt: string;
-        };
-        UploadFileDto: {
-            /** @example receipt.pdf */
-            fileName: string;
-            /** @example application/pdf */
-            mimeType?: string;
-            /** @description Base64 string or data: URL */
-            dataBase64: string;
-        };
-        UploadFileResponseDto: {
-            id: string;
-            storedName: string;
-            originalName: string;
-            mimeType: string;
-            size: number;
-            url: string;
         };
     };
     responses: never;
@@ -6159,6 +6263,48 @@ export interface operations {
             };
         };
     };
+    UploadsController_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadFileDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadFileResponseDto"];
+                };
+            };
+        };
+    };
+    UploadsController_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                storedName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     PaymentController_create: {
         parameters: {
             query?: never;
@@ -6771,6 +6917,50 @@ export interface operations {
             };
         };
     };
+    SellerPayoutDestinationController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SellerPayoutDestinationController_replace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePayoutDestinationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutDestinationResponseDto"];
+                };
+            };
+        };
+    };
     SellerPayoutDestinationController_setDefault: {
         parameters: {
             query?: never;
@@ -6792,13 +6982,15 @@ export interface operations {
             };
         };
     };
-    SellerPayoutDestinationController_remove: {
+    StaffPayoutDestinationController_list: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
+            query?: {
+                page?: number;
+                perPage?: number;
+                status?: "PENDING_REVIEW" | "VERIFIED" | "REJECTED";
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -6808,6 +7000,56 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    StaffPayoutDestinationController_verify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyPayoutDestinationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffPayoutDestinationResponseDto"];
+                };
+            };
+        };
+    };
+    StaffPayoutDestinationController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectPayoutDestinationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffPayoutDestinationResponseDto"];
+                };
             };
         };
     };
@@ -8784,48 +9026,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReviewResponseDto"];
                 };
-            };
-        };
-    };
-    UploadsController_upload: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UploadFileDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UploadFileResponseDto"];
-                };
-            };
-        };
-    };
-    UploadsController_download: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                storedName: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { BankTransferProofStatus, Prisma, type BankTransferProof } from '@prisma/client';
 import { PrismaService } from '@/infra/prisma/prisma.service';
 import { IdFactory } from '@/common/id/id.factory';
@@ -9,6 +9,7 @@ import { DomainError, NotFoundError } from '@/common/errors/domain-error';
 import { somToTiyin } from '@/common/money/money.util';
 import { buildPage, type Page } from '@/common/pagination/page-query.dto';
 import { LedgerService } from '@/modules/ledger/ledger.service';
+import { UploadsService } from '@/modules/uploads/uploads.service';
 import type {
   CompanyBankDetailsResponseDto,
   SubmitBankProofDto,
@@ -26,6 +27,7 @@ export class ManualBankPaymentService {
     private readonly outbox: OutboxService,
     private readonly ledger: LedgerService,
     private readonly config: AppConfigService,
+    @Optional() private readonly uploads?: UploadsService,
   ) {}
 
   getCompanyBankDetails(): CompanyBankDetailsResponseDto {
@@ -106,6 +108,15 @@ export class ManualBankPaymentService {
           status: 'PENDING_REVIEW',
         },
       });
+
+      if (receiptFileUrl && this.uploads) {
+        await this.uploads.attachBankProofUpload(tx, {
+          receiptFileUrl,
+          contractId,
+          buyerId,
+          bankProofId: proofId,
+        });
+      }
 
       await this.audit.record(
         {

@@ -90,7 +90,11 @@ export default function ShartnomaWorkroomPage() {
     if (!file) return;
     setUploadingFile(true);
     try {
-      const uploaded = await filesService.upload(file);
+      const uploaded = await filesService.upload(file, {
+        purpose: "DELIVERABLE",
+        contractId: contract?.id,
+        milestoneId: submitTarget?.id,
+      });
       setUploadedFiles((prev) => [...prev, uploaded]);
       toast(`Fayl yuklandi: ${uploaded.name}`);
     } catch (err) {

@@ -127,6 +127,7 @@ export const ERROR_CODES = {
   CONTRACT_IN_PROGRESS_FOR_JOB: { httpStatus: 409, retryable: false },
   DUPLICATE_BANK_REF: { httpStatus: 409, retryable: false },
   PAYOUT_ALREADY_CLAIMED: { httpStatus: 409, retryable: false },
+  PAYOUT_DESTINATION_NOT_VERIFIED: { httpStatus: 409, retryable: false },
 
   // ── Validatsiya (422) ──────────────────────────────────────────────
   VALIDATION: { httpStatus: 422, retryable: false },
@@ -136,6 +137,7 @@ export const ERROR_CODES = {
   INVALID_HOLDER: { httpStatus: 422, retryable: false },
   INVALID_DATE: { httpStatus: 422, retryable: false },
   INVALID_CODE: { httpStatus: 422, retryable: false },
+  PAYOUT_DESTINATION_REQUIRED: { httpStatus: 422, retryable: false },
   // Bosqich 22 — `INVALID_CODE`dan ATAYLAB ajratilgan: OTP qatori topildi,
   // lekin muddati o'tgan/urinishlar tugagan — foydalanuvchiga "noto'g'ri
   // kod kiritdingiz" emas, "yangi kod so'rang" ko'rsatilishi kerak.

@@ -2886,6 +2886,70 @@
         ]
       }
     },
+    "/api/v1/me/uploads": {
+      "post": {
+        "operationId": "UploadsController_upload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadFileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadFileResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "uploads"
+        ]
+      }
+    },
+    "/api/v1/uploads/{storedName}": {
+      "get": {
+        "operationId": "UploadsController_download",
+        "parameters": [
+          {
+            "name": "storedName",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "uploads"
+        ]
+      }
+    },
     "/api/v1/me/contracts/{contractId}/payment": {
       "post": {
         "operationId": "PaymentController_create",
@@ -4068,6 +4132,77 @@
         ]
       }
     },
+    "/api/v1/seller/payout-destinations/{id}": {
+      "patch": {
+        "operationId": "SellerPayoutDestinationController_replace",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePayoutDestinationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutDestinationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "seller-payout-destinations"
+        ]
+      },
+      "delete": {
+        "operationId": "SellerPayoutDestinationController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "seller-payout-destinations"
+        ]
+      }
+    },
     "/api/v1/seller/payout-destinations/{id}/default": {
       "patch": {
         "operationId": "SellerPayoutDestinationController_setDefault",
@@ -4103,16 +4238,42 @@
         ]
       }
     },
-    "/api/v1/seller/payout-destinations/{id}": {
-      "delete": {
-        "operationId": "SellerPayoutDestinationController_remove",
+    "/api/v1/staff/payout-destinations": {
+      "get": {
+        "operationId": "StaffPayoutDestinationController_list",
         "parameters": [
           {
-            "name": "id",
-            "required": true,
-            "in": "path",
+            "name": "page",
+            "required": false,
+            "in": "query",
             "schema": {
-              "type": "string"
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "perPage",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING_REVIEW",
+                "VERIFIED",
+                "REJECTED"
+              ]
             }
           }
         ],
@@ -4127,7 +4288,97 @@
           }
         ],
         "tags": [
-          "seller-payout-destinations"
+          "staff-payout-destinations"
+        ]
+      }
+    },
+    "/api/v1/staff/payout-destinations/{id}/verify": {
+      "post": {
+        "operationId": "StaffPayoutDestinationController_verify",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyPayoutDestinationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffPayoutDestinationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-payout-destinations"
+        ]
+      }
+    },
+    "/api/v1/staff/payout-destinations/{id}/reject": {
+      "post": {
+        "operationId": "StaffPayoutDestinationController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectPayoutDestinationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffPayoutDestinationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-payout-destinations"
         ]
       }
     },
@@ -7816,65 +8067,6 @@
           "staff-reviews"
         ]
       }
-    },
-    "/api/v1/me/uploads": {
-      "post": {
-        "operationId": "UploadsController_upload",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UploadFileDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UploadFileResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "uploads"
-        ]
-      }
-    },
-    "/api/v1/uploads/{storedName}": {
-      "get": {
-        "operationId": "UploadsController_download",
-        "parameters": [
-          {
-            "name": "storedName",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "uploads"
-        ]
-      }
     }
   },
   "info": {
@@ -9538,6 +9730,81 @@
           }
         }
       },
+      "UploadFileDto": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "example": "receipt.pdf"
+          },
+          "mimeType": {
+            "type": "string",
+            "example": "application/pdf"
+          },
+          "dataBase64": {
+            "type": "string",
+            "description": "Base64 string or data: URL"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "BANK_PROOF",
+              "DELIVERABLE",
+              "GENERAL"
+            ]
+          },
+          "contractId": {
+            "type": "string"
+          },
+          "milestoneId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fileName",
+          "dataBase64"
+        ]
+      },
+      "UploadFileResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "storedName": {
+            "type": "string"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "url": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "BANK_PROOF",
+              "DELIVERABLE",
+              "GENERAL"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "storedName",
+          "originalName",
+          "mimeType",
+          "size",
+          "url",
+          "purpose"
+        ]
+      },
       "PaymentResponseDto": {
         "type": "object",
         "properties": {
@@ -10595,6 +10862,43 @@
           "isVerified": {
             "type": "boolean"
           },
+          "verificationStatus": {
+            "type": "string",
+            "enum": [
+              "PENDING_REVIEW",
+              "VERIFIED",
+              "REJECTED"
+            ]
+          },
+          "bankRecipientId": {
+            "type": "string",
+            "nullable": true
+          },
+          "verificationMethod": {
+            "type": "string",
+            "nullable": true
+          },
+          "verificationEvidenceRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "verificationNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "verifiedByStaffId": {
+            "type": "string",
+            "nullable": true
+          },
+          "verifiedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -10608,7 +10912,157 @@
           "holderName",
           "isDefault",
           "isVerified",
+          "verificationStatus",
           "createdAt"
+        ]
+      },
+      "VerifyPayoutDestinationDto": {
+        "type": "object",
+        "properties": {
+          "verificationMethod": {
+            "type": "string",
+            "enum": [
+              "BANK_PORTAL_BENEFICIARY",
+              "BANK_DOCUMENT_AND_MICRO_TRANSFER"
+            ]
+          },
+          "bankRecipientId": {
+            "type": "string",
+            "description": "Tashkilot bank kabinetida saqlangan oluvchi/shablon identifikatori",
+            "minLength": 3,
+            "maxLength": 80
+          },
+          "verificationEvidenceRef": {
+            "type": "string",
+            "description": "Mikro-o‘tkazma yoki bank ko‘chirmasi/shartnoma tasdiq hujjati raqami",
+            "minLength": 3,
+            "maxLength": 200
+          },
+          "verificationNote": {
+            "type": "string",
+            "description": "Egalik qanday tekshirilgani haqida izoh",
+            "minLength": 5,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "verificationMethod",
+          "verificationNote"
+        ]
+      },
+      "StaffPayoutDestinationResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "BANK_CARD",
+              "BANK_ACCOUNT"
+            ]
+          },
+          "providerLabel": {
+            "type": "string"
+          },
+          "maskedValue": {
+            "type": "string"
+          },
+          "holderName": {
+            "type": "string"
+          },
+          "bankName": {
+            "type": "string",
+            "nullable": true
+          },
+          "mfo": {
+            "type": "string",
+            "nullable": true
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "isVerified": {
+            "type": "boolean"
+          },
+          "verificationStatus": {
+            "type": "string",
+            "enum": [
+              "PENDING_REVIEW",
+              "VERIFIED",
+              "REJECTED"
+            ]
+          },
+          "bankRecipientId": {
+            "type": "string",
+            "nullable": true
+          },
+          "verificationMethod": {
+            "type": "string",
+            "nullable": true
+          },
+          "verificationEvidenceRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "verificationNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "verifiedByStaffId": {
+            "type": "string",
+            "nullable": true
+          },
+          "verifiedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "sellerId": {
+            "type": "string"
+          },
+          "sellerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "sellerPhone": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "providerLabel",
+          "maskedValue",
+          "holderName",
+          "isDefault",
+          "isVerified",
+          "verificationStatus",
+          "createdAt",
+          "sellerId"
+        ]
+      },
+      "RejectPayoutDestinationDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
         ]
       },
       "PayoutCorrectionItemDto": {
@@ -12703,58 +13157,6 @@
           "status",
           "reportCount",
           "createdAt"
-        ]
-      },
-      "UploadFileDto": {
-        "type": "object",
-        "properties": {
-          "fileName": {
-            "type": "string",
-            "example": "receipt.pdf"
-          },
-          "mimeType": {
-            "type": "string",
-            "example": "application/pdf"
-          },
-          "dataBase64": {
-            "type": "string",
-            "description": "Base64 string or data: URL"
-          }
-        },
-        "required": [
-          "fileName",
-          "dataBase64"
-        ]
-      },
-      "UploadFileResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "storedName": {
-            "type": "string"
-          },
-          "originalName": {
-            "type": "string"
-          },
-          "mimeType": {
-            "type": "string"
-          },
-          "size": {
-            "type": "number"
-          },
-          "url": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "storedName",
-          "originalName",
-          "mimeType",
-          "size",
-          "url"
         ]
       }
     }

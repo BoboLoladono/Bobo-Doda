@@ -300,6 +300,8 @@ export interface MilestoneRevisionHistoryItem {
   createdAt: string;
 }
 
+export type PayoutDestinationVerificationStatus = "PENDING_REVIEW" | "VERIFIED" | "REJECTED";
+
 export interface PayoutDestination {
   id: string;
   type: "BANK_CARD" | "BANK_ACCOUNT";
@@ -310,6 +312,14 @@ export interface PayoutDestination {
   mfo?: string | null;
   isDefault: boolean;
   isVerified: boolean;
+  verificationStatus: PayoutDestinationVerificationStatus;
+  bankRecipientId?: string | null;
+  verificationMethod?: string | null;
+  verificationEvidenceRef?: string | null;
+  verificationNote?: string | null;
+  rejectionReason?: string | null;
+  verifiedByStaffId?: string | null;
+  verifiedAt?: string | null;
   createdAt: string;
 }
 

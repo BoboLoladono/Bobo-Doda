@@ -1,9 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  UploadedFilePurpose,
+  type Prisma,
+  type StaffPermission,
+  type StaffRole,
+} from '@prisma/client';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { AppConfigService } from '@/config/app-config.service';
 import { IdFactory } from '@/common/id/id.factory';
-import { DomainError, NotFoundError } from '@/common/errors/domain-error';
+import { DomainError, NotFoundError, UnauthenticatedError } from '@/common/errors/domain-error';
+import { PrismaService } from '@/infra/prisma/prisma.service';
+import { TokenService } from '@/modules/auth/token.service';
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
 
@@ -35,12 +43,26 @@ const ALLOWED_TYPES: Record<string, { ext: string; magic?: (buf: Buffer) => bool
 };
 
 const SAFE_FILENAME_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|webp|pdf|zip|txt)$/;
+const UPLOAD_PATH_EXTRACT_RE = /\/uploads\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:png|jpg|webp|pdf|zip|txt))$/i;
+
+export type DownloadCaller =
+  | { kind: 'USER'; userId: string }
+  | { kind: 'STAFF'; staffId: string; role: StaffRole; permissions: StaffPermission[] };
+
+export function extractStoredUploadName(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  const match = trimmed.match(UPLOAD_PATH_EXTRACT_RE);
+  return match ? match[1]!.toLowerCase() : null;
+}
 
 @Injectable()
 export class UploadsService {
   private readonly logger = new Logger(UploadsService.name);
 
   constructor(
+    private readonly prisma: PrismaService,
+    private readonly tokens: TokenService,
     private readonly config: AppConfigService,
     private readonly ids: IdFactory,
   ) {}
@@ -49,11 +71,66 @@ export class UploadsService {
     return this.config.uploadDir?.trim() || path.join(process.cwd(), 'uploads');
   }
 
-  async saveUploadedFile(input: {
-    fileName: string;
-    mimeType?: string;
-    dataBase64: string;
-  }): Promise<{ id: string; storedName: string; originalName: string; mimeType: string; size: number; url: string }> {
+  async saveUploadedFile(
+    input: {
+      fileName: string;
+      mimeType?: string;
+      dataBase64: string;
+      purpose?: UploadedFilePurpose;
+      contractId?: string;
+      milestoneId?: string;
+    },
+    uploaderUserId: string,
+  ): Promise<{
+    id: string;
+    storedName: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    url: string;
+    purpose: UploadedFilePurpose;
+  }> {
+    const purpose = input.purpose ?? UploadedFilePurpose.GENERAL;
+    let resolvedContractId = input.contractId ?? null;
+    const resolvedMilestoneId = input.milestoneId ?? null;
+
+    if (resolvedMilestoneId) {
+      const ms = await this.prisma.milestone.findUnique({
+        where: { id: resolvedMilestoneId },
+        include: { contract: { select: { id: true, buyerId: true, sellerId: true } } },
+      });
+      if (!ms) {
+        throw new NotFoundError('Bosqich topilmadi', 'MILESTONE_NOT_FOUND');
+      }
+      if (resolvedContractId && ms.contractId !== resolvedContractId) {
+        throw new DomainError('FORBIDDEN', 'Bosqich ko‘rsatilgan shartnomaga tegishli emas');
+      }
+      resolvedContractId = ms.contractId;
+      if (ms.contract.sellerId !== uploaderUserId && ms.contract.buyerId !== uploaderUserId) {
+        throw new DomainError('FORBIDDEN', 'Ushbu topshiriqqa fayl yuklash huquqingiz yo‘q');
+      }
+      if (purpose === UploadedFilePurpose.DELIVERABLE && ms.contract.sellerId !== uploaderUserId) {
+        throw new DomainError('FORBIDDEN', 'Ish natijasini faqat shartnoma mutaxassisi yuklashi mumkin');
+      }
+    } else if (resolvedContractId) {
+      const contract = await this.prisma.contract.findUnique({
+        where: { id: resolvedContractId },
+        select: { buyerId: true, sellerId: true },
+      });
+      if (!contract) {
+        throw new NotFoundError('Shartnoma topilmadi', 'CONTRACT_NOT_FOUND');
+      }
+      if (purpose === UploadedFilePurpose.BANK_PROOF && contract.buyerId !== uploaderUserId) {
+        throw new DomainError('FORBIDDEN', 'Bank chekini faqat buyurtma xaridori yuklashi mumkin');
+      }
+      if (purpose === UploadedFilePurpose.DELIVERABLE && contract.sellerId !== uploaderUserId) {
+        throw new DomainError('FORBIDDEN', 'Ish natijasini faqat shartnoma mutaxassisi yuklashi mumkin');
+      }
+      if (contract.buyerId !== uploaderUserId && contract.sellerId !== uploaderUserId) {
+        throw new DomainError('FORBIDDEN', 'Ushbu shartnomaga fayl yuklash huquqingiz yo‘q');
+      }
+    }
+
     let rawMime = input.mimeType?.trim().toLowerCase() ?? '';
     let base64 = input.dataBase64.trim();
 
@@ -87,12 +164,33 @@ export class UploadsService {
 
     const id = this.ids.next();
     const storedName = `${id}.${spec.ext}`;
+    const safeOriginal =
+      path.basename(input.fileName).replace(/[^\w.\-() ]+/g, '_').slice(0, 120) || storedName;
+
     const dir = this.getBaseDir();
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, storedName), buffer);
 
-    const safeOriginal = path.basename(input.fileName).replace(/[^\w.\-() ]+/g, '_').slice(0, 120) || storedName;
-    this.logger.debug(`Saved upload ${storedName} (${buffer.length} bytes)`);
+    try {
+      await this.prisma.uploadedFile.create({
+        data: {
+          id,
+          storedName,
+          originalName: safeOriginal,
+          mimeType: rawMime,
+          sizeBytes: buffer.length,
+          uploaderUserId,
+          purpose,
+          contractId: resolvedContractId,
+          milestoneId: resolvedMilestoneId,
+        },
+      });
+    } catch (err) {
+      await fs.unlink(path.join(dir, storedName)).catch(() => undefined);
+      throw err;
+    }
+
+    this.logger.debug(`Saved private upload ${storedName} (${buffer.length} bytes, purpose=${purpose})`);
 
     return {
       id,
@@ -101,13 +199,148 @@ export class UploadsService {
       mimeType: rawMime,
       size: buffer.length,
       url: `/api/v1/uploads/${storedName}`,
+      purpose,
     };
   }
 
-  async readUploadedFile(storedName: string): Promise<{ buffer: Buffer; mimeType: string; inline: boolean }> {
+  /**
+   * Buyurtmaga bank cheki biriktirilganda fayl egasini tekshiradi va faylni
+   * `BANK_PROOF` + `contractId` + `bankProofId` ga bog‘laydi.
+   */
+  async attachBankProofUpload(
+    tx: Prisma.TransactionClient,
+    params: {
+      receiptFileUrl: string | null;
+      contractId: string;
+      buyerId: string;
+      bankProofId: string;
+    },
+  ): Promise<void> {
+    const storedName = extractStoredUploadName(params.receiptFileUrl);
+    if (!storedName) return;
+
+    const record = await tx.uploadedFile.findUnique({ where: { storedName } });
+    if (!record || (record.uploaderUserId && record.uploaderUserId !== params.buyerId)) {
+      throw new DomainError('FORBIDDEN', 'Biriktirilgan chek fayliga ruxsat mavjud emas');
+    }
+    if (record.contractId && record.contractId !== params.contractId) {
+      throw new DomainError('FORBIDDEN', 'Ushbu fayl boshqa buyurtmaga tegishli');
+    }
+
+    await tx.uploadedFile.update({
+      where: { id: record.id },
+      data: {
+        purpose: UploadedFilePurpose.BANK_PROOF,
+        contractId: params.contractId,
+        bankProofId: params.bankProofId,
+      },
+    });
+  }
+
+  /**
+   * Bosqich topshirig‘iga biriktirilgan mahalliy fayllarning egasini tekshiradi
+   * va ularni `DELIVERABLE` + `contractId` + `milestoneId` ga bog‘laydi.
+   */
+  async attachDeliverableUploads(
+    tx: Prisma.TransactionClient,
+    params: {
+      deliverableUrls: string[];
+      contractId: string;
+      milestoneId: string;
+      sellerId: string;
+    },
+  ): Promise<void> {
+    for (const url of params.deliverableUrls) {
+      const storedName = extractStoredUploadName(url);
+      if (!storedName) continue;
+
+      const record = await tx.uploadedFile.findUnique({ where: { storedName } });
+      if (!record || (record.uploaderUserId && record.uploaderUserId !== params.sellerId)) {
+        throw new DomainError('FORBIDDEN', 'Biriktirilgan natija fayliga ruxsat mavjud emas');
+      }
+      if (record.contractId && record.contractId !== params.contractId) {
+        throw new DomainError('FORBIDDEN', 'Ushbu fayl boshqa shartnomaga tegishli');
+      }
+
+      await tx.uploadedFile.update({
+        where: { id: record.id },
+        data: {
+          purpose: UploadedFilePurpose.DELIVERABLE,
+          contractId: params.contractId,
+          milestoneId: params.milestoneId,
+        },
+      });
+    }
+  }
+
+  async authenticateDownloadCaller(authorizationHeader: string | undefined): Promise<DownloadCaller> {
+    const token = authorizationHeader?.startsWith('Bearer ')
+      ? authorizationHeader.slice('Bearer '.length).trim()
+      : undefined;
+    if (!token) {
+      throw new UnauthenticatedError('Faylni yuklab olish uchun tizimga kiring', 'NO_SESSION');
+    }
+
+    // 1. Marketplace foydalanuvchi access tokeni
+    try {
+      const userPayload = this.tokens.verifyAccessToken(token);
+      if (userPayload.sub && userPayload.familyId) {
+        const session = await this.prisma.refreshToken.findFirst({
+          where: {
+            userId: userPayload.sub,
+            familyId: userPayload.familyId,
+            expiresAt: { gt: new Date() },
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { revokedAt: true },
+        });
+        if (!session || session.revokedAt) {
+          throw new UnauthenticatedError('Sessiya tugagan', 'TOKEN_EXPIRED');
+        }
+        return { kind: 'USER', userId: userPayload.sub };
+      }
+    } catch (err) {
+      if (err instanceof UnauthenticatedError && err.code === 'TOKEN_EXPIRED') {
+        throw err;
+      }
+      // Staff tokeni sifatida tekshirishga o'tamiz
+    }
+
+    // 2. Staff (admin) access tokeni
+    try {
+      const staffPayload = this.tokens.verifyStaffAccessToken(token);
+      if (staffPayload.sub) {
+        const staff = await this.prisma.staffMember.findUnique({
+          where: { id: staffPayload.sub },
+          select: { id: true, status: true, role: true, permissions: true },
+        });
+        if (!staff || staff.status !== 'ACTIVE') {
+          throw new UnauthenticatedError('Xodim sessiyasi faol emas', 'TOKEN_EXPIRED');
+        }
+        return {
+          kind: 'STAFF',
+          staffId: staff.id,
+          role: staff.role,
+          permissions: staff.permissions,
+        };
+      }
+    } catch (err) {
+      if (err instanceof UnauthenticatedError) throw err;
+    }
+
+    throw new UnauthenticatedError('Token yaroqsiz', 'UNAUTHENTICATED');
+  }
+
+  async readAuthorizedFile(
+    storedName: string,
+    caller: DownloadCaller,
+  ): Promise<{ buffer: Buffer; mimeType: string; inline: boolean }> {
     if (!SAFE_FILENAME_RE.test(storedName)) {
       throw new NotFoundError('Fayl topilmadi', 'NOT_FOUND');
     }
+
+    await this.assertCallerCanAccessStoredFile(storedName, caller);
+
     const filePath = path.join(this.getBaseDir(), storedName);
     let buffer: Buffer;
     try {
@@ -127,5 +360,112 @@ export class UploadsService {
     };
     const inline = ext === 'png' || ext === 'jpg' || ext === 'webp';
     return { buffer, mimeType: mimeMap[ext] ?? 'application/octet-stream', inline };
+  }
+
+  private async assertCallerCanAccessStoredFile(storedName: string, caller: DownloadCaller): Promise<void> {
+    const meta = await this.prisma.uploadedFile.findUnique({ where: { storedName } });
+
+    // 1. Metadata yoki eski yozuvlardan kontextni aniqlaymiz (eski fayl o'chirilmaydi)
+    let purpose: UploadedFilePurpose | null = meta?.purpose ?? null;
+    let contractId: string | null = meta?.contractId ?? null;
+    const uploaderUserId = meta?.uploaderUserId ?? null;
+
+    if (!contractId || !purpose || purpose === UploadedFilePurpose.GENERAL) {
+      const linkedProof = meta?.bankProofId
+        ? await this.prisma.bankTransferProof.findUnique({
+            where: { id: meta.bankProofId },
+            select: { contractId: true, buyerId: true },
+          })
+        : await this.prisma.bankTransferProof.findFirst({
+            where: { receiptFileUrl: { endsWith: `/uploads/${storedName}` } },
+            select: { contractId: true, buyerId: true },
+          });
+      if (linkedProof) {
+        purpose = UploadedFilePurpose.BANK_PROOF;
+        contractId = linkedProof.contractId;
+      } else if (!contractId) {
+        const linkedSub = meta?.milestoneId
+          ? await this.prisma.milestoneSubmission.findFirst({
+              where: { milestoneId: meta.milestoneId },
+              include: { milestone: { select: { contractId: true } } },
+            })
+          : await this.prisma.milestoneSubmission.findFirst({
+              where: {
+                OR: [
+                  { deliverableUrls: { has: `/api/v1/uploads/${storedName}` } },
+                  { deliverableUrls: { has: `/uploads/${storedName}` } },
+                ],
+              },
+              include: { milestone: { select: { contractId: true } } },
+            });
+        if (linkedSub) {
+          purpose = UploadedFilePurpose.DELIVERABLE;
+          contractId = linkedSub.milestone.contractId;
+        }
+      }
+    }
+
+    // Egasi ham, bog'langan shartnomasi ham ishonchli aniqlanmagan eski/noma'lum fayl:
+    // hech kimga ochilmaydi (fail closed, fayl saqlab qolinadi).
+    if (!meta && !contractId) {
+      throw new DomainError('FORBIDDEN', 'Fayl egasi aniqlanmagan — kirish rad etildi');
+    }
+
+    // 2. Bank cheki (BANK_PROOF): FAQAT buyurtma xaridori YOKI PAYMENTS ruxsatli xodim
+    if (purpose === UploadedFilePurpose.BANK_PROOF) {
+      if (caller.kind === 'STAFF') {
+        if (caller.role === 'SUPER_ADMIN' || caller.permissions.includes('PAYMENTS')) {
+          return;
+        }
+        throw new DomainError('FORBIDDEN', 'Bank cheklarini ko‘rish uchun PAYMENTS ruxsati kerak');
+      }
+
+      if (!contractId) {
+        if (uploaderUserId && uploaderUserId === caller.userId) return;
+        throw new DomainError('FORBIDDEN', 'Ushbu bank chekini ko‘rish huquqingiz yo‘q');
+      }
+      const contract = await this.prisma.contract.findUnique({
+        where: { id: contractId },
+        select: { buyerId: true },
+      });
+      if (!contract || contract.buyerId !== caller.userId) {
+        throw new DomainError('FORBIDDEN', 'Bank chekini faqat buyurtma xaridori va moliya operatori ko‘rishi mumkin');
+      }
+      return;
+    }
+
+    // 3. Topshirilgan ish natijasi (DELIVERABLE): FAQAT shu shartnoma xaridori/mutaxassisi YOKI ORDERS/DISPUTES ruxsatli xodim
+    if (purpose === UploadedFilePurpose.DELIVERABLE) {
+      if (caller.kind === 'STAFF') {
+        if (
+          caller.role === 'SUPER_ADMIN' ||
+          caller.permissions.includes('ORDERS') ||
+          caller.permissions.includes('DISPUTES')
+        ) {
+          return;
+        }
+        throw new DomainError('FORBIDDEN', 'Ish natijalarini ko‘rish uchun ORDERS yoki DISPUTES ruxsati kerak');
+      }
+
+      if (!contractId) {
+        if (uploaderUserId && uploaderUserId === caller.userId) return;
+        throw new DomainError('FORBIDDEN', 'Ushbu ish natijasini ko‘rish huquqingiz yo‘q');
+      }
+      const contract = await this.prisma.contract.findUnique({
+        where: { id: contractId },
+        select: { buyerId: true, sellerId: true },
+      });
+      if (!contract || (contract.buyerId !== caller.userId && contract.sellerId !== caller.userId)) {
+        throw new DomainError('FORBIDDEN', 'Ushbu topshirilgan ish natijasini faqat shartnoma ishtirokchilari ko‘ra oladi');
+      }
+      return;
+    }
+
+    // 4. Hali shartnomaga/chekka bog'lanmagan shaxsiy yuklama (GENERAL): faqat yuklagan egasi
+    if (caller.kind === 'USER' && uploaderUserId && uploaderUserId === caller.userId) {
+      return;
+    }
+
+    throw new DomainError('FORBIDDEN', 'Ushbu faylni yuklab olish huquqingiz yo‘q');
   }
 }

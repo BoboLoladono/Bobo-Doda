@@ -340,7 +340,15 @@ export interface MilestonesService {
     Mock'da fayl data-URL ga o'giriladi; backend'da `POST /files` ga
     yuboriladi va doimiy URL qaytadi — chaqiruvchi UI o'zgarmaydi. */
 export interface FilesService {
-  upload(file: File): Promise<Model.DeliverableFile>;
+  upload(
+    file: File,
+    options?: {
+      purpose?: "BANK_PROOF" | "DELIVERABLE" | "GENERAL";
+      contractId?: string;
+      milestoneId?: string;
+    },
+  ): Promise<Model.DeliverableFile>;
+  download(url: string, fileName?: string): Promise<void>;
 }
 
 export interface PaymentsService {
@@ -431,6 +439,18 @@ export interface PaymentsService {
     mfo?: string;
     isDefault?: boolean;
   }): Promise<Model.PayoutDestination>;
+  replacePayoutDestination(
+    id: string,
+    input: {
+      type: "BANK_CARD" | "BANK_ACCOUNT";
+      providerLabel: string;
+      rawAccountOrCard: string;
+      holderName: string;
+      bankName?: string;
+      mfo?: string;
+      isDefault?: boolean;
+    },
+  ): Promise<Model.PayoutDestination>;
   setDefaultPayoutDestination(id: string): Promise<Model.PayoutDestination>;
   removePayoutDestination(id: string): Promise<void>;
   requestPayout(input: {

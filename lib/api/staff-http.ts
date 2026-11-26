@@ -222,6 +222,36 @@ export async function staffHttp<T>(path: string, init: StaffHttpInit = {}, allow
   return JSON.parse(text) as T;
 }
 
+function normalizeStaffProtectedPath(pathOrUrl: string): string {
+  const apiMatch = pathOrUrl.match(/\/api\/v1(\/.*)$/);
+  if (apiMatch) return apiMatch[1]!;
+  return pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+}
+
+export async function staffHttpBlob(pathOrUrl: string, allowRetry = true): Promise<Blob> {
+  const path = normalizeStaffProtectedPath(pathOrUrl);
+  if (!accessToken && readAccount()) {
+    const outcome = await refreshOnce();
+    if (outcome.kind === "rejected") throw sessionExpiredError();
+    if (outcome.kind === "unavailable") throw toNetworkError(outcome.cause);
+  }
+  const headers = new Headers();
+  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { headers, credentials: "include" });
+  } catch (cause) {
+    throw toNetworkError(cause);
+  }
+  if (res.status === 401 && allowRetry) {
+    const outcome = await refreshOnce();
+    if (outcome.kind === "ok") return staffHttpBlob(path, false);
+    throw await toApiError(res);
+  }
+  if (!res.ok) throw await toApiError(res);
+  return res.blob();
+}
+
 export function staffToQuery(params: Record<string, string | number | boolean | undefined>): string {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {

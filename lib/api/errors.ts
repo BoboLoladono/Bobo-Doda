@@ -97,6 +97,8 @@ const LEGACY_CODES: Record<string, Pick<ApiErrorShape, "code" | "status" | "retr
   LAST_ADMIN_PROTECTED: { code: "CONFLICT", status: 409, retryable: false },
   ALREADY_FUNDED: { code: "CONFLICT", status: 409, retryable: false },
   ALREADY_CANCELLED: { code: "CONFLICT", status: 409, retryable: false },
+  PAYOUT_DESTINATION_NOT_VERIFIED: { code: "CONFLICT", status: 409, retryable: false },
+  PAYOUT_DESTINATION_REQUIRED: { code: "VALIDATION", status: 422, retryable: false },
   NOT_PENDING: { code: "CONFLICT", status: 409, retryable: false },
   CIRCUMVENTION_DETECTED: { code: "CONFLICT", status: 409, retryable: false },
   IDEMPOTENCY_CONFLICT: { code: "CONFLICT", status: 409, retryable: false },

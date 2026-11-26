@@ -64,7 +64,15 @@ export class PayoutService {
       if (!dest) {
         throw new NotFoundError('Saqlangan to‘lov rekviziti topilmadi', 'PAYOUT_DESTINATION_NOT_FOUND');
       }
-      resolvedRef = `${dest.providerLabel} ${dest.maskedValue} (${dest.holderName})`;
+      if (!dest.isVerified || dest.verificationStatus !== 'VERIFIED' || !dest.verifiedByStaffId) {
+        throw new DomainError(
+          'PAYOUT_DESTINATION_NOT_VERIFIED',
+          'Tanlangan to‘lov rekviziti moliya operatori tomonidan hali tasdiqlanmagan',
+        );
+      }
+      resolvedRef = `${dest.providerLabel} ${dest.maskedValue} (${dest.holderName})${
+        dest.bankRecipientId ? ` · Bank ID: ${dest.bankRecipientId}` : ''
+      }`;
       snapshot = {
         id: dest.id,
         type: dest.type,
@@ -73,7 +81,18 @@ export class PayoutService {
         holderName: dest.holderName,
         bankName: dest.bankName ?? null,
         mfo: dest.mfo ?? null,
+        verificationStatus: dest.verificationStatus,
+        verificationMethod: dest.verificationMethod ?? null,
+        bankRecipientId: dest.bankRecipientId ?? null,
+        verificationEvidenceRef: dest.verificationEvidenceRef ?? null,
+        verifiedByStaffId: dest.verifiedByStaffId,
+        verifiedAt: dest.verifiedAt?.toISOString() ?? null,
       };
+    } else if (this.provider.name === 'MANUAL') {
+      throw new DomainError(
+        'PAYOUT_DESTINATION_REQUIRED',
+        'Qo‘lda bank o‘tkazmasi uchun tasdiqlangan to‘lov rekvizitini tanlang',
+      );
     } else if (resolvedRef.length < 3) {
       throw new DomainError('INVALID_INPUT', 'To‘lov rekvizitini tanlang yoki kiriting');
     }
@@ -84,6 +103,25 @@ export class PayoutService {
         const { balance } = await this.ledger.lockSellerPayableBalance(tx, sellerId, CURRENCY);
         if (amountTiyin > balance) {
           throw new DomainError('INSUFFICIENT_BALANCE', 'Yechish mumkin bo‘lgan balans yetarli emas');
+        }
+        if (destinationId) {
+          const lockedDest = await tx.sellerPayoutDestination.findFirst({
+            where: {
+              id: destinationId,
+              sellerId,
+              deletedAt: null,
+              isVerified: true,
+              verificationStatus: 'VERIFIED',
+              verifiedByStaffId: { not: null },
+            },
+            select: { id: true },
+          });
+          if (!lockedDest) {
+            throw new DomainError(
+              'PAYOUT_DESTINATION_NOT_VERIFIED',
+              'Tanlangan to‘lov rekviziti moliya operatori tomonidan tasdiqlanmagan',
+            );
+          }
         }
 
         const created = await tx.payout.create({

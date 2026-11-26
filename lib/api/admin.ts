@@ -30,6 +30,7 @@ import {
   setStaffAccessToken,
   staffAccountStore,
   staffHttp,
+  staffHttpBlob,
   staffSessionStore,
   staffToQuery,
   STAFF_SESSION_EXPIRED_EVENT,
@@ -1206,6 +1207,73 @@ export async function staffCreateRefund(contractId: string, reason: string): Pro
 export async function staffListPayouts(query: { page?: number; perPage?: number; status?: string }): Promise<Page<StaffPayout>> {
   try {
     return await staffHttp(`/staff/payouts${staffToQuery(query)}`);
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+export interface StaffPayoutDestination {
+  id: string;
+  sellerId: string;
+  sellerName?: string | null;
+  sellerPhone?: string | null;
+  type: "BANK_CARD" | "BANK_ACCOUNT";
+  providerLabel: string;
+  maskedValue: string;
+  holderName: string;
+  bankName?: string | null;
+  mfo?: string | null;
+  isDefault: boolean;
+  isVerified: boolean;
+  verificationStatus: "PENDING_REVIEW" | "VERIFIED" | "REJECTED";
+  bankRecipientId?: string | null;
+  verificationMethod?: string | null;
+  verificationEvidenceRef?: string | null;
+  verificationNote?: string | null;
+  rejectionReason?: string | null;
+  verifiedByStaffId?: string | null;
+  verifiedAt?: string | null;
+  createdAt: string;
+}
+export async function staffListPayoutDestinations(query: { page?: number; perPage?: number; status?: string }): Promise<Page<StaffPayoutDestination>> {
+  try {
+    return await staffHttp(`/staff/payout-destinations${staffToQuery(query)}`);
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+export async function staffVerifyPayoutDestination(
+  id: string,
+  body: {
+    verificationMethod: "BANK_PORTAL_BENEFICIARY" | "BANK_DOCUMENT_AND_MICRO_TRANSFER";
+    bankRecipientId?: string;
+    verificationEvidenceRef?: string;
+    verificationNote: string;
+  },
+): Promise<StaffPayoutDestination> {
+  try {
+    return await staffHttp(`/staff/payout-destinations/${id}/verify`, { method: "POST", body });
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+export async function staffRejectPayoutDestination(id: string, reason: string): Promise<StaffPayoutDestination> {
+  try {
+    return await staffHttp(`/staff/payout-destinations/${id}/reject`, { method: "POST", body: { reason } });
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+export async function staffDownloadUpload(url: string, fallbackName = "fayl"): Promise<void> {
+  try {
+    const blob = await staffHttpBlob(url);
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = url.split("/").pop() || fallbackName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
   } catch (error) {
     throw normalizeApiError(error);
   }
