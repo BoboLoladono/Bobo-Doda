@@ -9,8 +9,10 @@ import { DisabledPayoutProvider } from './providers/disabled/disabled-payout.pro
 import { PaymePayoutProvider } from './providers/payme/payme-payout.provider';
 import { PayoutService } from './payout.service';
 import { SellerPayoutController } from './seller-payout.controller';
+import { SellerPayoutDestinationController } from './payout-destination.controller';
 import { StaffPayoutController } from './staff-payout.controller';
 import { PayoutWebhookController } from './payout-webhook.controller';
+import { ManualPayoutProvider } from './providers/manual/manual-payout.provider';
 
 /** FAQAT dev/test — production'da hech qachon ishlatilmaydi (pastdagi fail-fast). */
 const DEV_ONLY_TEST_SECRET = 'test-only-insecure-payout-secret-change-me';
@@ -23,7 +25,12 @@ const DEV_ONLY_TEST_SECRET = 'test-only-insecure-payout-secret-change-me';
  */
 @Module({
   imports: [AuthModule, StaffAuthModule, GuardsModule],
-  controllers: [SellerPayoutController, StaffPayoutController, PayoutWebhookController],
+  controllers: [
+    SellerPayoutController,
+    SellerPayoutDestinationController,
+    StaffPayoutController,
+    PayoutWebhookController,
+  ],
   providers: [
     PayoutService,
     {
@@ -39,6 +46,9 @@ const DEV_ONLY_TEST_SECRET = 'test-only-insecure-payout-secret-change-me';
           return new DisabledPayoutProvider();
         }
         const { provider, testWebhookSecret } = config.payout;
+        if (provider === 'MANUAL') {
+          return new ManualPayoutProvider();
+        }
         if (provider === 'TEST') {
           if (config.isProduction) {
             throw new Error("PAYOUT_PROVIDER=TEST production'da ishlatib bo'lmaydi (fail closed)");

@@ -129,8 +129,8 @@ export class ReconciliationService {
   // ── Payment ──────────────────────────────────────────────────────────
 
   async reconcilePayment(payment: Payment, trigger: ReconciliationTrigger): Promise<ReconcileResult> {
-    if (!PAYMENT_RECONCILE_ELIGIBLE_STATUSES.includes(payment.status)) {
-      return { outcome: 'SKIPPED', abortBatch: false }; // bo'lim 14 — webhook allaqachon hal qilgan bo'lishi mumkin
+    if (payment.provider === 'MANUAL_BANK' || !PAYMENT_RECONCILE_ELIGIBLE_STATUSES.includes(payment.status)) {
+      return { outcome: 'SKIPPED', abortBatch: false };
     }
     const startedAt = new Date();
     if (!payment.providerPaymentId || !this.paymentProvider.queryPayment) {
@@ -200,7 +200,7 @@ export class ReconciliationService {
   // ── Refund ───────────────────────────────────────────────────────────
 
   async reconcileRefund(refund: Refund, trigger: ReconciliationTrigger): Promise<ReconcileResult> {
-    if (!REFUND_RECONCILE_ELIGIBLE_STATUSES.includes(refund.status)) {
+    if (refund.provider === 'MANUAL_BANK' || !REFUND_RECONCILE_ELIGIBLE_STATUSES.includes(refund.status)) {
       return { outcome: 'SKIPPED', abortBatch: false };
     }
     const startedAt = new Date();
@@ -271,7 +271,7 @@ export class ReconciliationService {
   // ── Payout ───────────────────────────────────────────────────────────
 
   async reconcilePayout(payout: Payout, trigger: ReconciliationTrigger): Promise<ReconcileResult> {
-    if (!PAYOUT_RECONCILE_ELIGIBLE_STATUSES.includes(payout.status)) {
+    if (payout.provider === 'MANUAL' || !PAYOUT_RECONCILE_ELIGIBLE_STATUSES.includes(payout.status)) {
       return { outcome: 'SKIPPED', abortBatch: false };
     }
     const startedAt = new Date();

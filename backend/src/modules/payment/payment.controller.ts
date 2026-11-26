@@ -1,4 +1,4 @@
-import { Controller, Headers, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Roles } from '@/modules/auth/decorators/roles.decorator';
@@ -11,7 +11,13 @@ import { IdempotencyService } from '@/common/idempotency/idempotency.service';
 import { DomainError } from '@/common/errors/domain-error';
 import { AppConfigService } from '@/config/app-config.service';
 import { PaymentService } from './payment.service';
+import { ManualBankPaymentService } from './manual-bank-payment.service';
 import { PaymentResponseDto, toPaymentResponseDto } from './dto/payment-response.dto';
+import {
+  BankTransferProofResponseDto,
+  SubmitBankProofDto,
+  toBankTransferProofResponseDto,
+} from './dto/bank-proof.dto';
 import { CREATE_PAYMENT_ENDPOINT, PAYMENT_CREATE_STALE_AFTER_MS } from './payment.constants';
 
 /**
@@ -30,6 +36,7 @@ import { CREATE_PAYMENT_ENDPOINT, PAYMENT_CREATE_STALE_AFTER_MS } from './paymen
 export class PaymentController {
   constructor(
     private readonly payments: PaymentService,
+    private readonly manualBank: ManualBankPaymentService,
     private readonly idempotency: IdempotencyService,
     private readonly audit: AuditService,
     private readonly config: AppConfigService,
@@ -69,6 +76,28 @@ export class PaymentController {
       },
     );
     return body;
+  }
+
+  @Post('manual-proof')
+  @HttpCode(200)
+  @ApiOkResponse({ type: BankTransferProofResponseDto })
+  async submitManualProof(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param('contractId') contractId: string,
+    @Body() dto: SubmitBankProofDto,
+  ): Promise<BankTransferProofResponseDto> {
+    const actor = await this.audit.resolveUserActor(user.sub);
+    const proof = await this.manualBank.submitProof(contractId, user.sub, dto, actor);
+    return toBankTransferProofResponseDto(proof);
+  }
+
+  @Get('manual-proofs')
+  async listManualProofs(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param('contractId') contractId: string,
+  ): Promise<BankTransferProofResponseDto[]> {
+    const list = await this.manualBank.listForBuyerContract(contractId, user.sub);
+    return list.map(toBankTransferProofResponseDto);
   }
 
   @Post('simulate-success')

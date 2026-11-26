@@ -64,6 +64,8 @@ export const ERROR_CODES = {
   PAYMENT_NOT_FOUND: { httpStatus: 404, retryable: false }, // Bosqich 5
   REFUND_NOT_FOUND: { httpStatus: 404, retryable: false }, // Bosqich 7
   PAYOUT_NOT_FOUND: { httpStatus: 404, retryable: false }, // Bosqich 7
+  PAYOUT_DESTINATION_NOT_FOUND: { httpStatus: 404, retryable: false },
+  BANK_PROOF_NOT_FOUND: { httpStatus: 404, retryable: false },
   TICKET_NOT_FOUND: { httpStatus: 404, retryable: false },
   REPORT_NOT_FOUND: { httpStatus: 404, retryable: false },
   APPEAL_NOT_FOUND: { httpStatus: 404, retryable: false },
@@ -122,6 +124,9 @@ export const ERROR_CODES = {
   // Refund HAM bloklanadi (`CONTRACT_REFUND_IN_PROGRESS` bilan bir xil simmetriya).
   DISPUTE_IN_PROGRESS: { httpStatus: 409, retryable: false }, // Bosqich 8
   CONTRACT_NOT_COMPLETED: { httpStatus: 409, retryable: false },
+  CONTRACT_IN_PROGRESS_FOR_JOB: { httpStatus: 409, retryable: false },
+  DUPLICATE_BANK_REF: { httpStatus: 409, retryable: false },
+  PAYOUT_ALREADY_CLAIMED: { httpStatus: 409, retryable: false },
 
   // ── Validatsiya (422) ──────────────────────────────────────────────
   VALIDATION: { httpStatus: 422, retryable: false },
@@ -144,6 +149,9 @@ export const ERROR_CODES = {
   INVALID_BANK_ACCOUNT: { httpStatus: 422, retryable: false }, // GAP kod
   WEAK_PASSWORD: { httpStatus: 422, retryable: false },
   EMPTY_MESSAGE: { httpStatus: 422, retryable: false },
+  EMPTY_DELIVERABLE: { httpStatus: 422, retryable: false },
+  PAYOUT_AMOUNT_MISMATCH: { httpStatus: 422, retryable: false },
+  OVERPAYMENT_DETECTED: { httpStatus: 422, retryable: false },
   COMMENT_REQUIRED: { httpStatus: 422, retryable: false },
   REASON_REQUIRED: { httpStatus: 422, retryable: false },
   REPLY_REQUIRED: { httpStatus: 422, retryable: false },

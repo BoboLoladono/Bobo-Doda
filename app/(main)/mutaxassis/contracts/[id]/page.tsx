@@ -18,11 +18,12 @@ import { MilestoneItem } from "@/components/shared/MilestoneItem";
 import { MilestoneProgress } from "@/components/shared/MilestoneProgress";
 import { DisputeControl } from "@/components/shared/DisputeControl";
 import { DisputeSummary } from "@/components/shared/DisputeSummary";
-import { ContractStatusBadge } from "@/components/shared/StatusBadge";
 import { ReceiptModal } from "@/components/shared/ReceiptModal";
 import { ContractWorkroomChat } from "@/components/shared/ContractWorkroomChat";
-import { contractsService, disputesService, milestonesService } from "@/lib/api";
-import type { Contract, Dispute, Milestone } from "@/lib/types";
+import { Badge } from "@/components/ui/Badge";
+import { contractsService, disputesService, filesService, milestonesService } from "@/lib/api";
+import { PLATFORM_FEE_PERCENT } from "@/lib/fees";
+import type { Contract, DeliverableFile, Dispute, Milestone } from "@/lib/types";
 import { formatDate, formatMoney } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 
@@ -41,6 +42,8 @@ export default function ShartnomaWorkroomPage() {
   const [submitTarget, setSubmitTarget] = useState<Milestone | null>(null);
   const [workLink, setWorkLink] = useState("");
   const [workNote, setWorkNote] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState<DeliverableFile[]>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [linkError, setLinkError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [receiptMilestone, setReceiptMilestone] = useState<Milestone | null>(null);
@@ -78,7 +81,23 @@ export default function ShartnomaWorkroomPage() {
     setSubmitTarget(milestone);
     setWorkLink(milestone.deliverableLink || "");
     setWorkNote(milestone.deliverableNote || "");
+    setUploadedFiles([]);
     setLinkError("");
+  }
+
+  async function handleDeliverableFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingFile(true);
+    try {
+      const uploaded = await filesService.upload(file);
+      setUploadedFiles((prev) => [...prev, uploaded]);
+      toast(`Fayl yuklandi: ${uploaded.name}`);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Fayl yuklashda xatolik", "error");
+    } finally {
+      setUploadingFile(false);
+    }
   }
 
   async function handleSubmitWork(e: FormEvent) {
@@ -86,7 +105,7 @@ export default function ShartnomaWorkroomPage() {
     if (!submitTarget || !contract) return;
     const trimmedLink = workLink.trim();
     const trimmedNote = workNote.trim();
-    if (!trimmedLink && !trimmedNote) {
+    if (!trimmedLink && !trimmedNote && uploadedFiles.length === 0) {
       setLinkError(t("sm.errLink"));
       return;
     }
@@ -99,6 +118,7 @@ export default function ShartnomaWorkroomPage() {
       await milestonesService.submit(contract.id, submitTarget.id, {
         link: trimmedLink || undefined,
         note: trimmedNote || undefined,
+        files: uploadedFiles.length > 0 ? uploadedFiles : undefined,
       });
       setMilestones(await milestonesService.list(contract.id));
       toast(t("sm.done"));
@@ -166,7 +186,37 @@ export default function ShartnomaWorkroomPage() {
               <p className="text-xs text-muted">{contract.buyerName}</p>
               <h1 className="mt-0.5 font-heading text-xl font-bold text-ink">{contract.title}</h1>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <ContractStatusBadge status={funded ? contract.status : "imzolangan"} />
+                {(() => {
+                  const statusTone =
+                    contract.rawStatus === "PENDING_SELLER"
+                      ? "warning"
+                      : contract.rawStatus === "REJECTED"
+                        ? "danger"
+                        : contract.rawStatus === "CANCELLED"
+                          ? "neutral"
+                          : contract.rawStatus === "COMPLETED"
+                            ? "success"
+                            : disputeOpen
+                              ? "danger"
+                              : funded
+                                ? "success"
+                                : "info";
+                  const statusLabel =
+                    contract.rawStatus === "PENDING_SELLER"
+                      ? "Tasdig'ingiz kutilmoqda"
+                      : contract.rawStatus === "REJECTED"
+                        ? "Rad etilgan"
+                        : contract.rawStatus === "CANCELLED"
+                          ? "Bekor qilingan"
+                          : contract.rawStatus === "COMPLETED"
+                            ? "Yakunlangan"
+                            : disputeOpen
+                              ? "Nizo jarayonida"
+                              : funded
+                                ? "Mablag'langan · Ish jarayonida"
+                                : "Tasdiqlangan · Xaridor to'lovi kutilmoqda";
+                  return <Badge tone={statusTone}>{statusLabel}</Badge>;
+                })()}
                 <span suppressHydrationWarning className="text-2xs text-faint">{formatDate(contract.createdAt, lang)}</span>
               </div>
             </div>
@@ -174,6 +224,28 @@ export default function ShartnomaWorkroomPage() {
           <div className="flex flex-col sm:items-end gap-1 text-left sm:text-right">
             <p className="text-2xs font-medium uppercase tracking-wide text-faint">{t("contract.total")}</p>
             <p className="font-heading text-lg font-bold text-ink">{formatMoney(contract.totalAmount, lang)}</p>
+          </div>
+        </div>
+
+        {/* Ikki tomon ko'radigan bir xil shartnoma shartlari (Snapshot) */}
+        <div className="mt-4 grid gap-3 rounded-xl border border-line bg-surface p-4 text-xs sm:grid-cols-2">
+          <div>
+            <p className="text-2xs font-semibold uppercase text-faint">Topshiriladigan natija</p>
+            <p className="mt-1 whitespace-pre-line text-ink">{contract.deliverableSummary || contract.title}</p>
+          </div>
+          <div>
+            <p className="text-2xs font-semibold uppercase text-faint">Qabul qilish mezoni</p>
+            <p className="mt-1 whitespace-pre-line text-ink">
+              {contract.acceptanceCriteria || "Barcha bosqich natijalarining shartlarga mos bajarilishi"}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-x-6 gap-y-1 sm:col-span-2 border-t border-line pt-2 text-2xs text-muted">
+            <span>Tuzatishlar soni: <strong className="text-ink">{contract.revisionsIncluded ?? 2} marta</strong></span>
+            <span>
+              Komissiya: <strong className="text-ink">{((milestones[0]?.platformFeeRateBps ?? PLATFORM_FEE_PERCENT * 100) / 100)}%</strong>
+            </span>
+            <span>Xaridor tasdig&apos;i: <strong className="text-ink">{contract.buyerConfirmedAt ? formatDate(contract.buyerConfirmedAt, lang) : "Tasdiqlangan"}</strong></span>
+            <span>Mutaxassis tasdig&apos;i: <strong className="text-ink">{contract.sellerConfirmedAt ? formatDate(contract.sellerConfirmedAt, lang) : "Kutilmoqda"}</strong></span>
           </div>
         </div>
 
@@ -256,6 +328,7 @@ export default function ShartnomaWorkroomPage() {
               milestone={milestone}
               index={i}
               contractStatus={contract.status}
+              revisionsIncluded={contract.revisionsIncluded ?? 2}
               onSubmit={openSubmitModal}
               onViewReceipt={(m) => setReceiptMilestone(m)}
             />
@@ -312,6 +385,25 @@ export default function ShartnomaWorkroomPage() {
             onChange={(e) => setWorkNote(e.target.value)}
             rows={4}
           />
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-medium text-ink">
+              Natija fayli biriktirish (PNG, JPG, PDF, ZIP, TXT — max 5MB)
+            </label>
+            <input
+              type="file"
+              accept=".png,.jpg,.jpeg,.webp,.pdf,.zip,.txt"
+              onChange={handleDeliverableFileChange}
+              disabled={uploadingFile || submitting}
+              className="text-xs"
+            />
+            {uploadedFiles.length > 0 && (
+              <ul className="space-y-1 text-2xs text-success">
+                {uploadedFiles.map((f) => (
+                  <li key={f.id}>Yuklandi: {f.name}</li>
+                ))}
+              </ul>
+            )}
+          </div>
         </form>
       </Modal>
 

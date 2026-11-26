@@ -65,7 +65,9 @@ export default function ElonTafsilotiPage() {
           }
         }
         setSpecialists(specMap);
-        setContract(allContracts.find((c) => c.jobId === params.id) ?? null);
+        setContract(
+          allContracts.find((c) => c.jobId === params.id && c.status !== "bekor_qilingan") ?? null
+        );
         setProposals(list);
       })
       .catch(setLoadError);
@@ -389,15 +391,7 @@ export default function ElonTafsilotiPage() {
                             {t("bprop.interview")}
                           </Button>
                         )}
-                        {/* Suhbat kanali — "Suhbatga taklif" endi haqiqiy
-                            muloqotga olib boradi (ilgari hech qayerga emas). */}
-                        <Link
-                          href={`/xaridor/my-jobs/${job.id}/suhbat/${proposal.id}`}
-                        >
-                          <Button variant="secondary" size="sm" className="w-full">
-                            {t("pchat.open")}
-                          </Button>
-                        </Link>
+                        {/* Suhbat: faqat bosqichlar va shartnoma orqali kelishuv */}
                         <Link
                           href={`/xaridor/my-jobs/${job.id}/yollash/${proposal.id}`}
                         >

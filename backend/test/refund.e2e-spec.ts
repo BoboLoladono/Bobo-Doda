@@ -131,6 +131,7 @@ describe('Refund (e2e)', () => {
     await request(app!.getHttpServer())
       .post(`/api/v1/seller/contracts/${contractId}/milestones/${milestoneId}/submit`)
       .set('Authorization', `Bearer ${seller.accessToken}`)
+      .send({ message: 'Refund test deliverable' })
       .expect(200);
     return request(app!.getHttpServer())
       .post(`/api/v1/me/contracts/${contractId}/milestones/${milestoneId}/approve`)

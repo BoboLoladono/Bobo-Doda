@@ -255,6 +255,106 @@ export interface Contract {
   paymentRejectReason?: string;
   paymentNotes?: string;
   revisionsIncluded?: number;
+  deliverableSummary?: string;
+  acceptanceCriteria?: string;
+  buyerConfirmedAt?: string;
+  sellerConfirmedAt?: string;
+  paymentPurposeCode?: string;
+  autoAcceptPaused?: boolean;
+  latestBankProof?: ManualBankProof | null;
+}
+
+export interface ManualBankProof {
+  id: string;
+  contractId: string;
+  paymentId?: string | null;
+  buyerId?: string;
+  paymentPurposeCode: string;
+  declaredAmount: number;
+  receivedAmount?: number | null;
+  mismatchAmount: number;
+  bankOperationRef?: string | null;
+  receiptFileUrl?: string | null;
+  receiptNote?: string | null;
+  status: "PENDING_REVIEW" | "UNDERPAID" | "OVERPAID_REVIEW" | "APPROVED" | "REJECTED";
+  rejectionReason?: string | null;
+  reviewedAt?: string | null;
+  createdAt: string;
+  contractTitle?: string | null;
+  contractAgreedAmount?: number;
+  buyerName?: string | null;
+}
+
+export interface MilestoneSubmissionHistoryItem {
+  id: string;
+  submittedById: string;
+  message?: string | null;
+  deliverableUrls: string[];
+  createdAt: string;
+}
+
+export interface MilestoneRevisionHistoryItem {
+  id: string;
+  requestedById: string;
+  reason: string;
+  createdAt: string;
+}
+
+export interface PayoutDestination {
+  id: string;
+  type: "BANK_CARD" | "BANK_ACCOUNT";
+  providerLabel: string;
+  maskedValue: string;
+  holderName: string;
+  bankName?: string | null;
+  mfo?: string | null;
+  isDefault: boolean;
+  isVerified: boolean;
+  createdAt: string;
+}
+
+export interface SellerBalanceBreakdownSummary {
+  currency: string;
+  available: number;
+  pending: number;
+  reserved: number;
+  disputedHeld: number;
+  paid: number;
+  grossEarned: number;
+  commissionWithheld: number;
+  netEarned: number;
+}
+
+export interface SellerContractBreakdownItem {
+  contractId: string;
+  title: string;
+  contractStatus: string;
+  stage: "pending" | "disputed" | "settled";
+  grossAmount: number;
+  platformFeeRateBps: number;
+  commissionAmount: number;
+  netAmount: number;
+  funded: boolean;
+  fundedAt?: string | null;
+  updatedAt: string;
+}
+
+export interface SellerPayoutBreakdownItem {
+  payoutId: string;
+  amount: number;
+  status: string;
+  destinationReference: string;
+  bankOperationRef?: string | null;
+  bankTransferredAt?: string | null;
+  failureReason?: string | null;
+  createdAt: string;
+  succeededAt?: string | null;
+}
+
+export interface SellerBalanceBreakdown {
+  summary: SellerBalanceBreakdownSummary;
+  contracts: SellerContractBreakdownItem[];
+  payouts: SellerPayoutBreakdownItem[];
 }
 
 /** Shartnoma to'lovi holatlari (MVP Manual Bank Transfer) */
@@ -307,6 +407,9 @@ export interface Milestone {
   deliverableNote?: string;
   /** Topshirilgan ish fayllari (ZIP, PDF, rasmlar, hujjatlar) */
   deliverableFiles?: DeliverableFile[];
+  submissions?: MilestoneSubmissionHistoryItem[];
+  revisionRequests?: MilestoneRevisionHistoryItem[];
+  autoAcceptPaused?: boolean;
 }
 
 export interface Message {

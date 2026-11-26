@@ -832,11 +832,16 @@ export const proposalsService: ProposalsService = {
   })),
   // Proposal hiring creates a durable contract with milestones
   setStatus: () => disabled(),
-  hire: (proposalId, milestones) =>
+  hire: (proposalId, milestones, terms) =>
     call(() =>
       http<Model.Contract>(`/jobs/proposals/${proposalId}/hire`, {
         method: "POST",
-        body: { milestones },
+        body: {
+          milestones,
+          deliverableSummary: terms?.deliverableSummary,
+          acceptanceCriteria: terms?.acceptanceCriteria,
+          revisionsIncluded: terms?.revisionsIncluded,
+        },
       })
     ),
   withdraw: (id) => call(() => http<Model.Proposal>(`/jobs/proposals/${id}/withdraw`, { method: "POST" })),
@@ -929,11 +934,15 @@ export const milestonesService: MilestonesService = {
     }),
   submit: (contractId, milestoneId, deliverable) =>
     call(async () => {
+      const urls = [
+        ...(deliverable?.link ? [deliverable.link] : []),
+        ...(deliverable?.files ? deliverable.files.map((f) => f.url).filter(Boolean) : []),
+      ].slice(0, 5);
       const m = await http<RealMilestone>(`/seller/contracts/${contractId}/milestones/${milestoneId}/submit`, {
         method: "POST",
         body: {
           message: deliverable?.note,
-          deliverableUrls: deliverable?.link ? [deliverable.link] : undefined,
+          deliverableUrls: urls.length > 0 ? urls : undefined,
         },
       });
       return mapMilestone(m, true);
@@ -955,15 +964,43 @@ export const milestonesService: MilestonesService = {
     }),
 };
 
-/* Fayl yuklash — S3 presigned infratuzilmasi hali yo'q (backend Bosqich 5+) */
 export const filesService: FilesService = {
-  upload: () => disabled(),
+  upload: (file) =>
+    call(async () => {
+      const dataBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+        reader.onerror = () => reject(new Error("FILE_READ_FAILED"));
+        reader.readAsDataURL(file);
+      });
+      const res = await http<{
+        id: string;
+        storedName: string;
+        originalName: string;
+        mimeType: string;
+        size: number;
+        url: string;
+      }>("/me/uploads", {
+        method: "POST",
+        body: {
+          fileName: file.name,
+          mimeType: file.type || undefined,
+          dataBase64,
+        },
+      });
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
+      const origin = apiBase.replace(/\/api\/v1$/, "");
+      const absoluteUrl = origin && res.url.startsWith("/") ? `${origin}${res.url}` : res.url;
+      return {
+        id: res.id,
+        name: res.originalName,
+        size: res.size,
+        type: res.mimeType,
+        url: absoluteUrl,
+      };
+    }),
 };
 
-/* ==========================================================================
-   PAYMENTS — real Payme checkout oqimi + sotuvchi ledger balansi. Karta/
-   yechish/B2B kabi mock-only usullar real backendda yo'q.
-   ========================================================================== */
 export const paymentsService: PaymentsService = {
   fundContract: () => disabled(),
   fundMilestone: () => disabled(),
@@ -973,9 +1010,24 @@ export const paymentsService: PaymentsService = {
       const res = await http<{ currency: string; available: number }>("/seller/balance");
       return res.available;
     }),
-  // No tokenized card binding or verified destination API exists. Local card
-  // metadata cannot authorize a payout and must not masquerade as a bound card.
-  getCards: () => call(async () => []),
+  getCards: () =>
+    call(async () => {
+      if (currentRole() !== "mutaxassis") return [];
+      const destinations = await http<Model.PayoutDestination[]>("/seller/payout-destinations");
+      return destinations.map((d) => ({
+        id: d.id,
+        userId: "me",
+        type: d.providerLabel.toLowerCase().includes("humo")
+          ? "humo"
+          : d.providerLabel.toLowerCase().includes("visa")
+            ? "visa"
+            : "uzcard",
+        last4: d.maskedValue.slice(-4),
+        holderName: d.holderName,
+        expiry: d.mfo || "—",
+        createdAt: d.createdAt,
+      }));
+    }),
   addCard: () => disabled(),
   removeCard: () => disabled(),
   withdrawEarnings: () => disabled(),
@@ -1005,6 +1057,61 @@ export const paymentsService: PaymentsService = {
     const page = await http<Page<RealPayment>>(`/me/payments${toQuery({ contractId, perPage: 1 })}`);
     return page.items[0] ? mapPayment(page.items[0]) : null;
   }),
+  getCompanyBankDetails: () =>
+    call(() =>
+      http<{
+        configured: boolean;
+        details: {
+          companyName: string;
+          bankName: string;
+          accountNumber: string;
+          mfo: string;
+          inn: string;
+          bankAddress?: string | null;
+          supportPhone?: string | null;
+        } | null;
+      }>("/payments/bank-details")
+    ),
+  submitManualBankProof: (contractId, input) =>
+    call(() =>
+      http<Model.ManualBankProof>(`/me/contracts/${contractId}/payment/manual-proof`, {
+        method: "POST",
+        body: input,
+      })
+    ),
+  listManualBankProofs: (contractId) =>
+    call(() => http<Model.ManualBankProof[]>(`/me/contracts/${contractId}/payment/manual-proofs`)),
+  getBalanceBreakdown: () =>
+    call(() => http<Model.SellerBalanceBreakdown>("/seller/balance/breakdown")),
+  listPayoutDestinations: () =>
+    call(() => http<Model.PayoutDestination[]>("/seller/payout-destinations")),
+  addPayoutDestination: (input) =>
+    call(() =>
+      http<Model.PayoutDestination>("/seller/payout-destinations", {
+        method: "POST",
+        body: input,
+      })
+    ),
+  setDefaultPayoutDestination: (id) =>
+    call(() =>
+      http<Model.PayoutDestination>(`/seller/payout-destinations/${id}/default`, {
+        method: "PATCH",
+      })
+    ),
+  removePayoutDestination: (id) =>
+    call(async () => {
+      await http(`/seller/payout-destinations/${id}`, { method: "DELETE" });
+    }),
+  requestPayout: ({ amount, destinationId, idempotencyKey }) =>
+    call(async () => {
+      const me = await http<RealMe>("/me");
+      const payout = await http<RealPayout>("/seller/payouts", {
+        method: "POST",
+        body: { amount, destinationId },
+        idempotencyKey,
+      });
+      return mapPayout(payout, asStr(me.fullName));
+    }),
 };
 
 /* Xabarlar/chat — in-memory + localStorage store */

@@ -1,8 +1,13 @@
 import { computePlatformFee, PLATFORM_FEE_RATE_BPS } from './fee.constant';
 
 describe('computePlatformFee (ADR-01 — floor)', () => {
-  it('5% (500 bps) — aniq bo‘linadigan summa', () => {
-    expect(computePlatformFee(100_000_00n, PLATFORM_FEE_RATE_BPS)).toBe(5_000_00n); // 100 000 so'm -> 5 000 so'm
+  it('10% (1000 bps) — aniq bo‘linadigan summa', () => {
+    expect(PLATFORM_FEE_RATE_BPS).toBe(1000);
+    expect(computePlatformFee(100_000_00n, PLATFORM_FEE_RATE_BPS)).toBe(10_000_00n); // 100 000 so'm -> 10 000 so'm
+  });
+
+  it('tarixiy 5% (500 bps) snapshot — saqlanib qoladi', () => {
+    expect(computePlatformFee(100_000_00n, 500)).toBe(5_000_00n); // 100 000 so'm -> 5 000 so'm
   });
 
   it('floor — qoldiq PASTGA yaxlitlanadi (tepaga emas)', () => {

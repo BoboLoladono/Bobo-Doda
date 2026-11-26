@@ -36,8 +36,9 @@ export function ContractWorkroomChat({
 }: ContractWorkroomChatProps) {
   const { t, lang } = useT();
   const { toast } = useToast();
+  const isMockMessaging = process.env.NEXT_PUBLIC_DEMO_WORKSPACE === "1";
 
-  const [tab, setTab] = useState<"chat" | "deliverables">("chat");
+  const [tab, setTab] = useState<"chat" | "deliverables">("deliverables");
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [draft, setDraft] = useState("");
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
@@ -59,6 +60,10 @@ export function ContractWorkroomChat({
   );
 
   const load = useCallback(() => {
+    if (!isMockMessaging) {
+      setMessages([]);
+      return;
+    }
     messagesService
       .list(contract.id)
       .then((list) => {
@@ -73,7 +78,7 @@ export function ContractWorkroomChat({
       .catch((err) => {
         if (!messages) setLoadError(err);
       });
-  }, [contract.id, messages]);
+  }, [contract.id, messages, isMockMessaging]);
 
   useEffect(() => {
     load();
@@ -349,7 +354,11 @@ export function ContractWorkroomChat({
             </div>
 
             {/* Xabar yuborish shakli */}
-            {!isClosed ? (
+            {!isMockMessaging ? (
+              <div className="border-t border-line bg-surface p-3 text-center text-2xs text-muted">
+                Shaxsiy chat xizmati keyingi relizda yoqiladi. Barcha ish natijalari va tuzatish izohlari yuqoridagi bosqichlar orqali yuboriladi.
+              </div>
+            ) : !isClosed ? (
               <form onSubmit={handleSend} className="border-t border-line bg-card p-3 sm:p-4">
                 {/* Yuborishdan oldin tanlangan fayllar/rasmlar preview'si */}
                 {(attachedImages.length > 0 || attachedFiles.length > 0) && (

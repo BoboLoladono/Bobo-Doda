@@ -396,3 +396,20 @@ export const ReviewStatus = {
 } as const;
 export type ReviewStatus = (typeof ReviewStatus)[keyof typeof ReviewStatus];
 export const ReviewStatusValues = ['APPROVED', 'FLAGGED', 'HIDDEN'] as const;
+
+export const BankTransferProofStatus = {
+  PENDING_REVIEW: 'PENDING_REVIEW',
+  UNDERPAID: 'UNDERPAID',
+  OVERPAID_REVIEW: 'OVERPAID_REVIEW',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+export type BankTransferProofStatus = (typeof BankTransferProofStatus)[keyof typeof BankTransferProofStatus];
+export const BankTransferProofStatusValues = ['PENDING_REVIEW', 'UNDERPAID', 'OVERPAID_REVIEW', 'APPROVED', 'REJECTED'] as const;
+
+export const PayoutDestinationType = {
+  BANK_CARD: 'BANK_CARD',
+  BANK_ACCOUNT: 'BANK_ACCOUNT',
+} as const;
+export type PayoutDestinationType = (typeof PayoutDestinationType)[keyof typeof PayoutDestinationType];
+export const PayoutDestinationTypeValues = ['BANK_CARD', 'BANK_ACCOUNT'] as const;

@@ -12,6 +12,14 @@ import {
 import { PrismaService } from '@/infra/prisma/prisma.service';
 import { IdFactory } from '@/common/id/id.factory';
 import { InvariantViolationError, NotFoundError } from '@/common/errors/domain-error';
+import { tiyinToSom } from '@/common/money/money.util';
+import type {
+  SellerBalanceBreakdownResponseDto,
+  SellerBalanceBreakdownTotals,
+  SellerContractBreakdownItemDto,
+  SellerPayoutBreakdownItemDto,
+} from './dto/seller-balance-response.dto';
+import { toSellerBalanceResponseDto } from './dto/seller-balance-response.dto';
 import { buildPage, type Page } from '@/common/pagination/page-query.dto';
 import {
   assertBalanced,
@@ -531,6 +539,133 @@ export class LedgerService {
       _sum: { amount: true },
     });
     return agg._sum.amount ?? 0n;
+  }
+
+  async getSellerBalanceBreakdown(sellerId: string, currency: string): Promise<SellerBalanceBreakdownResponseDto> {
+    const [availableTiyin, disputeHoldLedgerTiyin, contracts, payouts] = await Promise.all([
+      this.getUserAccountBalance('SELLER_PAYABLE', sellerId, currency),
+      this.getUserAccountBalance('DISPUTE_HOLD', sellerId, currency),
+      this.prisma.contract.findMany({
+        where: { sellerId, currency, status: { in: ['ACTIVE', 'COMPLETED'] } },
+        include: {
+          payments: {
+            where: { status: 'SUCCEEDED' },
+            select: { id: true, succeededAt: true, createdAt: true },
+          },
+          disputes: {
+            where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } },
+            select: { id: true, preSettlement: true, heldAmount: true },
+          },
+          refunds: {
+            where: { status: { in: ['PENDING', 'PROCESSING', 'SUCCEEDED'] } },
+            select: { id: true },
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.prisma.payout.findMany({
+        where: { sellerId, currency },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    let pendingTiyin = 0n;
+    let preSettlementDisputedTiyin = 0n;
+    let grossEarnedTiyin = 0n;
+    let commissionWithheldTiyin = 0n;
+    let netEarnedTiyin = 0n;
+
+    const contractItems: SellerContractBreakdownItemDto[] = [];
+
+    for (const c of contracts) {
+      const fundedPayment = c.payments[0];
+      if (!fundedPayment) continue;
+      if (c.refunds.length > 0) continue;
+
+      const gross = c.agreedAmount;
+      const fee = c.platformFeeAmountSnapshot;
+      const net = gross - fee;
+      const openDispute = c.disputes[0];
+
+      if (c.status === 'COMPLETED') {
+        grossEarnedTiyin += gross;
+        commissionWithheldTiyin += fee;
+        netEarnedTiyin += net;
+        contractItems.push({
+          contractId: c.id,
+          title: c.serviceTitleSnapshot,
+          contractStatus: c.status,
+          stage: openDispute ? 'disputed' : 'settled',
+          grossAmount: tiyinToSom(gross),
+          platformFeeRateBps: c.platformFeeRateBpsSnapshot,
+          commissionAmount: tiyinToSom(fee),
+          netAmount: tiyinToSom(net),
+          funded: true,
+          fundedAt: fundedPayment.succeededAt ?? fundedPayment.createdAt,
+          updatedAt: c.updatedAt,
+        });
+      } else if (c.status === 'ACTIVE') {
+        if (openDispute) {
+          preSettlementDisputedTiyin += net;
+        } else {
+          pendingTiyin += net;
+        }
+        contractItems.push({
+          contractId: c.id,
+          title: c.serviceTitleSnapshot,
+          contractStatus: c.status,
+          stage: openDispute ? 'disputed' : 'pending',
+          grossAmount: tiyinToSom(gross),
+          platformFeeRateBps: c.platformFeeRateBpsSnapshot,
+          commissionAmount: tiyinToSom(fee),
+          netAmount: tiyinToSom(net),
+          funded: true,
+          fundedAt: fundedPayment.succeededAt ?? fundedPayment.createdAt,
+          updatedAt: c.updatedAt,
+        });
+      }
+    }
+
+    let reservedTiyin = 0n;
+    let paidTiyin = 0n;
+    const payoutItems: SellerPayoutBreakdownItemDto[] = [];
+
+    for (const p of payouts) {
+      if (p.status === 'PENDING' || p.status === 'PROCESSING') {
+        reservedTiyin += p.amount;
+      } else if (p.status === 'SUCCEEDED') {
+        paidTiyin += p.amount;
+      }
+      payoutItems.push({
+        payoutId: p.id,
+        amount: tiyinToSom(p.amount),
+        status: p.status,
+        destinationReference: p.destinationReference,
+        bankOperationRef: p.bankOperationRef ?? null,
+        bankTransferredAt: p.bankTransferredAt ?? null,
+        failureReason: p.failureReason ?? null,
+        createdAt: p.createdAt,
+        succeededAt: p.succeededAt ?? null,
+      });
+    }
+
+    const totals: SellerBalanceBreakdownTotals = {
+      currency,
+      availableTiyin,
+      pendingTiyin,
+      reservedTiyin,
+      disputedHeldTiyin: disputeHoldLedgerTiyin + preSettlementDisputedTiyin,
+      paidTiyin,
+      grossEarnedTiyin,
+      commissionWithheldTiyin,
+      netEarnedTiyin,
+    };
+
+    return {
+      summary: toSellerBalanceResponseDto(totals),
+      contracts: contractItems,
+      payouts: payoutItems,
+    };
   }
 
   // ── Staff read-only (bo'lim 33/60) ───────────────────────────────────

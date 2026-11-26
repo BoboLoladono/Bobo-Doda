@@ -1,9 +1,9 @@
 /**
- * Bobololadono platformasining rasmiy bank rekvizitlari (MVP Manual Bank Transfer)
+ * Bobololadono tashkilot bank rekvizitlari helperlari.
  *
- * Xaridorlar buyurtmalar uchun to'lovni istalgan qulay usulda (bank ilovasi,
- * bank o'tkazmasi, Click, Payme, mobil banking yoki bank kassasi orqali)
- * ushbu hisob raqamga to'laydi.
+ * QAT'IY QOIDA: Haqiqiy tasdiqlangan bank rekvizitlari FAQAT muhit
+ * o‘zgaruvchilari (`NEXT_PUBLIC_COMPANY_*` / backend `GET /payments/bank-details`)
+ * orqali beriladi. Hech qachon namuna / uydirma hisob raqami ko‘rsatilmaydi.
  */
 
 export interface CompanyBankDetails {
@@ -12,31 +12,37 @@ export interface CompanyBankDetails {
   accountNumber: string;
   mfo: string;
   inn: string;
-  swift: string;
-  bankAddress: string;
-  paymentPurposeTemplate: string;
-  supportPhone: string;
+  bankAddress?: string | null;
+  supportPhone?: string | null;
 }
 
-export const COMPANY_BANK_DETAILS: CompanyBankDetails = {
-  companyName: "Bobololadono MChJ",
-  bankName: "ATIB 'Kapitalbank' Toshkent shahar filiali",
-  accountNumber: "20208000405678901001",
-  mfo: "00974",
-  inn: "309876543",
-  swift: "KAPBUZ22",
-  bankAddress: "Toshkent shahri, Sayilgoh ko'chasi 7-uy",
-  paymentPurposeTemplate: "Bobololadono platformasi orqali #{reference} buyurtmasi uchun xizmat haqi",
-  supportPhone: "+998 71 200 45 45",
-};
+export function getEnvCompanyBankDetails(): CompanyBankDetails | null {
+  const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME?.trim();
+  const bankName = process.env.NEXT_PUBLIC_COMPANY_BANK_NAME?.trim();
+  const accountNumber = process.env.NEXT_PUBLIC_COMPANY_BANK_ACCOUNT?.trim();
+  const mfo = process.env.NEXT_PUBLIC_COMPANY_BANK_MFO?.trim();
+  const inn = process.env.NEXT_PUBLIC_COMPANY_BANK_INN?.trim();
+  if (!companyName || !bankName || !accountNumber || !mfo || !inn) {
+    return null;
+  }
+  return {
+    companyName,
+    bankName,
+    accountNumber,
+    mfo,
+    inn,
+    bankAddress: process.env.NEXT_PUBLIC_COMPANY_BANK_ADDRESS?.trim() || null,
+    supportPhone: process.env.NEXT_PUBLIC_COMPANY_SUPPORT_PHONE?.trim() || null,
+  };
+}
 
-/** Shartnoma uchun unikal Payment Reference / Order ID shakllantirish */
+/** Shartnoma uchun unikal to‘lov moslashtirish kodi */
 export function generatePaymentReference(contractId: string): string {
-  const cleanId = contractId.replace(/^cnt-/, "").toUpperCase();
-  return `BD-PAY-2026-${cleanId}`;
+  const cleanId = contractId.replace(/^cnt-/, "").slice(0, 8).toUpperCase();
+  return `BD-${cleanId}`;
 }
 
-/** To'lov maqsadi matnini generatsiya qilish */
+/** To'lov maqsadi matnini shakllantirish */
 export function getPaymentPurpose(reference: string): string {
   return `Bobololadono: ${reference} shartnomasi bo'yicha to'lov`;
 }

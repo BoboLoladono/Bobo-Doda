@@ -101,12 +101,16 @@ export function MilestoneItem({
       {milestone.status === "topshirildi" && (
         <div className="flex flex-col gap-2 pl-9">
           <div className="flex flex-wrap items-center gap-3">
-            {milestone.reviewDeadline && (
+            {milestone.reviewDeadline && !milestone.autoAcceptPaused && (
               <CountdownBadge deadline={milestone.reviewDeadline} />
             )}
             <span className="text-2xs text-muted">{t("ms.waitingReview")}</span>
           </div>
-          <p className="text-2xs text-faint">{t("ms.autoAcceptNote")}</p>
+          <p className="text-2xs text-faint">
+            {milestone.autoAcceptPaused
+              ? "Nizo ochilgani sababli avtomatik tasdiqlash taymeri to'xtatildi."
+              : t("ms.autoAcceptNote")}
+          </p>
         </div>
       )}
 
@@ -214,6 +218,60 @@ export function MilestoneItem({
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Topshirishlar va tuzatishlar tarixi (barcha versiyalar) */}
+      {((milestone.submissions && milestone.submissions.length > 0) ||
+        (milestone.revisionRequests && milestone.revisionRequests.length > 0)) && (
+        <div className="ml-9 flex flex-col gap-2 rounded-input border border-line bg-surface p-3 text-xs">
+          {milestone.submissions && milestone.submissions.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <p className="text-2xs font-semibold uppercase tracking-wide text-muted">
+                Topshirishlar tarixi ({milestone.submissions.length})
+              </p>
+              {milestone.submissions.map((sub, idx) => (
+                <div key={sub.id} className="rounded-btn border border-line/70 bg-card p-2">
+                  <div className="flex items-center justify-between text-2xs text-faint">
+                    <span>#{milestone.submissions!.length - idx} topshirish</span>
+                    <span>{formatDate(sub.createdAt, lang)}</span>
+                  </div>
+                  {sub.message && <p className="mt-1 whitespace-pre-line text-ink">{sub.message}</p>}
+                  {sub.deliverableUrls.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {sub.deliverableUrls.map((url, uIdx) => (
+                        <a
+                          key={uIdx}
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="text-2xs font-medium text-primary hover:underline break-all"
+                        >
+                          Natija havolasi / fayl #{uIdx + 1}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {milestone.revisionRequests && milestone.revisionRequests.length > 0 && (
+            <div className="flex flex-col gap-1.5 border-t border-line pt-2">
+              <p className="text-2xs font-semibold uppercase tracking-wide text-danger">
+                Tuzatish so&apos;rovlari tarixi ({milestone.revisionRequests.length})
+              </p>
+              {milestone.revisionRequests.map((rev, idx) => (
+                <div key={rev.id} className="rounded-btn border border-danger/20 bg-danger/5 p-2">
+                  <div className="flex items-center justify-between text-2xs text-faint">
+                    <span>#{milestone.revisionRequests!.length - idx} tuzatish</span>
+                    <span>{formatDate(rev.createdAt, lang)}</span>
+                  </div>
+                  <p className="mt-1 text-ink">{rev.reason}</p>
+                </div>
+              ))}
             </div>
           )}
         </div>

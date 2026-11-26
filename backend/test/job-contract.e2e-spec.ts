@@ -228,9 +228,9 @@ describe('Job-to-Contract End-to-End Workflow & Invariants (e2e, isolated Postgr
     expect(contract.milestones[0].amount).toBe(200_000);
     expect(contract.milestones[1].amount).toBe(400_000);
 
-    // Assert Job 1 is now CLOSED
-    const freshJob1 = await db!.job.findUniqueOrThrow({ where: { id: job1Id } });
-    expect(freshJob1.status).toBe('CLOSED');
+    // Assert Job 1 remains OPEN while Contract is PENDING_SELLER so buyer can pick another candidate if rejected
+    const pendingJob1 = await db!.job.findUniqueOrThrow({ where: { id: job1Id } });
+    expect(pendingJob1.status).toBe('OPEN');
 
     // Assert Proposal 1 is now yollandi
     const freshProp1 = await db!.jobProposal.findUniqueOrThrow({ where: { id: proposal1Id } });
@@ -244,19 +244,12 @@ describe('Job-to-Contract End-to-End Workflow & Invariants (e2e, isolated Postgr
       .expect(200);
     expect(idempotentHire.body.id).toBe(contract.id);
 
-    // 7. Enforce User Rule #2 (Same-day conflict cancellation):
-    // Proposal 2 on Job 2 (by the same seller, on the same calendar day) MUST be automatically cancelled (rad_etilgan)!
-    const freshProp2 = await db!.jobProposal.findUniqueOrThrow({ where: { id: proposal2Id } });
-    expect(freshProp2.status).toBe('rad_etilgan');
-    const prop2Payload = freshProp2.payload as Record<string, unknown>;
-    expect(prop2Payload.reason).toContain('Boshqa ishga yollanganligi sababli bekor qilindi');
+    // Competing Proposal 2 stays open until seller confirms the contract
+    const beforeAcceptProp2 = await db!.jobProposal.findUniqueOrThrow({ where: { id: proposal2Id } });
+    expect(beforeAcceptProp2.status).toBe('korib_chiqilmoqda');
 
-    // Job 2 proposalsCount must have decremented
-    const freshJob2 = await db!.job.findUniqueOrThrow({ where: { id: job2Id } });
-    expect(freshJob2.proposalsCount).toBe(0);
-
-    // 8. Full Financial Contract Lifecycle on the created Job Contract:
-    // A. Seller accepts the contract
+    // 7. Full Financial Contract Lifecycle on the created Job Contract:
+    // A. Seller accepts the contract -> now Job closes and same-day competing proposals cancel
     await request(app!.getHttpServer())
       .post(`/api/v1/seller/contracts/${contract.id}/accept`)
       .set('Authorization', `Bearer ${approvedSeller.accessToken}`)
@@ -264,6 +257,17 @@ describe('Job-to-Contract End-to-End Workflow & Invariants (e2e, isolated Postgr
 
     const activeContract = await db!.contract.findUniqueOrThrow({ where: { id: contract.id } });
     expect(activeContract.status).toBe('ACTIVE');
+
+    const freshJob1 = await db!.job.findUniqueOrThrow({ where: { id: job1Id } });
+    expect(freshJob1.status).toBe('CLOSED');
+
+    const freshProp2 = await db!.jobProposal.findUniqueOrThrow({ where: { id: proposal2Id } });
+    expect(freshProp2.status).toBe('rad_etilgan');
+    const prop2Payload = freshProp2.payload as Record<string, unknown>;
+    expect(prop2Payload.reason).toContain('Boshqa ishga yollanganligi sababli bekor qilindi');
+
+    const freshJob2 = await db!.job.findUniqueOrThrow({ where: { id: job2Id } });
+    expect(freshJob2.proposalsCount).toBe(0);
 
     // B. Buyer funds the contract via escrow
     await fundContract(contract.id, buyer1, 600_000);

@@ -65,7 +65,13 @@ export class SellerPayoutController {
         staleAfterMs: PAYOUT_CREATE_STALE_AFTER_MS,
       },
       async () => {
-        const payout = await this.payouts.create(user.sub, dto.amount, dto.destinationReference, actor);
+        const payout = await this.payouts.create(
+          user.sub,
+          dto.amount,
+          dto.destinationReference,
+          actor,
+          dto.destinationId,
+        );
         return { statusCode: 200, body: toPayoutResponseDto(payout) };
       },
     );

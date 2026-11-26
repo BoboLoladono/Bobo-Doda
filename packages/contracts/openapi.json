@@ -170,6 +170,37 @@
         ]
       }
     },
+    "/api/v1/auth/google": {
+      "post": {
+        "operationId": "AuthController_googleAuth",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleAuthDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSessionDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/password-reset/request-otp": {
       "post": {
         "operationId": "AuthController_requestPasswordResetOtp",
@@ -2898,6 +2929,79 @@
         ]
       }
     },
+    "/api/v1/me/contracts/{contractId}/payment/manual-proof": {
+      "post": {
+        "operationId": "PaymentController_submitManualProof",
+        "parameters": [
+          {
+            "name": "contractId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitBankProofDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTransferProofResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "me-payments"
+        ]
+      }
+    },
+    "/api/v1/me/contracts/{contractId}/payment/manual-proofs": {
+      "get": {
+        "operationId": "PaymentController_listManualProofs",
+        "parameters": [
+          {
+            "name": "contractId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "me-payments"
+        ]
+      }
+    },
     "/api/v1/me/contracts/{contractId}/payment/simulate-success": {
       "post": {
         "operationId": "PaymentController_simulateSuccess",
@@ -3068,6 +3172,140 @@
         ]
       }
     },
+    "/api/v1/staff/payments/bank-proofs": {
+      "get": {
+        "operationId": "StaffPaymentController_listBankProofs",
+        "parameters": [
+          {
+            "name": "contractId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "perPage",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-payments"
+        ]
+      }
+    },
+    "/api/v1/staff/payments/bank-proofs/{id}/verify": {
+      "post": {
+        "operationId": "StaffPaymentController_verifyBankProof",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyBankProofDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTransferProofResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-payments"
+        ]
+      }
+    },
+    "/api/v1/staff/payments/bank-proofs/{id}/reject": {
+      "post": {
+        "operationId": "StaffPaymentController_rejectBankProof",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectBankProofDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTransferProofResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-payments"
+        ]
+      }
+    },
     "/api/v1/staff/payments": {
       "get": {
         "operationId": "StaffPaymentController_list",
@@ -3181,6 +3419,27 @@
         ],
         "tags": [
           "staff-payments"
+        ]
+      }
+    },
+    "/api/v1/payments/bank-details": {
+      "get": {
+        "operationId": "BankDetailsController_getCompanyBankDetails",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyBankDetailsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "payments"
         ]
       }
     },
@@ -3298,6 +3557,32 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SellerBalanceResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "seller-balance"
+        ]
+      }
+    },
+    "/api/v1/seller/balance/breakdown": {
+      "get": {
+        "operationId": "SellerBalanceController_getBreakdown",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SellerBalanceBreakdownResponseDto"
                 }
               }
             }
@@ -3440,6 +3725,51 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffRefundResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-refunds"
+        ]
+      }
+    },
+    "/api/v1/staff/refunds/{id}/confirm-bank-return": {
+      "post": {
+        "operationId": "StaffRefundController_confirmManualBankReturn",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmManualBankRefundDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "",
@@ -3685,6 +4015,122 @@
         ]
       }
     },
+    "/api/v1/seller/payout-destinations": {
+      "get": {
+        "operationId": "SellerPayoutDestinationController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "seller-payout-destinations"
+        ]
+      },
+      "post": {
+        "operationId": "SellerPayoutDestinationController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePayoutDestinationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutDestinationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "seller-payout-destinations"
+        ]
+      }
+    },
+    "/api/v1/seller/payout-destinations/{id}/default": {
+      "patch": {
+        "operationId": "SellerPayoutDestinationController_setDefault",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutDestinationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "seller-payout-destinations"
+        ]
+      }
+    },
+    "/api/v1/seller/payout-destinations/{id}": {
+      "delete": {
+        "operationId": "SellerPayoutDestinationController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "seller-payout-destinations"
+        ]
+      }
+    },
     "/api/v1/staff/payouts": {
       "get": {
         "operationId": "StaffPayoutController_list",
@@ -3748,6 +4194,25 @@
         ]
       }
     },
+    "/api/v1/staff/payouts/specialists": {
+      "get": {
+        "operationId": "StaffPayoutController_listSpecialistsSummary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-payouts"
+        ]
+      }
+    },
     "/api/v1/staff/payouts/{id}": {
       "get": {
         "operationId": "StaffPayoutController_get",
@@ -3761,6 +4226,176 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffPayoutResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-payouts"
+        ]
+      }
+    },
+    "/api/v1/staff/payouts/{id}/start-processing": {
+      "post": {
+        "operationId": "StaffPayoutController_startProcessing",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffPayoutResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-payouts"
+        ]
+      }
+    },
+    "/api/v1/staff/payouts/{id}/mark-paid": {
+      "post": {
+        "operationId": "StaffPayoutController_markPaid",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkPayoutPaidDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffPayoutResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-payouts"
+        ]
+      }
+    },
+    "/api/v1/staff/payouts/{id}/reject": {
+      "post": {
+        "operationId": "StaffPayoutController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectPayoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffPayoutResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "staff-payouts"
+        ]
+      }
+    },
+    "/api/v1/staff/payouts/{id}/correct": {
+      "post": {
+        "operationId": "StaffPayoutController_correct",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectPayoutDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "",
@@ -7181,6 +7816,65 @@
           "staff-reviews"
         ]
       }
+    },
+    "/api/v1/me/uploads": {
+      "post": {
+        "operationId": "UploadsController_upload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadFileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadFileResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "uploads"
+        ]
+      }
+    },
+    "/api/v1/uploads/{storedName}": {
+      "get": {
+        "operationId": "UploadsController_download",
+        "parameters": [
+          {
+            "name": "storedName",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "uploads"
+        ]
+      }
     }
   },
   "info": {
@@ -7393,6 +8087,10 @@
           "phone",
           "password"
         ]
+      },
+      "GoogleAuthDto": {
+        "type": "object",
+        "properties": {}
       },
       "CompletePasswordResetDto": {
         "type": "object",
@@ -8423,6 +9121,22 @@
             "type": "string",
             "description": "ISO 8601 — kelajakda bo‘lishi shart"
           },
+          "deliverableSummary": {
+            "type": "string",
+            "description": "Topshiriladigan natija tavsifi",
+            "maxLength": 2000
+          },
+          "acceptanceCriteria": {
+            "type": "string",
+            "description": "Qabul mezoni",
+            "maxLength": 2000
+          },
+          "revisionsIncluded": {
+            "type": "number",
+            "description": "Kiritilgan tuzatishlar soni",
+            "minimum": 0,
+            "maximum": 20
+          },
           "milestones": {
             "type": "array",
             "items": {
@@ -8434,6 +9148,118 @@
           "serviceId",
           "deadline",
           "milestones"
+        ]
+      },
+      "ContractBankProofSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "paymentPurposeCode": {
+            "type": "string"
+          },
+          "declaredAmount": {
+            "type": "number"
+          },
+          "receivedAmount": {
+            "type": "number",
+            "nullable": true
+          },
+          "mismatchAmount": {
+            "type": "number"
+          },
+          "receiptFileUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "receiptNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "bankOperationRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "paymentPurposeCode",
+          "declaredAmount",
+          "mismatchAmount",
+          "createdAt"
+        ]
+      },
+      "MilestoneSubmissionItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "submittedById": {
+            "type": "string"
+          },
+          "message": {
+            "type": "object",
+            "nullable": true
+          },
+          "deliverableUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "submittedById",
+          "deliverableUrls",
+          "createdAt"
+        ]
+      },
+      "MilestoneRevisionItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "requestedById": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "requestedById",
+          "reason",
+          "createdAt"
         ]
       },
       "MilestoneResponseDto": {
@@ -8481,6 +9307,29 @@
             "type": "object",
             "nullable": true
           },
+          "submissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MilestoneSubmissionItemDto"
+            }
+          },
+          "revisionRequests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MilestoneRevisionItemDto"
+            }
+          },
+          "revisionCount": {
+            "type": "number"
+          },
+          "autoAcceptPaused": {
+            "type": "boolean"
+          },
+          "reviewDeadline": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -8497,6 +9346,10 @@
           "amount",
           "position",
           "status",
+          "submissions",
+          "revisionRequests",
+          "revisionCount",
+          "autoAcceptPaused",
           "createdAt",
           "updatedAt"
         ]
@@ -8562,6 +9415,27 @@
             "format": "date-time",
             "type": "string"
           },
+          "deliverableSummary": {
+            "type": "string",
+            "nullable": true
+          },
+          "acceptanceCriteria": {
+            "type": "string",
+            "nullable": true
+          },
+          "revisionsIncluded": {
+            "type": "number"
+          },
+          "buyerConfirmedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "sellerConfirmedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -8580,6 +9454,21 @@
             "format": "date-time",
             "type": "string",
             "nullable": true
+          },
+          "paymentPurposeCode": {
+            "type": "string"
+          },
+          "autoAcceptPaused": {
+            "type": "boolean"
+          },
+          "latestBankProof": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContractBankProofSummaryDto"
+              }
+            ]
           },
           "milestones": {
             "type": "array",
@@ -8610,8 +9499,11 @@
           "platformFeeRateBps",
           "platformFeeAmount",
           "deadline",
+          "revisionsIncluded",
           "status",
           "isFunded",
+          "paymentPurposeCode",
+          "autoAcceptPaused",
           "milestones",
           "createdAt",
           "updatedAt"
@@ -8714,6 +9606,164 @@
           "updatedAt"
         ]
       },
+      "SubmitBankProofDto": {
+        "type": "object",
+        "properties": {
+          "declaredAmount": {
+            "type": "number",
+            "description": "Yuborilgan summa (butun so‘mda)",
+            "minimum": 1000,
+            "maximum": 10000000000
+          },
+          "receiptFileUrl": {
+            "type": "string",
+            "description": "Yuklangan chek/kvitansiya fayl manzili"
+          },
+          "receiptNote": {
+            "type": "string",
+            "description": "Chek raqami yoki izoh",
+            "maxLength": 1000
+          }
+        }
+      },
+      "BankTransferProofResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "contractId": {
+            "type": "string"
+          },
+          "paymentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "buyerId": {
+            "type": "string"
+          },
+          "paymentPurposeCode": {
+            "type": "string"
+          },
+          "declaredAmount": {
+            "type": "number"
+          },
+          "receivedAmount": {
+            "type": "number",
+            "nullable": true
+          },
+          "mismatchAmount": {
+            "type": "number"
+          },
+          "bankOperationRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "receiptFileUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "receiptNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING_REVIEW",
+              "UNDERPAID",
+              "OVERPAID_REVIEW",
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewedByStaffId": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "contractTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "contractAgreedAmount": {
+            "type": "number"
+          },
+          "buyerName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "contractId",
+          "buyerId",
+          "paymentPurposeCode",
+          "declaredAmount",
+          "mismatchAmount",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "VerifyBankProofDto": {
+        "type": "object",
+        "properties": {
+          "receivedAmount": {
+            "type": "number",
+            "description": "Bank hisobiga haqiqatda tushgan summa (butun so‘m)",
+            "minimum": 1,
+            "maximum": 10000000000
+          },
+          "bankOperationRef": {
+            "type": "string",
+            "description": "Bank operatsiya / to‘lov hujjati raqami (unikal)",
+            "minLength": 3,
+            "maxLength": 100
+          },
+          "allowOverpaymentSurplus": {
+            "type": "boolean",
+            "description": "Ortiqcha to‘lovni ortig‘ini qaytarish sharti bilan qabul qilish"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "receivedAmount",
+          "bankOperationRef"
+        ]
+      },
+      "RejectBankProofDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
       "StaffPaymentResponseDto": {
         "type": "object",
         "properties": {
@@ -8787,6 +9837,61 @@
           "createdAt",
           "updatedAt",
           "payerUserId"
+        ]
+      },
+      "CompanyBankDetailsDto": {
+        "type": "object",
+        "properties": {
+          "companyName": {
+            "type": "string"
+          },
+          "bankName": {
+            "type": "string"
+          },
+          "accountNumber": {
+            "type": "string"
+          },
+          "mfo": {
+            "type": "string"
+          },
+          "inn": {
+            "type": "string"
+          },
+          "bankAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "supportPhone": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "companyName",
+          "bankName",
+          "accountNumber",
+          "mfo",
+          "inn"
+        ]
+      },
+      "CompanyBankDetailsResponseDto": {
+        "type": "object",
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "details": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CompanyBankDetailsDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "configured"
         ]
       },
       "LedgerEntryResponseDto": {
@@ -8905,17 +10010,203 @@
           },
           "available": {
             "type": "number",
-            "description": "Butun so‘m — SELLER_PAYABLE hisobidagi joriy qoldiq"
+            "description": "Yechish mumkin bo‘lgan qoldiq (butun so‘m)"
           },
           "availableTiyin": {
-            "type": "string",
-            "description": "Exact signed integer tiyin as a decimal string; 100 tiyin = 1 UZS"
+            "type": "string"
+          },
+          "pending": {
+            "type": "number",
+            "description": "Escrowda kutilayotgan summa (funded, hali qabul qilinmagan, nizosiz)"
+          },
+          "pendingTiyin": {
+            "type": "string"
+          },
+          "reserved": {
+            "type": "number",
+            "description": "Pul yechishga so‘ralgan va band qilingan summa (PAYOUT_CLEARING)"
+          },
+          "reservedTiyin": {
+            "type": "string"
+          },
+          "disputedHeld": {
+            "type": "number",
+            "description": "Nizo sababli muzlatilgan summa"
+          },
+          "disputedHeldTiyin": {
+            "type": "string"
+          },
+          "paid": {
+            "type": "number",
+            "description": "Bank orqali to‘langan jami summa (SUCCEEDED payouts)"
+          },
+          "paidTiyin": {
+            "type": "string"
+          },
+          "grossEarned": {
+            "type": "number",
+            "description": "Qabul qilingan ishlar umumiy qiymati (brutto)"
+          },
+          "grossEarnedTiyin": {
+            "type": "string"
+          },
+          "commissionWithheld": {
+            "type": "number",
+            "description": "Ushlangan platforma komissiyasi"
+          },
+          "commissionWithheldTiyin": {
+            "type": "string"
+          },
+          "netEarned": {
+            "type": "number",
+            "description": "Mutaxassisning jami sof daromadi"
+          },
+          "netEarnedTiyin": {
+            "type": "string"
           }
         },
         "required": [
           "currency",
           "available",
-          "availableTiyin"
+          "availableTiyin",
+          "pending",
+          "pendingTiyin",
+          "reserved",
+          "reservedTiyin",
+          "disputedHeld",
+          "disputedHeldTiyin",
+          "paid",
+          "paidTiyin",
+          "grossEarned",
+          "grossEarnedTiyin",
+          "commissionWithheld",
+          "commissionWithheldTiyin",
+          "netEarned",
+          "netEarnedTiyin"
+        ]
+      },
+      "SellerContractBreakdownItemDto": {
+        "type": "object",
+        "properties": {
+          "contractId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "contractStatus": {
+            "type": "string"
+          },
+          "stage": {
+            "type": "string"
+          },
+          "grossAmount": {
+            "type": "number"
+          },
+          "platformFeeRateBps": {
+            "type": "number"
+          },
+          "commissionAmount": {
+            "type": "number"
+          },
+          "netAmount": {
+            "type": "number"
+          },
+          "funded": {
+            "type": "boolean"
+          },
+          "fundedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contractId",
+          "title",
+          "contractStatus",
+          "stage",
+          "grossAmount",
+          "platformFeeRateBps",
+          "commissionAmount",
+          "netAmount",
+          "funded",
+          "updatedAt"
+        ]
+      },
+      "SellerPayoutBreakdownItemDto": {
+        "type": "object",
+        "properties": {
+          "payoutId": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "destinationReference": {
+            "type": "string"
+          },
+          "bankOperationRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "bankTransferredAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "failureReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "succeededAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "payoutId",
+          "amount",
+          "status",
+          "destinationReference",
+          "createdAt"
+        ]
+      },
+      "SellerBalanceBreakdownResponseDto": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/SellerBalanceResponseDto"
+          },
+          "contracts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SellerContractBreakdownItemDto"
+            }
+          },
+          "payouts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SellerPayoutBreakdownItemDto"
+            }
+          }
+        },
+        "required": [
+          "summary",
+          "contracts",
+          "payouts"
         ]
       },
       "CreateRefundDto": {
@@ -9000,6 +10291,19 @@
           },
           "provider": {
             "type": "string"
+          },
+          "bankOperationRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "bankReturnedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "processedByStaffId": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
@@ -9015,6 +10319,27 @@
           "updatedAt",
           "requestedByStaffId",
           "provider"
+        ]
+      },
+      "ConfirmManualBankRefundDto": {
+        "type": "object",
+        "properties": {
+          "bankOperationRef": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 100
+          },
+          "bankReturnedAt": {
+            "type": "string",
+            "description": "ISO 8601 bank qaytarish sanasi"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "bankOperationRef"
         ]
       },
       "RefundResponseDto": {
@@ -9096,6 +10421,10 @@
             "description": "Butun so‘m",
             "minimum": 1
           },
+          "destinationId": {
+            "type": "string",
+            "description": "Saqlangan to‘lov rekviziti ID (tavsiya etiladi)"
+          },
           "destinationReference": {
             "type": "string",
             "minLength": 3,
@@ -9103,8 +10432,7 @@
           }
         },
         "required": [
-          "amount",
-          "destinationReference"
+          "amount"
         ]
       },
       "PayoutResponseDto": {
@@ -9137,7 +10465,27 @@
           "destinationReference": {
             "type": "string"
           },
+          "destinationId": {
+            "type": "string",
+            "nullable": true
+          },
+          "destinationSnapshot": {
+            "type": "object",
+            "nullable": true
+          },
+          "bankOperationRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "bankTransferredAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
           "failureReason": {
+            "type": "object"
+          },
+          "processingAt": {
             "type": "object"
           },
           "succeededAt": {
@@ -9164,6 +10512,145 @@
           "destinationReference",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "CreatePayoutDestinationDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "BANK_CARD",
+              "BANK_ACCOUNT"
+            ]
+          },
+          "providerLabel": {
+            "type": "string",
+            "example": "Uzcard",
+            "minLength": 2,
+            "maxLength": 60
+          },
+          "rawAccountOrCard": {
+            "type": "string",
+            "description": "16 xonali karta raqami yoki 20 xonali bank hisob raqami — saqlashdan oldin maskalanadi (CVV/PIN qabul qilinmaydi)",
+            "example": "8600123456789012"
+          },
+          "holderName": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 120
+          },
+          "bankName": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "mfo": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "isDefault": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "type",
+          "providerLabel",
+          "rawAccountOrCard",
+          "holderName"
+        ]
+      },
+      "PayoutDestinationResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "BANK_CARD",
+              "BANK_ACCOUNT"
+            ]
+          },
+          "providerLabel": {
+            "type": "string"
+          },
+          "maskedValue": {
+            "type": "string"
+          },
+          "holderName": {
+            "type": "string"
+          },
+          "bankName": {
+            "type": "string",
+            "nullable": true
+          },
+          "mfo": {
+            "type": "string",
+            "nullable": true
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "isVerified": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "providerLabel",
+          "maskedValue",
+          "holderName",
+          "isDefault",
+          "isVerified",
+          "createdAt"
+        ]
+      },
+      "PayoutCorrectionItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "staffId": {
+            "type": "string"
+          },
+          "previousBankRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "newBankRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "previousTransferredAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "newTransferredAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "staffId",
+          "reason",
+          "createdAt"
         ]
       },
       "StaffPayoutResponseDto": {
@@ -9196,7 +10683,27 @@
           "destinationReference": {
             "type": "string"
           },
+          "destinationId": {
+            "type": "string",
+            "nullable": true
+          },
+          "destinationSnapshot": {
+            "type": "object",
+            "nullable": true
+          },
+          "bankOperationRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "bankTransferredAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
           "failureReason": {
+            "type": "object"
+          },
+          "processingAt": {
             "type": "object"
           },
           "succeededAt": {
@@ -9216,11 +10723,33 @@
           "sellerId": {
             "type": "string"
           },
+          "sellerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "sellerPhone": {
+            "type": "string",
+            "nullable": true
+          },
           "providerPayoutId": {
             "type": "object"
           },
           "provider": {
             "type": "string"
+          },
+          "transferredAmount": {
+            "type": "number",
+            "nullable": true
+          },
+          "processedByStaffId": {
+            "type": "string",
+            "nullable": true
+          },
+          "corrections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PayoutCorrectionItemDto"
+            }
           }
         },
         "required": [
@@ -9234,6 +10763,68 @@
           "updatedAt",
           "sellerId",
           "provider"
+        ]
+      },
+      "MarkPayoutPaidDto": {
+        "type": "object",
+        "properties": {
+          "bankOperationRef": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 100
+          },
+          "transferredAmount": {
+            "type": "number",
+            "description": "O‘tkazilgan summa (butun so‘m)",
+            "minimum": 1
+          },
+          "bankTransferredAt": {
+            "type": "string",
+            "description": "ISO 8601 bank o‘tkazmasi sanasi"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "bankOperationRef",
+          "transferredAmount"
+        ]
+      },
+      "RejectPayoutDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "CorrectPayoutDto": {
+        "type": "object",
+        "properties": {
+          "bankOperationRef": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 100
+          },
+          "bankTransferredAt": {
+            "type": "string",
+            "description": "ISO 8601 bank o‘tkazmasi sanasi"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
         ]
       },
       "OpenDisputeDto": {
@@ -10336,6 +11927,22 @@
       "HireProposalDto": {
         "type": "object",
         "properties": {
+          "deliverableSummary": {
+            "type": "string",
+            "description": "Topshiriladigan natija tavsifi",
+            "maxLength": 2000
+          },
+          "acceptanceCriteria": {
+            "type": "string",
+            "description": "Qabul mezoni",
+            "maxLength": 2000
+          },
+          "revisionsIncluded": {
+            "type": "number",
+            "description": "Kelishilgan tuzatishlar soni",
+            "minimum": 0,
+            "maximum": 20
+          },
           "milestones": {
             "type": "array",
             "items": {
@@ -11096,6 +12703,58 @@
           "status",
           "reportCount",
           "createdAt"
+        ]
+      },
+      "UploadFileDto": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "example": "receipt.pdf"
+          },
+          "mimeType": {
+            "type": "string",
+            "example": "application/pdf"
+          },
+          "dataBase64": {
+            "type": "string",
+            "description": "Base64 string or data: URL"
+          }
+        },
+        "required": [
+          "fileName",
+          "dataBase64"
+        ]
+      },
+      "UploadFileResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "storedName": {
+            "type": "string"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "storedName",
+          "originalName",
+          "mimeType",
+          "size",
+          "url"
         ]
       }
     }

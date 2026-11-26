@@ -17,14 +17,18 @@ import { useToast } from "@/components/ui/Toast";
 import { MilestoneProgress } from "@/components/shared/MilestoneProgress";
 import { DisputeControl } from "@/components/shared/DisputeControl";
 import { DisputeSummary } from "@/components/shared/DisputeSummary";
+import { B2BInvoiceModal } from "@/components/shared/B2BInvoiceModal";
 import { ReceiptModal } from "@/components/shared/ReceiptModal";
 import { ContractWorkroomChat } from "@/components/shared/ContractWorkroomChat";
 import {
-  ContractStatusBadge,
   MilestoneStatusBadge,
 } from "@/components/shared/StatusBadge";
-import { contractsService, disputesService, milestonesService, paymentsService } from "@/lib/api";
+import { Badge } from "@/components/ui/Badge";
+import { contractsService, disputesService, filesService, milestonesService, paymentsService } from "@/lib/api";
 import { ApiError } from "@/lib/api/errors";
+import type { CompanyBankDetails } from "@/lib/company-bank-details";
+import { getPaymentPurpose } from "@/lib/company-bank-details";
+import { PLATFORM_FEE_PERCENT } from "@/lib/fees";
 import type { Contract, Dispute, Milestone } from "@/lib/types";
 import { formatDate, formatFileSize, formatMoney, triggerFileDownload } from "@/lib/format";
 import { useT } from "@/lib/i18n";
@@ -56,14 +60,25 @@ export default function XaridorWorkroomPage() {
 
   const [paying, setPaying] = useState(false);
   const [paymentState, setPaymentState] = useState<"idle" | "processing" | "failed" | "cancelled" | "expired" | "disabled">("idle");
+  const [bankDetails, setBankDetails] = useState<{ configured: boolean; details: CompanyBankDetails | null } | null>(null);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [receiptUrl, setReceiptUrl] = useState("");
+  const [receiptName, setReceiptName] = useState("");
+  const [receiptNote, setReceiptNote] = useState("");
+  const [receiptUploading, setReceiptUploading] = useState(false);
+  const [proofSubmitting, setProofSubmitting] = useState(false);
 
   const reload = useCallback(async () => {
     const version = ++loadVersionRef.current;
     setContract(undefined);
     setLoadError(null);
     try {
-      const found = await contractsService.get(params.id);
+      const [found, bankInfo] = await Promise.all([
+        contractsService.get(params.id),
+        paymentsService.getCompanyBankDetails().catch(() => ({ configured: false, details: null })),
+      ]);
       if (version !== loadVersionRef.current) return;
+      setBankDetails(bankInfo);
       if (!found) {
         setContract(null);
         return;
@@ -201,6 +216,47 @@ export default function XaridorWorkroomPage() {
     }
   }
 
+  async function handleReceiptFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setReceiptUploading(true);
+    try {
+      const uploaded = await filesService.upload(file);
+      setReceiptUrl(uploaded.url);
+      setReceiptName(uploaded.name);
+      toast("Chek fayli yuklandi");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Fayl yuklashda xatolik", "error");
+    } finally {
+      setReceiptUploading(false);
+    }
+  }
+
+  async function handleSubmitBankProof() {
+    if (!contract) return;
+    if (!receiptUrl.trim() && !receiptNote.trim()) {
+      toast("Chek faylini yuklang yoki to'lov izohini yozing", "error");
+      return;
+    }
+    setProofSubmitting(true);
+    try {
+      await paymentsService.submitManualBankProof(contract.id, {
+        declaredAmount: contract.totalAmount,
+        receiptFileUrl: receiptUrl.trim() || undefined,
+        receiptNote: receiptNote.trim() || undefined,
+      });
+      toast("Chek yuborildi. Admin bank tushumini tekshirgach mablag' tasdiqlanadi.");
+      setReceiptUrl("");
+      setReceiptName("");
+      setReceiptNote("");
+      reload();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Chek yuborishda xatolik", "error");
+    } finally {
+      setProofSubmitting(false);
+    }
+  }
+
   async function handleAccept() {
     if (!acceptTarget || !contract) return;
     setBusy(true);
@@ -284,7 +340,39 @@ export default function XaridorWorkroomPage() {
               <p className="text-xs text-muted">{contract.sellerName}</p>
               <h1 className="mt-0.5 font-heading text-xl font-bold text-ink">{contract.title}</h1>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <ContractStatusBadge status={funded ? contract.status : "imzolangan"} />
+                {(() => {
+                  const statusTone =
+                    contract.rawStatus === "PENDING_SELLER"
+                      ? "warning"
+                      : contract.rawStatus === "REJECTED"
+                        ? "danger"
+                        : contract.rawStatus === "CANCELLED"
+                          ? "neutral"
+                          : contract.rawStatus === "COMPLETED"
+                            ? "success"
+                            : disputeOpen
+                              ? "danger"
+                              : funded
+                                ? "success"
+                                : "info";
+                  const statusLabel =
+                    contract.rawStatus === "PENDING_SELLER"
+                      ? "Mutaxassis tasdig'i kutilmoqda"
+                      : contract.rawStatus === "REJECTED"
+                        ? "Mutaxassis rad etdi"
+                        : contract.rawStatus === "CANCELLED"
+                          ? "Bekor qilingan"
+                          : contract.rawStatus === "COMPLETED"
+                            ? "Yakunlangan"
+                            : disputeOpen
+                              ? "Nizo jarayonida"
+                              : funded
+                                ? "Mablag'langan · Ish jarayonida"
+                                : contract.latestBankProof?.status === "PENDING_REVIEW"
+                                  ? "Chek tekshirilmoqda"
+                                  : "Ikki tomon tasdiqladi · To'lov kutilmoqda";
+                  return <Badge tone={statusTone}>{statusLabel}</Badge>;
+                })()}
                 <span suppressHydrationWarning className="text-2xs text-faint">{formatDate(contract.createdAt, lang)}</span>
               </div>
             </div>
@@ -292,6 +380,28 @@ export default function XaridorWorkroomPage() {
           <div className="flex flex-col sm:items-end gap-1 text-left sm:text-right">
             <p className="text-2xs font-medium uppercase tracking-wide text-faint">{t("contract.total")}</p>
             <p className="font-heading text-lg font-bold text-ink">{formatMoney(contract.totalAmount, lang)}</p>
+          </div>
+        </div>
+
+        {/* Ikki tomon ko'radigan bir xil shartnoma shartlari (Snapshot) */}
+        <div className="mt-4 grid gap-3 rounded-xl border border-line bg-surface p-4 text-xs sm:grid-cols-2">
+          <div>
+            <p className="text-2xs font-semibold uppercase text-faint">Topshiriladigan natija</p>
+            <p className="mt-1 whitespace-pre-line text-ink">{contract.deliverableSummary || contract.title}</p>
+          </div>
+          <div>
+            <p className="text-2xs font-semibold uppercase text-faint">Qabul qilish mezoni</p>
+            <p className="mt-1 whitespace-pre-line text-ink">
+              {contract.acceptanceCriteria || "Barcha bosqich natijalarining shartlarga mos bajarilishi"}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-x-6 gap-y-1 sm:col-span-2 border-t border-line pt-2 text-2xs text-muted">
+            <span>Tuzatishlar soni: <strong className="text-ink">{contract.revisionsIncluded ?? 2} marta</strong></span>
+            <span>
+              Komissiya: <strong className="text-ink">{((milestones[0]?.platformFeeRateBps ?? PLATFORM_FEE_PERCENT * 100) / 100)}%</strong>
+            </span>
+            <span>Xaridor tasdig&apos;i: <strong className="text-ink">{contract.buyerConfirmedAt ? formatDate(contract.buyerConfirmedAt, lang) : "Tasdiqlangan"}</strong></span>
+            <span>Mutaxassis tasdig&apos;i: <strong className="text-ink">{contract.sellerConfirmedAt ? formatDate(contract.sellerConfirmedAt, lang) : "Kutilmoqda"}</strong></span>
           </div>
         </div>
 
@@ -311,13 +421,119 @@ export default function XaridorWorkroomPage() {
         )}
 
         {/* To'lov kerak (sotuvchi qabul qilgan, lekin hali mablag'lanmagan) */}
-        {!funded && contract.rawStatus !== "PENDING_SELLER" && contract.status !== "bekor_qilingan" && contract.status !== "yakunlangan" && contract.status !== "nizo" && paymentState === "idle" && (
-          <Card padding="lg" className="mt-4 border-warning/30 bg-warning/5">
-            <h3 className="font-heading text-sm font-bold text-ink">{t("cfund.awaitingTitle")}</h3>
-            <p className="mt-1 text-xs text-muted">{t("cfund.awaitingDesc")}</p>
-            <Button className="mt-4" onClick={handlePay} loading={paying}>
-              {t("cfund.pay")} · {formatMoney(contract.totalAmount, lang)}
-            </Button>
+        {!funded && contract.rawStatus === "ACTIVE" && (
+          <Card padding="lg" className="mt-4 border-warning/30 bg-warning/5 flex flex-col gap-4">
+            <div>
+              <h3 className="font-heading text-sm font-bold text-ink">{t("cfund.awaitingTitle")}</h3>
+              <p className="mt-1 text-xs text-muted">
+                Buyurtma bo&apos;yicha keyingi amal: <strong className="text-ink">Xaridor to&apos;lovi</strong>. Mablag&apos; tasdiqlanmaguncha shartnoma mablag&apos;langan hisoblanmaydi.
+              </p>
+            </div>
+
+            {/* Payme (agar yoqilgan bo'lsa) */}
+            {paymentState === "idle" && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={handlePay} loading={paying}>
+                  Onlayn to&apos;lash · {formatMoney(contract.totalAmount, lang)}
+                </Button>
+                {bankDetails?.configured && (
+                  <Button variant="secondary" onClick={() => setInvoiceOpen(true)}>
+                    Hisob-faktura (Invoice)
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Qo'lda bank o'tkazmasi orqali to'lash */}
+            {bankDetails?.configured && bankDetails.details ? (
+              <div className="rounded-xl border border-line bg-card p-4 text-xs flex flex-col gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h4 className="font-heading text-xs font-bold uppercase tracking-wide text-ink">
+                    Bank o&apos;tkazmasi rekvizitlari (Tekshirilgan tashkilot hisobi)
+                  </h4>
+                  <Badge tone="info">Kod: {contract.paymentPurposeCode || contract.id.slice(0, 8)}</Badge>
+                </div>
+                <div className="grid gap-1 sm:grid-cols-2 text-muted">
+                  <span>Tashkilot: <strong className="text-ink">{bankDetails.details.companyName}</strong></span>
+                  <span>Bank: <strong className="text-ink">{bankDetails.details.bankName}</strong></span>
+                  <span>Hisob raqam: <strong className="font-mono text-ink select-all">{bankDetails.details.accountNumber}</strong></span>
+                  <span>MFO / INN: <strong className="font-mono text-ink">{bankDetails.details.mfo} / {bankDetails.details.inn}</strong></span>
+                </div>
+                <p className="rounded-btn bg-surface p-2 font-mono text-2xs text-primary select-all">
+                  To&apos;lov maqsadi: {getPaymentPurpose(contract.paymentPurposeCode || contract.id.slice(0, 8))}
+                </p>
+
+                {contract.latestBankProof && (
+                  <div
+                    className={`rounded-btn border p-3 text-xs ${
+                      contract.latestBankProof.status === "UNDERPAID" || contract.latestBankProof.status === "REJECTED"
+                        ? "border-danger/30 bg-danger/10 text-danger"
+                        : "border-warning/40 bg-warning/10 text-warning-deep"
+                    }`}
+                  >
+                    <p className="font-semibold">
+                      Oxirgi chek holati:{" "}
+                      {contract.latestBankProof.status === "PENDING_REVIEW"
+                        ? "Tekshirilmoqda (admin bank tushumini tasdiqlashi kutilmoqda)"
+                        : contract.latestBankProof.status === "UNDERPAID"
+                          ? "Kam summa tushgan"
+                          : contract.latestBankProof.status === "OVERPAID_REVIEW"
+                            ? "Ortiqcha summa tekshirilmoqda"
+                            : contract.latestBankProof.status}
+                    </p>
+                    {contract.latestBankProof.mismatchAmount !== 0 && (
+                      <p className="mt-1">
+                        Farq: {formatMoney(contract.latestBankProof.mismatchAmount, lang)}
+                      </p>
+                    )}
+                    {contract.latestBankProof.rejectionReason && (
+                      <p className="mt-1">{contract.latestBankProof.rejectionReason}</p>
+                    )}
+                  </div>
+                )}
+
+                {(!contract.latestBankProof ||
+                  contract.latestBankProof.status === "REJECTED" ||
+                  contract.latestBankProof.status === "UNDERPAID") && (
+                  <div className="flex flex-col gap-2 border-t border-line pt-3">
+                    <label className="text-xs font-semibold text-ink">
+                      To&apos;lov cheki / skrinshot yuklash (PNG, JPG, PDF)
+                    </label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        type="file"
+                        accept=".png,.jpg,.jpeg,.webp,.pdf"
+                        onChange={handleReceiptFileChange}
+                        disabled={receiptUploading || proofSubmitting}
+                        className="text-xs"
+                      />
+                      {receiptName && <span className="text-2xs text-success">Yuklandi: {receiptName}</span>}
+                    </div>
+                    <Textarea
+                      label="To'lov hujjati raqami yoki izoh"
+                      value={receiptNote}
+                      onChange={(e) => setReceiptNote(e.target.value)}
+                      rows={2}
+                      placeholder="Masalan: To'lov topshiriqnomasi #1234, sana..."
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      loading={proofSubmitting}
+                      disabled={receiptUploading}
+                      onClick={handleSubmitBankProof}
+                      className="self-start"
+                    >
+                      Chekni tekshirishga yuborish
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-line bg-card p-3 text-xs text-muted">
+                Tashkilotning rasmiy bank rekvizitlari hali kiritilmagan. Qo&apos;lda bank o&apos;tkazmasi rekvizitlar tasdiqlangach ochiladi.
+              </div>
+            )}
           </Card>
         )}
 
@@ -493,8 +709,14 @@ export default function XaridorWorkroomPage() {
               {milestone.status === "topshirildi" && (
                 <div className="flex flex-col gap-3 pl-9">
                   <div className="flex flex-wrap items-center gap-3">
-                    {milestone.reviewDeadline && <CountdownBadge deadline={milestone.reviewDeadline} />}
-                    <span className="text-2xs text-faint">{t("bms.autoAcceptNote")}</span>
+                    {milestone.reviewDeadline && !disputeOpen && !contract.autoAcceptPaused && !milestone.autoAcceptPaused && (
+                      <CountdownBadge deadline={milestone.reviewDeadline} />
+                    )}
+                    <span className="text-2xs text-faint">
+                      {disputeOpen || contract.autoAcceptPaused || milestone.autoAcceptPaused
+                        ? "Nizo ochilgani sababli avtomatik tasdiqlash taymeri to'xtatildi."
+                        : t("bms.autoAcceptNote")}
+                    </span>
                   </div>
                   {actionable && (
                     <div className="flex flex-wrap gap-2">
@@ -519,6 +741,53 @@ export default function XaridorWorkroomPage() {
 
               {milestone.status === "ozgartirish_soraldi" && (
                 <p className="pl-9 text-2xs text-faint">{t("bms.revisionWaiting")}</p>
+              )}
+
+              {((milestone.submissions && milestone.submissions.length > 0) ||
+                (milestone.revisionRequests && milestone.revisionRequests.length > 0)) && (
+                <div className="ml-9 flex flex-col gap-2 rounded-input border border-line bg-surface p-3 text-xs">
+                  {milestone.submissions && milestone.submissions.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <p className="text-2xs font-semibold uppercase text-muted">
+                        Topshirishlar tarixi ({milestone.submissions.length})
+                      </p>
+                      {milestone.submissions.map((sub, sIdx) => (
+                        <div key={sub.id} className="rounded-btn border border-line bg-card p-2">
+                          <div className="flex items-center justify-between text-2xs text-faint">
+                            <span>#{milestone.submissions!.length - sIdx} versiya</span>
+                            <span>{formatDate(sub.createdAt, lang)}</span>
+                          </div>
+                          {sub.message && <p className="mt-1 whitespace-pre-line text-ink">{sub.message}</p>}
+                          {sub.deliverableUrls.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-2">
+                              {sub.deliverableUrls.map((url, uIdx) => (
+                                <a key={uIdx} href={url} target="_blank" rel="noreferrer noopener" className="text-2xs font-medium text-primary hover:underline break-all">
+                                  Natija #{uIdx + 1}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {milestone.revisionRequests && milestone.revisionRequests.length > 0 && (
+                    <div className="flex flex-col gap-1.5 border-t border-line pt-2">
+                      <p className="text-2xs font-semibold uppercase text-danger">
+                        Tuzatishlar tarixi ({milestone.revisionRequests.length}/{contract.revisionsIncluded ?? 2})
+                      </p>
+                      {milestone.revisionRequests.map((rev, rIdx) => (
+                        <div key={rev.id} className="rounded-btn border border-danger/20 bg-danger/5 p-2">
+                          <div className="flex items-center justify-between text-2xs text-faint">
+                            <span>#{milestone.revisionRequests!.length - rIdx}</span>
+                            <span>{formatDate(rev.createdAt, lang)}</span>
+                          </div>
+                          <p className="mt-1 text-ink">{rev.reason}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           ))}
@@ -629,6 +898,16 @@ export default function XaridorWorkroomPage() {
         buyerName={contract?.buyerName}
         sellerName={contract?.sellerName}
       />
+
+      {contract && (
+        <B2BInvoiceModal
+          open={invoiceOpen}
+          onClose={() => setInvoiceOpen(false)}
+          contract={contract}
+          milestones={milestones}
+          bankDetails={bankDetails?.details}
+        />
+      )}
     </div>
   );
 }

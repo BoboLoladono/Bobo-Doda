@@ -11,9 +11,11 @@ import { PaymeMerchantService } from './providers/payme/payme-merchant.service';
 import { PaymeMerchantController } from './providers/payme/payme-merchant.controller';
 import { PAYME_MERCHANT_CONFIG, type PaymeMerchantConfig } from './providers/payme/payme-rpc.types';
 import { PaymentService } from './payment.service';
+import { ManualBankPaymentService } from './manual-bank-payment.service';
 import { PaymentController } from './payment.controller';
 import { MePaymentController } from './me-payment.controller';
 import { StaffPaymentController } from './staff-payment.controller';
+import { BankDetailsController } from './bank-details.controller';
 
 /** FAQAT dev/test — production'da hech qachon ishlatilmaydi (pastdagi fail-fast). */
 const DEV_ONLY_TEST_SECRET = 'test-only-insecure-secret-change-me';
@@ -32,10 +34,12 @@ const DEV_ONLY_TEST_SECRET = 'test-only-insecure-secret-change-me';
     PaymentController,
     MePaymentController,
     StaffPaymentController,
+    BankDetailsController,
     PaymeMerchantController,
   ],
   providers: [
     PaymentService,
+    ManualBankPaymentService,
     PaymeMerchantService,
     {
       provide: PAYME_MERCHANT_CONFIG,

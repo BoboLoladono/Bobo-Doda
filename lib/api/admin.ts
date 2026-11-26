@@ -577,53 +577,53 @@ export async function listJobsQueue(
 export const listContractsQueue: Asyncified<typeof adminMock.listContractsQueue> = mockAsync(adminMock.listContractsQueue);
 export const listDisputesQueue: Asyncified<typeof adminMock.listDisputesQueue> = mockAsync(adminMock.listDisputesQueue);
 export async function listWithdrawalsQueue(
-  query: AdminQueueQuery = {}
+  query: AdminQueueQuery = {},
 ): Promise<AdminPage<WithdrawalRequest>> {
-  try {
-    return adminMock.listWithdrawalsQueue(query);
-  } catch {
-    const raw: WithdrawalRequest[] =
-      typeof window !== "undefined"
-        ? JSON.parse(localStorage.getItem("sb2_withdrawal_requests") || "[]")
-        : [];
-    let items = [...raw];
-    if (query.search) {
-      const s = query.search.toLowerCase();
-      items = items.filter(
-        (w) =>
-          w.id.toLowerCase().includes(s) ||
-          w.userName.toLowerCase().includes(s) ||
-          w.userId.toLowerCase().includes(s) ||
-          (w.cardDetails && w.cardDetails.toLowerCase().includes(s))
-      );
-    }
-    if (query.status && query.status !== "all" && query.status !== "_all") {
-      items = items.filter((w) => w.status === query.status);
-    }
-    items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    const page = query.page ?? 1;
-    const perPage = query.perPage ?? 10;
-    const total = items.length;
-    const totalPages = Math.max(1, Math.ceil(total / perPage));
-    const pagedItems = items.slice((page - 1) * perPage, page * perPage);
-
-    const facets: Record<string, number> = {
-      _all: raw.length,
-      kutilmoqda: raw.filter((w) => w.status === "kutilmoqda").length,
-      korib_chiqilmoqda: raw.filter((w) => w.status === "korib_chiqilmoqda").length,
-      tasdiqlangan: raw.filter((w) => w.status === "tasdiqlangan").length,
-      rad_etilgan: raw.filter((w) => w.status === "rad_etilgan").length,
-    };
-
-    return {
-      items: pagedItems,
-      page,
-      perPage,
-      total,
-      totalPages,
-      facets,
-    };
-  }
+  const res = await staffListPayouts({
+    page: query.page,
+    perPage: query.perPage,
+    status: query.status && query.status !== "all" && query.status !== "_all" ? query.status : undefined,
+  });
+  const items: WithdrawalRequest[] = res.items.map((p) => ({
+    id: p.id,
+    userId: p.sellerId,
+    userName: p.sellerName || p.sellerPhone || p.sellerId,
+    userRole: "mutaxassis",
+    source: "earnings",
+    amount: p.amount,
+    currency: "UZS",
+    payoutMethod: "card",
+    cardDetails: p.destinationReference,
+    status:
+      p.status === "SUCCEEDED"
+        ? "tasdiqlangan"
+        : p.status === "FAILED"
+          ? "rad_etilgan"
+          : p.status === "PROCESSING"
+            ? "korib_chiqilmoqda"
+            : "kutilmoqda",
+    payoutStatus:
+      p.status === "SUCCEEDED"
+        ? "paid"
+        : p.status === "FAILED"
+          ? "payout_failed"
+          : p.status === "PROCESSING"
+            ? "payout_processing"
+            : "payout_pending",
+    payoutReference: p.bankOperationRef || p.destinationReference,
+    createdAt: p.createdAt,
+    processedAt: p.succeededAt || p.failedAt || undefined,
+    processedBy: p.processedByStaffId || undefined,
+    rejectionReason: p.failureReason || undefined,
+  }));
+  return {
+    items,
+    page: res.page,
+    perPage: res.perPage,
+    total: res.total,
+    totalPages: res.totalPages,
+    facets: { _all: res.total },
+  };
 }
 export const listTransactionsQueue: Asyncified<typeof adminMock.listTransactionsQueue> = mockAsync(adminMock.listTransactionsQueue);
 
@@ -1077,11 +1077,72 @@ export interface StaffRefund {
 export interface StaffPayout {
   id: string;
   sellerId: string;
+  sellerName?: string | null;
+  sellerPhone?: string | null;
   status: string;
   amount: number;
   currency: string;
   destinationReference: string;
+  bankOperationRef?: string | null;
+  bankTransferredAt?: string | null;
+  transferredAmount?: number | null;
+  failureReason?: string | null;
+  processedByStaffId?: string | null;
+  processingAt?: string | null;
+  succeededAt?: string | null;
+  failedAt?: string | null;
   createdAt: string;
+  corrections?: Array<{
+    id: string;
+    staffId: string;
+    previousBankRef?: string | null;
+    newBankRef?: string | null;
+    previousTransferredAt?: string | null;
+    newTransferredAt?: string | null;
+    reason: string;
+    createdAt: string;
+  }>;
+}
+export interface StaffBankProof {
+  id: string;
+  contractId: string;
+  paymentId?: string | null;
+  buyerId: string;
+  paymentPurposeCode: string;
+  declaredAmount: number;
+  receivedAmount?: number | null;
+  mismatchAmount: number;
+  bankOperationRef?: string | null;
+  receiptFileUrl?: string | null;
+  receiptNote?: string | null;
+  status: "PENDING_REVIEW" | "UNDERPAID" | "OVERPAID_REVIEW" | "APPROVED" | "REJECTED";
+  rejectionReason?: string | null;
+  reviewedByStaffId?: string | null;
+  reviewedAt?: string | null;
+  createdAt: string;
+  contractTitle?: string | null;
+  contractAgreedAmount?: number;
+  buyerName?: string | null;
+}
+export interface StaffSpecialistPayoutSummary {
+  sellerId: string;
+  sellerName: string;
+  sellerPhone: string;
+  grossTotal: number;
+  commissionTotal: number;
+  netTotal: number;
+  reservedBalance: number;
+  paidTotal: number;
+  availableBalance: number;
+  contracts: Array<{
+    contractId: string;
+    title: string;
+    status: string;
+    grossAmount: number;
+    commissionRateBps: number;
+    commissionAmount: number;
+    netAmount: number;
+  }>;
 }
 export async function staffListPayments(query: { page?: number; perPage?: number; status?: string }): Promise<Page<StaffPayment>> {
   try {
@@ -1090,9 +1151,43 @@ export async function staffListPayments(query: { page?: number; perPage?: number
     throw normalizeApiError(error);
   }
 }
-export async function staffListRefunds(query: { page?: number; perPage?: number; status?: string }): Promise<Page<StaffRefund>> {
+export async function staffListBankProofs(query: { page?: number; perPage?: number; status?: string }): Promise<Page<StaffBankProof>> {
+  try {
+    return await staffHttp(`/staff/payments/bank-proofs${staffToQuery(query)}`);
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+export async function staffVerifyBankProof(
+  id: string,
+  body: { receivedAmount: number; bankOperationRef: string; allowOverpaymentSurplus?: boolean; note?: string },
+): Promise<StaffBankProof> {
+  try {
+    return await staffHttp(`/staff/payments/bank-proofs/${id}/verify`, { method: "POST", body });
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+export async function staffRejectBankProof(id: string, reason: string): Promise<StaffBankProof> {
+  try {
+    return await staffHttp(`/staff/payments/bank-proofs/${id}/reject`, { method: "POST", body: { reason } });
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+export async function staffListRefunds(query: { page?: number; perPage?: number; status?: string }): Promise<Page<StaffRefund & { bankOperationRef?: string | null; bankReturnedAt?: string | null; provider?: string }>> {
   try {
     return await staffHttp(`/staff/refunds${staffToQuery(query)}`);
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+export async function staffConfirmManualBankRefund(
+  id: string,
+  body: { bankOperationRef: string; bankReturnedAt?: string; note?: string },
+): Promise<StaffRefund> {
+  try {
+    return await staffHttp(`/staff/refunds/${id}/confirm-bank-return`, { method: "POST", body });
   } catch (error) {
     throw normalizeApiError(error);
   }
@@ -1111,6 +1206,47 @@ export async function staffCreateRefund(contractId: string, reason: string): Pro
 export async function staffListPayouts(query: { page?: number; perPage?: number; status?: string }): Promise<Page<StaffPayout>> {
   try {
     return await staffHttp(`/staff/payouts${staffToQuery(query)}`);
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+export async function staffListSpecialistsPayoutSummary(): Promise<StaffSpecialistPayoutSummary[]> {
+  try {
+    return await staffHttp(`/staff/payouts/specialists`);
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+export async function staffStartPayoutProcessing(id: string): Promise<StaffPayout> {
+  try {
+    return await staffHttp(`/staff/payouts/${id}/start-processing`, { method: "POST" });
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+export async function staffMarkPayoutPaid(
+  id: string,
+  body: { bankOperationRef: string; transferredAmount: number; bankTransferredAt?: string; note?: string },
+): Promise<StaffPayout> {
+  try {
+    return await staffHttp(`/staff/payouts/${id}/mark-paid`, { method: "POST", body });
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+export async function staffRejectPayout(id: string, reason: string): Promise<StaffPayout> {
+  try {
+    return await staffHttp(`/staff/payouts/${id}/reject`, { method: "POST", body: { reason } });
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+export async function staffCorrectPayout(
+  id: string,
+  body: { bankOperationRef?: string; bankTransferredAt?: string; reason: string },
+): Promise<StaffPayout> {
+  try {
+    return await staffHttp(`/staff/payouts/${id}/correct`, { method: "POST", body });
   } catch (error) {
     throw normalizeApiError(error);
   }
@@ -1621,14 +1757,8 @@ export async function closeTicket(ticketId: string, note?: string): Promise<void
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function approveWithdrawal(_requestId: string): Promise<void> {
-  throw new Error("PAYOUTS_DISABLED: Haqiqiy pul yechish (payout) provayderi ulanmaguncha chiqish to‘lovlari xavfsiz o‘chirilgan.");
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function rejectWithdrawal(_requestId: string, _reason?: string): Promise<void> {
-  throw new Error("PAYOUTS_DISABLED: Haqiqiy pul yechish (payout) provayderi ulanmaguncha chiqish to‘lovlari xavfsiz o‘chirilgan.");
+export async function rejectWithdrawal(requestId: string, reason = "Admin tomonidan rad etildi"): Promise<void> {
+  await staffRejectPayout(requestId, reason);
 }
 export const reviewWithdrawal: Asyncified<typeof adminMock.reviewWithdrawal> = mockAsync(adminMock.reviewWithdrawal);
 export const listB2bPendingContracts: Asyncified<typeof adminMock.listB2bPendingContracts> = mockAsync(adminMock.listB2bPendingContracts);

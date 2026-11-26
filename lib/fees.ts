@@ -4,7 +4,7 @@
  * bosqichdan ushlanadi. Bosqich qabul qilinmasa — hech kim hech narsa to'lamaydi.
  */
 
-export const PLATFORM_FEE_PERCENT = 5;
+export const PLATFORM_FEE_PERCENT = 10;
 
 /** Public default for quotes only. Existing contracts use their server snapshot. */
 export function getPlatformFeePercent(): number {

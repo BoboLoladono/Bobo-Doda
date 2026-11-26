@@ -571,6 +571,8 @@ model User {
   payments           Payment[]
   ledgerAccounts     LedgerAccount[]
   payouts            Payout[]
+  payoutDestinations SellerPayoutDestination[]
+  bankTransferProofs BankTransferProof[]
   disputesOpened     Dispute[]
   authGrants         AuthGrant[]
   kycVerification    KycVerification?
@@ -1093,15 +1095,22 @@ model Contract {
   /// UTC. Server mahalliy vaqtiga bog'lanmaydi (barcha vaqt kabi Timestamptz).
   deadline DateTime @db.Timestamptz(6)
 
+  deliverableSummary String?
+  acceptanceCriteria String?
+  revisionsIncluded  Int       @default(2)
+  buyerConfirmedAt   DateTime? @db.Timestamptz(6)
+  sellerConfirmedAt  DateTime? @db.Timestamptz(6)
+
   status ContractStatus @default(PENDING_SELLER)
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
   version   Int      @default(0)
 
-  milestones Milestone[]
-  payments   Payment[]
-  refunds    Refund[]
+  milestones         Milestone[]
+  payments           Payment[]
+  bankTransferProofs BankTransferProof[]
+  refunds            Refund[]
   disputes   Dispute[]
   review     Review?
 
@@ -1246,9 +1255,10 @@ model Payment {
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
   version   Int      @default(0)
 
-  events           PaymentProviderEvent[]
-  refunds          Refund[]
-  paymeTransaction PaymeTransaction?
+  events            PaymentProviderEvent[]
+  refunds           Refund[]
+  paymeTransaction  PaymeTransaction?
+  bankTransferProof BankTransferProof?
 
   @@index([contractId, createdAt])
   @@index([payerUserId, createdAt])
@@ -1528,6 +1538,9 @@ model Refund {
   provider         String
   providerRefundId String?
   failureReason    String?
+  bankOperationRef String?      @unique
+  bankReturnedAt   DateTime?    @db.Timestamptz(6)
+  processedByStaffId String?    @db.Uuid
 
   createdAt    DateTime  @default(now()) @db.Timestamptz(6)
   processingAt DateTime? @db.Timestamptz(6)
@@ -1588,11 +1601,18 @@ model Payout {
   amount               BigInt
   currency             String
   destinationReference String
+  destinationId        String?                  @db.Uuid
+  destination          SellerPayoutDestination? @relation(fields: [destinationId], references: [id])
+  destinationSnapshot  Json?
 
-  status           PayoutStatus @default(PENDING)
-  provider         String
-  providerPayoutId String?
-  failureReason    String?
+  status             PayoutStatus @default(PENDING)
+  provider           String
+  providerPayoutId   String?
+  failureReason      String?
+  bankOperationRef   String?      @unique
+  bankTransferredAt  DateTime?    @db.Timestamptz(6)
+  transferredAmount  BigInt?
+  processedByStaffId String?      @db.Uuid
 
   createdAt    DateTime  @default(now()) @db.Timestamptz(6)
   processingAt DateTime? @db.Timestamptz(6)
@@ -1601,7 +1621,8 @@ model Payout {
   updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
   version      Int       @default(0)
 
-  events PayoutProviderEvent[]
+  events      PayoutProviderEvent[]
+  corrections PayoutCorrection[]
 
   @@index([sellerId, createdAt])
   @@index([status, createdAt])
@@ -2106,4 +2127,86 @@ model Review {
   @@index([targetId, status])
   @@index([authorId])
   @@map("reviews")
+}
+
+// ── First Release: Manual Bank Funding, Payout Destinations & Corrections ───
+
+enum BankTransferProofStatus {
+  PENDING_REVIEW
+  UNDERPAID
+  OVERPAID_REVIEW
+  APPROVED
+  REJECTED
+}
+
+model BankTransferProof {
+  id                 String                  @id @db.Uuid
+  contractId         String                  @db.Uuid
+  contract           Contract                @relation(fields: [contractId], references: [id])
+  paymentId          String?                 @unique @db.Uuid
+  payment            Payment?                @relation(fields: [paymentId], references: [id])
+  buyerId            String                  @db.Uuid
+  buyer              User                    @relation(fields: [buyerId], references: [id])
+  paymentPurposeCode String
+  declaredAmount     BigInt
+  receivedAmount     BigInt?
+  mismatchAmount     BigInt                  @default(0)
+  bankOperationRef   String?                 @unique
+  receiptFileUrl     String?
+  receiptNote        String?
+  status             BankTransferProofStatus @default(PENDING_REVIEW)
+  rejectionReason    String?
+  reviewedByStaffId  String?                 @db.Uuid
+  reviewedAt         DateTime?               @db.Timestamptz(6)
+  createdAt          DateTime                @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime                @updatedAt @db.Timestamptz(6)
+
+  @@index([contractId, createdAt])
+  @@index([status, createdAt])
+  @@index([buyerId, createdAt])
+  @@map("bank_transfer_proofs")
+}
+
+enum PayoutDestinationType {
+  BANK_CARD
+  BANK_ACCOUNT
+}
+
+model SellerPayoutDestination {
+  id            String                @id @db.Uuid
+  sellerId      String                @db.Uuid
+  seller        User                  @relation(fields: [sellerId], references: [id])
+  type          PayoutDestinationType
+  providerLabel String
+  maskedValue   String
+  holderName    String
+  bankName      String?
+  mfo           String?
+  isDefault     Boolean               @default(false)
+  isVerified    Boolean               @default(true)
+  deletedAt     DateTime?             @db.Timestamptz(6)
+  createdAt     DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime              @updatedAt @db.Timestamptz(6)
+
+  payouts Payout[]
+
+  @@index([sellerId, deletedAt, isDefault])
+  @@map("seller_payout_destinations")
+}
+
+/// Append-only audit correction log when staff corrects an erroneous manual payout entry.
+model PayoutCorrection {
+  id                    String    @id @db.Uuid
+  payoutId              String    @db.Uuid
+  payout                Payout    @relation(fields: [payoutId], references: [id])
+  staffId               String    @db.Uuid
+  previousBankRef       String?
+  newBankRef            String?
+  previousTransferredAt DateTime? @db.Timestamptz(6)
+  newTransferredAt      DateTime? @db.Timestamptz(6)
+  reason                String
+  createdAt             DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([payoutId, createdAt])
+  @@map("payout_corrections")
 }

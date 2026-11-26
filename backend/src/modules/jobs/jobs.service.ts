@@ -406,7 +406,8 @@ export class JobsService {
     dto?: HireProposalDto,
     actor?: AuditActor,
   ): Promise<Record<string, unknown>> {
-    return this.prisma.$transaction(async (tx) => {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
       // 1. Concurrency lock on proposal
       await tx.$queryRaw`SELECT id FROM job_proposals WHERE id = ${proposalId} FOR UPDATE`;
       const row = await tx.jobProposal.findUnique({
@@ -436,6 +437,29 @@ export class JobsService {
       }
       if (row.job.status !== JobStatus.OPEN) {
         throw new DomainError('JOB_CLOSED', "Yopilgan e'longa mutaxassisni yollab bo‘lmaydi");
+      }
+      const existingActiveForJob = await tx.contract.findFirst({
+        where: {
+          jobId: row.jobId,
+          status: { in: ['PENDING_SELLER', 'ACTIVE', 'COMPLETED'] },
+        },
+        select: { id: true, proposalId: true },
+      });
+      if (existingActiveForJob) {
+        if (existingActiveForJob.proposalId === proposalId) {
+          const existing = await tx.contract.findUniqueOrThrow({
+            where: { id: existingActiveForJob.id },
+            include: {
+              milestones: { orderBy: { position: 'asc' } },
+              payments: { select: { id: true, status: true, succeededAt: true, createdAt: true } },
+            },
+          });
+          return toContractResponseDto(existing) as unknown as Record<string, unknown>;
+        }
+        throw new DomainError(
+          'CONTRACT_IN_PROGRESS_FOR_JOB',
+          "Bu e'lon bo‘yicha boshqa nomzod bilan kelishuv allaqachon yuborilgan yoki faol",
+        );
       }
       if (row.sellerId === buyerId) {
         throw new DomainError('SELF_PURCHASE', "O‘z e'loningizga o‘zingizni yollay olmaysiz");
@@ -499,7 +523,7 @@ export class JobsService {
         deadline = latestMilestoneDue;
       }
 
-      // 4. Create Contract with sourceType = 'JOB'
+      // 4. Create Contract with sourceType = 'JOB' (terms snapshot; job remains OPEN until seller confirms)
       await tx.contract.create({
         data: {
           id: contractId,
@@ -518,6 +542,13 @@ export class JobsService {
           platformFeeRateBpsSnapshot: PLATFORM_FEE_RATE_BPS,
           platformFeeAmountSnapshot: feeAmount,
           deadline,
+          deliverableSummary: dto?.deliverableSummary?.trim() || row.job.description,
+          acceptanceCriteria:
+            dto?.acceptanceCriteria?.trim() ||
+            'Kelishilgan barcha bosqich natijalari topshirilgan va talablarga mos bo‘lishi',
+          revisionsIncluded: dto?.revisionsIncluded ?? 2,
+          buyerConfirmedAt: now,
+          sellerConfirmedAt: null,
           status: 'PENDING_SELLER',
         },
       });
@@ -535,7 +566,7 @@ export class JobsService {
         })),
       });
 
-      // 6. Update Proposal status
+      // 6. Update selected Proposal status; competing proposals and Job stay OPEN until both parties confirm
       await tx.jobProposal.update({
         where: { id: proposalId },
         data: {
@@ -548,66 +579,6 @@ export class JobsService {
           },
         },
       });
-
-      // 7. Enforce User Rule #2 (Same-day conflict cancellation):
-      // If specialist is hired on this day, cancel their other competing open proposals for today
-      const dayStart = new Date(Math.floor((now.getTime() + 5 * 3600_000) / 86400_000) * 86400_000 - 5 * 3600_000);
-      const dayEnd = new Date(dayStart.getTime() + 86400_000);
-
-      const competingProposals = await tx.jobProposal.findMany({
-        where: {
-          sellerId: row.sellerId,
-          id: { not: proposalId },
-          status: 'korib_chiqilmoqda',
-          createdAt: { gte: dayStart, lt: dayEnd },
-        },
-      });
-
-      for (const comp of competingProposals) {
-        await tx.jobProposal.update({
-          where: { id: comp.id },
-          data: {
-            status: 'rad_etilgan',
-            payload: {
-              ...(comp.payload as Record<string, unknown>),
-              status: 'rad_etildi',
-              reason: 'Boshqa ishga yollanganligi sababli bekor qilindi',
-            },
-          },
-        });
-        await tx.job.update({
-          where: { id: comp.jobId },
-          data: { proposalsCount: { decrement: 1 } },
-        });
-      }
-
-      // 8. Close the Job & decline remaining proposals on this job
-      await tx.job.update({
-        where: { id: row.jobId },
-        data: { status: JobStatus.CLOSED },
-      });
-
-      const remainingJobProps = await tx.jobProposal.findMany({
-        where: {
-          jobId: row.jobId,
-          id: { not: proposalId },
-          status: 'korib_chiqilmoqda',
-        },
-      });
-
-      for (const p of remainingJobProps) {
-        await tx.jobProposal.update({
-          where: { id: p.id },
-          data: {
-            status: 'rad_etilgan',
-            payload: {
-              ...(p.payload as Record<string, unknown>),
-              status: 'rad_etildi',
-              reason: 'Boshqa nomzod tanlandi',
-            },
-          },
-        });
-      }
 
       // 9. Audit and Outbox
       const resolvedActor: AuditActor = actor ?? {
@@ -654,5 +625,14 @@ export class JobsService {
 
       return toContractResponseDto(createdContract) as unknown as Record<string, unknown>;
     });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new DomainError(
+          'CONTRACT_IN_PROGRESS_FOR_JOB',
+          "Bu e'lon bo‘yicha boshqa nomzod bilan kelishuv allaqachon yuborilgan yoki faol",
+        );
+      }
+      throw err;
+    }
   }
 }

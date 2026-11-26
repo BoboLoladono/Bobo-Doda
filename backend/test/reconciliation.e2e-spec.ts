@@ -179,6 +179,7 @@ describe('Reconciliation (e2e)', () => {
     await request(app!.getHttpServer())
       .post(`/api/v1/seller/contracts/${fixture.contractId}/milestones/${milestone.id}/submit`)
       .set('Authorization', `Bearer ${fixture.seller.accessToken}`)
+      .send({ message: 'Reconciliation submit deliverable' })
       .expect(200);
     await request(app!.getHttpServer())
       .post(`/api/v1/me/contracts/${fixture.contractId}/milestones/${milestone.id}/approve`)

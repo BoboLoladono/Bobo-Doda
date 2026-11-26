@@ -10,11 +10,13 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { RatingStars } from "@/components/ui/RatingStars";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { TrustBadge } from "@/components/ui/TrustBadge";
 import { useToast } from "@/components/ui/Toast";
 import { catalogService, jobsService, proposalsService } from "@/lib/api";
+import { PLATFORM_FEE_PERCENT, platformFee } from "@/lib/fees";
 import type { Job, Proposal, Specialist } from "@/lib/types";
 import { formatMoney } from "@/lib/format";
 import { useT } from "@/lib/i18n";
@@ -44,6 +46,9 @@ export default function YollashPage() {
   const [proposal, setProposal] = useState<Proposal | null | undefined>(undefined);
   const [spec, setSpec] = useState<Specialist | null>(null);
   const [rows, setRows] = useState<MilestoneRow[]>([]);
+  const [deliverableSummary, setDeliverableSummary] = useState("");
+  const [acceptanceCriteria, setAcceptanceCriteria] = useState("");
+  const [revisionsIncluded, setRevisionsIncluded] = useState("2");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [hiring, setHiring] = useState(false);
   const [loadError, setLoadError] = useState<unknown>(null);
@@ -65,6 +70,14 @@ export default function YollashPage() {
       .then(async ([foundJob, found]) => {
         setJob(foundJob);
         setProposal(found);
+        if (foundJob) {
+          setDeliverableSummary((prev) => prev || foundJob.description);
+          setAcceptanceCriteria(
+            (prev) =>
+              prev ||
+              "Kelishilgan barcha bosqich natijalari topshirilgan va talablarga to‘liq mos bo‘lishi"
+          );
+        }
         if (found) {
           const specData = await catalogService.getSpecialist(found.sellerId).catch(() => null);
           setSpec(specData);
@@ -126,7 +139,12 @@ export default function YollashPage() {
           description: "",
           amount: Number(r.amount),
           dueDate: new Date(r.dueDate).toISOString(),
-        }))
+        })),
+        {
+          deliverableSummary: deliverableSummary.trim() || undefined,
+          acceptanceCriteria: acceptanceCriteria.trim() || undefined,
+          revisionsIncluded: Math.max(0, Math.min(20, Number(revisionsIncluded) || 2)),
+        }
       );
       toast(t("hire.done"));
       router.push(`/xaridor/contracts/${contract.id}`);
@@ -273,6 +291,41 @@ export default function YollashPage() {
           <span className="font-heading text-lg font-bold text-ink">
             {formatMoney(total, lang)}
           </span>
+        </div>
+
+        {/* Kelishuv shartlari snapshot (ikkala tomon tasdiqlashidan oldin ko'rinadi) */}
+        <div className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
+          <h3 className="font-heading text-sm font-bold text-ink">Kelishuv shartlari</h3>
+          <Textarea
+            label="Topshiriladigan natija tavsifi"
+            value={deliverableSummary}
+            onChange={(e) => setDeliverableSummary(e.target.value)}
+            rows={3}
+            placeholder="Masalan: Tayyor web ilova kodi, deploy qo'llanmasi..."
+          />
+          <Textarea
+            label="Qabul qilish mezoni"
+            value={acceptanceCriteria}
+            onChange={(e) => setAcceptanceCriteria(e.target.value)}
+            rows={2}
+            placeholder="Ish qaysi mezon asosida qabul qilinadi?"
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input
+              type="number"
+              min={0}
+              max={20}
+              label="Kiritilgan tuzatishlar soni"
+              value={revisionsIncluded}
+              onChange={(e) => setRevisionsIncluded(e.target.value)}
+            />
+            <div className="rounded-input border border-line bg-card p-3 text-xs">
+              <p className="text-muted">Platforma komissiyasi ({PLATFORM_FEE_PERCENT}%):</p>
+              <p className="mt-1 font-semibold text-ink">
+                {formatMoney(platformFee(total, PLATFORM_FEE_PERCENT * 100), lang)} (mutaxassis ulushidan ushlanadi; xaridor uchun 0%)
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Bosqichlar jami kelishilgan taklif summasidan farq qilsa

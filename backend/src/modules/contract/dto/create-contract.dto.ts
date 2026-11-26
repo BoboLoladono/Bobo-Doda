@@ -69,6 +69,25 @@ export class CreateContractDto {
   @IsDateString()
   deadline!: string;
 
+  @ApiPropertyOptional({ description: 'Topshiriladigan natija tavsifi', maxLength: 2000 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  deliverableSummary?: string;
+
+  @ApiPropertyOptional({ description: 'Qabul mezoni', maxLength: 2000 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  acceptanceCriteria?: string;
+
+  @ApiPropertyOptional({ description: 'Kiritilgan tuzatishlar soni', minimum: 0, maximum: 20 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(20)
+  revisionsIncluded?: number;
+
   @ApiProperty({ type: [CreateMilestoneInputDto] })
   @IsArray()
   @ArrayMinSize(1)

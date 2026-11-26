@@ -118,7 +118,7 @@ export class RefundService {
             amount: payment.amount,
             currency: payment.currency,
             reason,
-            provider: this.provider.name,
+            provider: payment.provider === 'MANUAL_BANK' ? 'MANUAL_BANK' : this.provider.name,
             status: 'PENDING',
           },
         });
@@ -167,6 +167,7 @@ export class RefundService {
       actor: AuditActor;
     },
   ): Promise<Refund> {
+    const paymentRow = await tx.payment.findUnique({ where: { id: params.paymentId }, select: { provider: true } });
     const created = await tx.refund.create({
       data: {
         id: params.id,
@@ -177,7 +178,7 @@ export class RefundService {
         amount: params.amount,
         currency: params.currency,
         reason: `Dispute resolution — dispute ${params.disputeId}`,
-        provider: this.provider.name,
+        provider: paymentRow?.provider === 'MANUAL_BANK' ? 'MANUAL_BANK' : this.provider.name,
         status: 'PENDING',
       },
     });
@@ -203,6 +204,30 @@ export class RefundService {
    * qiladi (bo'lim 25: "mavjud Refund infratuzilmasi qayta ishlatiladi").
    */
   async callProviderAndAdvance(refund: Refund, payment: Payment): Promise<Refund> {
+    if (refund.provider === 'MANUAL_BANK') {
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const cas = await tx.refund.updateMany({
+          where: { id: refund.id, status: 'PENDING' },
+          data: { status: 'PROCESSING', processingAt: new Date() },
+        });
+        if (cas.count === 0) return null;
+        await this.audit.record(
+          {
+            actor: SYSTEM_ACTOR,
+            action: 'REFUND_PROCESSING',
+            resourceType: 'REFUND',
+            resourceId: refund.id,
+            contextId: refund.contractId,
+            previousState: { status: 'PENDING' },
+            newState: { status: 'PROCESSING', provider: 'MANUAL_BANK' },
+          },
+          tx,
+        );
+        return tx.refund.findUniqueOrThrow({ where: { id: refund.id } });
+      });
+      return updated ?? (await this.prisma.refund.findUniqueOrThrow({ where: { id: refund.id } }));
+    }
+
     let result;
     try {
       result = await this.provider.refundPayment({
@@ -499,6 +524,66 @@ export class RefundService {
     status: 'SUCCEEDED' | 'FAILED',
   ): Promise<RefundEventOutcome> {
     return this.applyTerminalStatus(tx, refund, status, 'RECONCILIATION');
+  }
+
+  async confirmManualBankReturn(
+    refundId: string,
+    staffId: string,
+    input: { bankOperationRef: string; bankReturnedAt?: string; note?: string },
+    actor: AuditActor,
+  ): Promise<Refund> {
+    const ref = input.bankOperationRef.trim();
+    const returnedAt = input.bankReturnedAt ? new Date(input.bankReturnedAt) : new Date();
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM refunds WHERE id = ${refundId}::uuid FOR UPDATE`;
+        const refund = await tx.refund.findUnique({ where: { id: refundId } });
+        if (!refund) throw new NotFoundError('Refund topilmadi', 'REFUND_NOT_FOUND');
+        if (refund.provider !== 'MANUAL_BANK') {
+          throw new DomainError('INVALID_TRANSITION', 'Faqat qo‘lda bank o‘tkazmasi orqali qaytarish uchun');
+        }
+        if (!REFUND_NON_TERMINAL_STATUSES.includes(refund.status)) {
+          throw new DomainError('INVALID_TRANSITION', 'Bu qaytarish allaqachon yakunlangan');
+        }
+        const dup = await tx.refund.findFirst({
+          where: { bankOperationRef: ref, id: { not: refundId } },
+          select: { id: true },
+        });
+        if (dup) {
+          throw new DomainError('DUPLICATE_BANK_REF', `Bank hujjat raqami (${ref}) allaqachon ishlatilgan`);
+        }
+
+        const outcome = await this.applyTerminalStatus(tx, refund, 'SUCCEEDED', 'RECONCILIATION');
+        if (outcome === 'CONFLICT') {
+          throw new DomainError('INVALID_TRANSITION', 'Refund holati ziddiyatli');
+        }
+        const updated = await tx.refund.update({
+          where: { id: refundId },
+          data: {
+            bankOperationRef: ref,
+            bankReturnedAt: returnedAt,
+            processedByStaffId: staffId,
+          },
+        });
+        await this.audit.record(
+          {
+            actor,
+            action: 'MANUAL_BANK_REFUND_CONFIRMED',
+            resourceType: 'REFUND',
+            resourceId: refundId,
+            contextId: refund.contractId,
+            newState: { bankOperationRef: ref, bankReturnedAt: returnedAt.toISOString(), note: input.note ?? null },
+          },
+          tx,
+        );
+        return updated;
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === PRISMA_UNIQUE_VIOLATION) {
+        throw new DomainError('DUPLICATE_BANK_REF', `Bank hujjat raqami (${ref}) allaqachon ishlatilgan`);
+      }
+      throw err;
+    }
   }
 
   private async recordContradiction(

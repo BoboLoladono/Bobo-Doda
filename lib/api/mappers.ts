@@ -57,109 +57,7 @@ export function mapSellerApplicationStatus(status: RealSellerApplication["status
   }
 }
 
-const SEED_BUYER_PROFILES: Record<string, Partial<Model.User>> = {
-  "+998901110001": {
-    companyName: "Tech Corp MCHJ",
-    industry: "Axborot texnologiyalari",
-    location: "Toshkent shahri",
-    bio: "IT, mobil ilovalar va backend tizimlar buyurtmachisi. Tezkor va sifatli ijrochilarni qidiramiz.",
-  },
-  "+998901110002": {
-    companyName: "Creative Branding MCHJ",
-    industry: "Marketing va Reklama",
-    location: "Samarqand",
-    bio: "Brending, grafika, video montaj va kontent tayyorlash bo'yicha loyihalar beruvchi.",
-  },
-  "+998901110003": {
-    companyName: "Silk Road E-Commerce",
-    industry: "Elektron tijorat",
-    location: "Buxoro",
-    bio: "Internet do'konlar, to'lov tizimlari va CRM integratsiyalari uchun buyurtmalar beruvchi.",
-  },
-};
-
-const SEED_SPECIALIST_PROFILES: Record<string, Partial<Model.SellerProfile>> = {
-  "+998901110004": {
-    headline: "Jasur Dasturchi (Full-Stack)",
-    bio: "Senior Full-stack dasturchi (Node.js, NestJS, Next.js, PostgreSQL). 6+ yillik tijoriy tajriba. Murakkab veb-saytlar va APIlar ishlab chiqaman.",
-    skills: ["Node.js", "NestJS", "Next.js", "TypeScript", "PostgreSQL", "React"],
-    categories: ["dasturlash"],
-    location: "Toshkent shahri",
-    languages: [
-      { name: "O'zbek", level: "native" },
-      { name: "Rus", level: "fluent" },
-      { name: "Ingliz", level: "intermediate" },
-    ],
-    portfolio: [
-      {
-        id: "port-1",
-        title: "E-Commerce Veb-sayt va API",
-        description: "Next.js va NestJS asosidagi tezkor do'kon",
-        image: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='250' viewBox='0 0 400 250'><rect width='400' height='250' fill='%231e293b'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23ffffff' font-family='sans-serif' font-size='20'>Full-Stack Veb Platforma</text></svg>",
-        category: "dasturlash",
-      },
-    ],
-    responseTimeHours: 1,
-    rating: 0,
-    reviewCount: 0,
-    completedContracts: 0,
-    badge: "yangi",
-  },
-  "+998901110005": {
-    headline: "Diyora Dizayner (UI/UX Pro)",
-    bio: "Senior UI/UX dizayner va Art Director. Figma, mobil ilovalar, veb platformalar va brend identikasi dizayni bo'yicha 5+ yillik tajriba.",
-    skills: ["Figma", "UI/UX", "Mobile Design", "Brand Identity", "Web Design"],
-    categories: ["dizayn"],
-    location: "Toshkent shahri",
-    languages: [
-      { name: "O'zbek", level: "native" },
-      { name: "Rus", level: "fluent" },
-      { name: "Ingliz", level: "fluent" },
-    ],
-    portfolio: [
-      {
-        id: "port-2",
-        title: "Fintech Mobil Ilova UI/UX",
-        description: "Zamonaviy bank ilovasi dizayni va interaktiv prototip",
-        image: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='250' viewBox='0 0 400 250'><rect width='400' height='250' fill='%230f172a'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2338bdf8' font-family='sans-serif' font-size='20'>Fintech UI/UX</text></svg>",
-        category: "dizayn",
-      },
-    ],
-    responseTimeHours: 2,
-    rating: 0,
-    reviewCount: 0,
-    completedContracts: 0,
-    badge: "yangi",
-  },
-  "+998901110006": {
-    headline: "Sardor Marketolog (Target & SMM)",
-    bio: "Raqamli marketing, maqsadli (target) reklama, kontekst reklama va SMM mutaxassisi. Savdo hajmini 3 barobargacha oshirish bo'yicha keyslar mavjud.",
-    skills: ["Target Reklama", "SMM", "Instagram", "Facebook Ads", "Google Ads"],
-    categories: ["marketing"],
-    location: "Farg'ona",
-    languages: [
-      { name: "O'zbek", level: "native" },
-      { name: "Rus", level: "intermediate" },
-    ],
-    portfolio: [
-      {
-        id: "port-3",
-        title: "Kiyim-kechak brendi uchun SMM kampaniyasi",
-        description: "3 oyda 50,000 obunachi va 2x sotuv",
-        image: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='250' viewBox='0 0 400 250'><rect width='400' height='250' fill='%23312e81'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23a5b4fc' font-family='sans-serif' font-size='20'>Target &amp; SMM Case</text></svg>",
-        category: "marketing",
-      },
-    ],
-    responseTimeHours: 1,
-    rating: 0,
-    reviewCount: 0,
-    completedContracts: 0,
-    badge: "yangi",
-  },
-};
-
 export function mapUser(me: RealMe): Model.User {
-  const seedBuyer = SEED_BUYER_PROFILES[me.phone];
   return {
     id: me.id,
     phone: me.phone,
@@ -171,40 +69,28 @@ export function mapUser(me: RealMe): Model.User {
     verified: true,
     email: asStr(me.email),
     avatarUrl: asStr(me.avatarKey),
-    companyName: seedBuyer?.companyName,
-    industry: seedBuyer?.industry,
-    location: seedBuyer?.location,
-    bio: seedBuyer?.bio,
   };
 }
 
-/**
- * Real backend'da boy sotuvchi profili (bio/skills/portfolio/rating/
- * reviewCount) ma'lumotlar bazasida saqlanmagan hollarda ham test va
- * haqiqiy hisoblarga tayyor to'liq profil ma'lumotlarini taqdim etadi.
- */
 export function mapSellerProfile(me: RealMe, application?: RealSellerApplication | null): Model.SellerProfile {
-  const seed = SEED_SPECIALIST_PROFILES[me.phone];
-  const headline = application?.displayName ?? seed?.headline ?? asStr(me.fullName) ?? "Professional mutaxassis";
-  const bio = asStr(application?.description) ?? seed?.bio ?? "Bobololadono platformasidagi tasdiqlangan mutaxassis.";
-  const skills = seed?.skills ?? (headline.toLowerCase().includes("dizayn") ? ["Figma", "UI/UX", "Grafik Dizayn"] : ["Node.js", "TypeScript", "Veb Dasturlash"]);
-  const categories = seed?.categories ?? (headline.toLowerCase().includes("dizayn") ? ["dizayn"] : ["dasturlash"]);
+  const headline = asStr(application?.displayName) ?? (asStr(me.fullName) || "Mutaxassis");
+  const bio = asStr(application?.description) ?? "";
 
   return {
     userId: me.id,
     headline,
     bio,
-    skills,
-    categories,
+    skills: [],
+    categories: [],
     avatarUrl: asStr(me.avatarKey),
-    location: seed?.location ?? "Toshkent shahri",
-    languages: seed?.languages ?? [{ name: "O'zbek", level: "native" }],
-    portfolio: seed?.portfolio ?? [],
-    responseTimeHours: seed?.responseTimeHours ?? 1,
-    rating: seed?.rating ?? 0,
-    reviewCount: seed?.reviewCount ?? 0,
-    completedContracts: seed?.completedContracts ?? 0,
-    badge: seed?.badge ?? "yangi",
+    location: "",
+    languages: [{ name: "O'zbek", level: "native" }],
+    portfolio: [],
+    responseTimeHours: 0,
+    rating: 0,
+    reviewCount: 0,
+    completedContracts: 0,
+    badge: "yangi",
     memberSince: me.createdAt,
     available: true,
     identityVerified: me.verified,
@@ -298,6 +184,33 @@ export function mapContract(
       ? "imzolangan"
       : mapContractStatus(c.status);
 
+  const latestProof = c.latestBankProof
+    ? {
+        id: c.latestBankProof.id,
+        contractId: c.id,
+        paymentPurposeCode: c.latestBankProof.paymentPurposeCode,
+        declaredAmount: c.latestBankProof.declaredAmount,
+        receivedAmount: c.latestBankProof.receivedAmount ?? null,
+        mismatchAmount: c.latestBankProof.mismatchAmount,
+        bankOperationRef: asStr(c.latestBankProof.bankOperationRef) ?? null,
+        receiptFileUrl: asStr(c.latestBankProof.receiptFileUrl) ?? null,
+        receiptNote: asStr(c.latestBankProof.receiptNote) ?? null,
+        status: c.latestBankProof.status as Model.ManualBankProof["status"],
+        rejectionReason: asStr(c.latestBankProof.rejectionReason) ?? null,
+        reviewedAt: asStr(c.latestBankProof.reviewedAt) ?? null,
+        createdAt: c.latestBankProof.createdAt,
+      }
+    : null;
+
+  let paymentStatus: Model.ContractPaymentStatus = "awaiting_payment";
+  if (opts.funded) {
+    paymentStatus = "payment_confirmed";
+  } else if (latestProof?.status === "PENDING_REVIEW" || latestProof?.status === "OVERPAID_REVIEW") {
+    paymentStatus = "pending_verification";
+  } else if (latestProof?.status === "REJECTED" || latestProof?.status === "UNDERPAID") {
+    paymentStatus = "payment_rejected";
+  }
+
   return {
     id: c.id,
     sourceType: c.sourceType === "JOB" ? "taklif" : "xizmat",
@@ -313,9 +226,20 @@ export function mapContract(
     createdAt: c.createdAt,
     paymentMethod: "payme",
     fundedAt: opts.funded ? opts.fundedAt : undefined,
-    cancelReason: c.status === "REJECTED" ? "Mutaxassis taklifni rad etdi" : undefined,
-    sellerAcceptedAt: c.status !== "PENDING_SELLER" ? c.updatedAt : undefined,
+    cancelReason: c.status === "REJECTED" ? "Mutaxassis shartnoma shartlarini rad etdi" : undefined,
+    buyerAcceptedAt: asStr(c.buyerConfirmedAt) ?? c.createdAt,
+    sellerAcceptedAt: asStr(c.sellerConfirmedAt) ?? (c.status !== "PENDING_SELLER" ? c.updatedAt : undefined),
     rawStatus: c.status,
+    deliverableSummary: asStr(c.deliverableSummary),
+    acceptanceCriteria: asStr(c.acceptanceCriteria),
+    revisionsIncluded: c.revisionsIncluded ?? 2,
+    buyerConfirmedAt: asStr(c.buyerConfirmedAt) ?? c.createdAt,
+    sellerConfirmedAt: asStr(c.sellerConfirmedAt),
+    paymentPurposeCode: c.paymentPurposeCode,
+    autoAcceptPaused: c.autoAcceptPaused ?? false,
+    latestBankProof: latestProof,
+    paymentStatus,
+    paymentReference: c.paymentPurposeCode,
   };
 }
 
@@ -340,9 +264,29 @@ export function mapMilestone(m: RealMilestone, funded: boolean, platformFeeRateB
       break;
   }
   const submittedAtStr = asStr(m.submittedAt);
-  const reviewDeadline = submittedAtStr
-    ? new Date(new Date(submittedAtStr).getTime() + 3 * 86400000).toISOString()
-    : undefined;
+  const autoAcceptPaused = Boolean(m.autoAcceptPaused);
+  const reviewDeadline = autoAcceptPaused
+    ? undefined
+    : (asStr(m.reviewDeadline) ??
+      (submittedAtStr ? new Date(new Date(submittedAtStr).getTime() + 72 * 3600000).toISOString() : undefined));
+
+  const submissions: Model.MilestoneSubmissionHistoryItem[] = (m.submissions ?? []).map((s) => ({
+    id: s.id,
+    submittedById: s.submittedById,
+    message: asStr(s.message) ?? null,
+    deliverableUrls: s.deliverableUrls ?? [],
+    createdAt: s.createdAt,
+  }));
+  const revisionRequests: Model.MilestoneRevisionHistoryItem[] = (m.revisionRequests ?? []).map((r) => ({
+    id: r.id,
+    requestedById: r.requestedById,
+    reason: r.reason,
+    createdAt: r.createdAt,
+  }));
+  const latestSub = submissions[0];
+  const latestLink = latestSub?.deliverableUrls?.[0];
+  const latestRev = revisionRequests[0];
+
   return {
     platformFeeRateBps,
     id: m.id,
@@ -355,6 +299,13 @@ export function mapMilestone(m: RealMilestone, funded: boolean, platformFeeRateB
     submittedAt: submittedAtStr,
     reviewDeadline,
     approvedAt: asStr(m.approvedAt),
+    deliverableLink: latestLink,
+    deliverableNote: latestSub?.message ?? undefined,
+    revisionComment: latestRev?.reason,
+    revisionCount: m.revisionCount ?? revisionRequests.length,
+    submissions,
+    revisionRequests,
+    autoAcceptPaused,
   };
 }
 
