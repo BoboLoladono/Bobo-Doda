@@ -8245,7 +8245,9 @@ export interface operations {
     JobsController_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                authorization: string;
+            };
             path: {
                 id: string;
             };
