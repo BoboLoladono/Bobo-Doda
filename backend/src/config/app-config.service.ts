@@ -250,6 +250,10 @@ export class AppConfigService {
     return { provider: this.get('SMS_PROVIDER'), devExposeOtp: this.get('DEV_EXPOSE_OTP') };
   }
 
+  get registrationPaused(): boolean {
+    return this.get('REGISTRATION_PAUSED');
+  }
+
   /** Bosqich 13 — PlayMobile SMS-Broker. `SMS_PROVIDER=PLAYMOBILE` bo'lsa hammasi majburiy (env.schema.ts). */
   get playMobile(): { apiUrl: string | undefined; login: string | undefined; password: string | undefined; sender: string | undefined } {
     return {

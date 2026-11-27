@@ -1,9 +1,11 @@
 import { JobStatus } from '@prisma/client';
-import { NotFoundError } from '@/common/errors/domain-error';
+import { DomainError, NotFoundError } from '@/common/errors/domain-error';
 import type { AuditService } from '@/common/audit/audit.service';
+import type { AppConfigService } from '@/config/app-config.service';
 import type { IdFactory } from '@/common/id/id.factory';
 import type { OutboxService } from '@/common/outbox/outbox.service';
 import type { PrismaService } from '@/infra/prisma/prisma.service';
+import { AuthService } from '@/modules/auth/auth.service';
 import { JobsService } from './jobs.service';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -162,5 +164,29 @@ describe('Demo catalog provenance & closed job visibility', () => {
 
     const bidderView = await service.getByIdOrThrow(jobId, 'seller-bidder');
     expect(bidderView.id).toBe(jobId);
+  });
+
+  it('pauses new registrations with 503 REGISTRATION_PAUSED when REGISTRATION_PAUSED=true', async () => {
+    const config = { registrationPaused: true } as unknown as AppConfigService;
+    const authService = new AuthService(
+      {} as PrismaService,
+      {} as IdFactory,
+      {} as never,
+      {} as never,
+      {} as AuditService,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      config,
+    );
+
+    await expect(authService.requestRegisterOtp('+998901234567')).rejects.toThrow(DomainError);
+    await expect(authService.requestRegisterOtp('+998901234567')).rejects.toMatchObject({
+      code: 'REGISTRATION_PAUSED',
+    });
+    await expect(authService.verifyRegisterOtp('+998901234567', '123456')).rejects.toMatchObject({
+      code: 'REGISTRATION_PAUSED',
+    });
   });
 });

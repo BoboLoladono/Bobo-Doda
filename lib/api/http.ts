@@ -26,6 +26,10 @@ export function setAccessToken(token: string | null): void {
   accessToken = token;
 }
 
+export function hasAccessToken(): boolean {
+  return Boolean(accessToken);
+}
+
 /* ------------------------------------------------------------------------
    Sessiya snapshot — `AuthService.getSession()` SINXRON qolishi shart
    (`contracts.ts` shartnomasi: layout guard'lari har render'da o'qiydi).

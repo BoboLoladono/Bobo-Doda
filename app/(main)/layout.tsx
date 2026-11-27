@@ -8,6 +8,7 @@ import { GuestTopNav } from "@/components/shared/GuestTopNav";
 import { CabinetFooter } from "@/components/shared/CabinetFooter";
 import { SkipLink } from "@/components/shared/SkipLink";
 import { authService } from "@/lib/api";
+import { hasAccessToken } from "@/lib/api/http";
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -19,17 +20,17 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     let active = true;
 
     async function check() {
+      const isMutaxassisRoute = pathname.startsWith("/mutaxassis");
+      const isXaridorRoute = pathname.startsWith("/xaridor");
+      const isProtectedRoute = isMutaxassisRoute || isXaridorRoute;
+
       let session = authService.getSession();
-      if (!session) {
+      if (!session || (isProtectedRoute && !hasAccessToken())) {
         session = await authService.refresh();
         if (!active) return;
       }
 
       setUserRole(session?.role || null);
-      
-      
-      const isMutaxassisRoute = pathname.startsWith("/mutaxassis");
-      const isXaridorRoute = pathname.startsWith("/xaridor");
 
       if (session) {
         // Enforce role-based boundaries

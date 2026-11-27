@@ -257,6 +257,8 @@ export const envSchema = z
     // HAMDA SMS_PROVIDER=CONSOLE HAMDA shu bayroq — uchtasidan BIRI yolg'on
     // bo'lsa ham kod hech qachon javobga chiqmaydi (mustaqil qatlamlar).
     DEV_EXPOSE_OTP: booleanish.default('false'),
+    /** Texnik tozalash vaqtida yangi foydalanuvchi ro'yxatdan o'tishini vaqtincha to'xtatish. */
+    REGISTRATION_PAUSED: booleanish.default('false'),
 
     // ── Outbox notification delivery (Bosqich 10) ───────────────────────
     // Bo'lim 9/10 — PROCESSING holatda "qotib qolgan" qatorni boshqa worker
