@@ -25,6 +25,16 @@ import { formatDate, formatMoney } from "@/lib/format";
 import { PLATFORM_FEE_PERCENT, sellerNet } from "@/lib/fees";
 import { useT } from "@/lib/i18n";
 
+const SAFE_CONTRACT_ID_RE = /^[a-zA-Z0-9_-]{1,100}$/;
+
+function safeContractHref(contractId: string): string {
+  const cleaned = String(contractId ?? "").trim().replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!SAFE_CONTRACT_ID_RE.test(cleaned)) {
+    return "/mutaxassis/contracts";
+  }
+  return `/mutaxassis/contracts/${encodeURIComponent(cleaned)}`;
+}
+
 export default function DaromadPage() {
   const { t, lang } = useT();
   const { toast } = useToast();
@@ -352,7 +362,7 @@ export default function DaromadPage() {
                     key: "title",
                     header: "Shartnoma",
                     render: (c) => (
-                      <Link href={`/mutaxassis/contracts/${c.contractId}`} className="font-medium text-primary hover:underline">
+                      <Link href={safeContractHref(c.contractId)} className="font-medium text-primary hover:underline">
                         {c.title}
                       </Link>
                     ),
@@ -380,7 +390,7 @@ export default function DaromadPage() {
                 ]}
                 renderMobileCard={(c) => (
                   <div className="flex flex-col gap-1 text-xs">
-                    <Link href={`/mutaxassis/contracts/${c.contractId}`} className="font-semibold text-primary">
+                    <Link href={safeContractHref(c.contractId)} className="font-semibold text-primary">
                       {c.title}
                     </Link>
                     <p>Brutto: {formatMoney(c.grossAmount, lang)} − {c.platformFeeRateBps / 100}% = <strong>{formatMoney(c.netAmount, lang)}</strong></p>

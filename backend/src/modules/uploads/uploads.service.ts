@@ -341,11 +341,21 @@ export class UploadsService {
 
     await this.assertCallerCanAccessStoredFile(storedName, caller);
 
-    const filePath = path.join(this.getBaseDir(), storedName);
+    const rootDir = path.resolve(this.getBaseDir());
     let buffer: Buffer;
     try {
+      const entries = await fs.readdir(rootDir);
+      const matchedEntry = entries.find((entry) => entry === storedName);
+      if (!matchedEntry) {
+        throw new NotFoundError('Fayl topilmadi', 'NOT_FOUND');
+      }
+      const filePath = path.resolve(rootDir, matchedEntry);
+      if (!filePath.startsWith(`${rootDir}${path.sep}`)) {
+        throw new NotFoundError('Fayl topilmadi', 'NOT_FOUND');
+      }
       buffer = await fs.readFile(filePath);
-    } catch {
+    } catch (err) {
+      if (err instanceof NotFoundError) throw err;
       throw new NotFoundError('Fayl topilmadi', 'NOT_FOUND');
     }
 
