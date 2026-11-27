@@ -438,20 +438,20 @@ export const usersService: UsersService = {
 function fallbackSellerProfile(userId: string): Model.SellerProfile {
   return {
     userId,
-    headline: "Professional mutaxassis",
-    bio: "Bobololadono platformasidagi tasdiqlangan mutaxassis.",
-    location: "Toshkent",
-    skills: ["Dasturlash", "Dizayn"],
-    categories: ["dasturlash", "dizayn"],
+    headline: "",
+    bio: "",
+    location: "",
+    skills: [],
+    categories: [],
     portfolio: [],
-    languages: [{ name: "O'zbek", level: "native" }],
-    responseTimeHours: 1,
+    languages: [],
+    responseTimeHours: 0,
     available: true,
     rating: 0,
     reviewCount: 0,
     completedContracts: 0,
     badge: "yangi",
-    memberSince: "2026-01-01T00:00:00.000Z",
+    memberSince: "",
   };
 }
 
@@ -474,7 +474,7 @@ export const catalogService: CatalogService = {
                 createdAt: s.createdAt,
                 roleChosen: true,
                 profileDone: true,
-                verified: true,
+                verified: false,
               },
               profile: {
                 ...fallbackSellerProfile(s.sellerId),
@@ -497,11 +497,15 @@ export const catalogService: CatalogService = {
       if ((me && (me.userId === userId || userId === "me")) || userId === "me") {
         const uid = me?.userId ?? "me";
         let fullName = "Mutaxassis";
-        let phone = "+998901234567";
+        let phone = "";
+        let createdAt = "";
+        let verified = false;
         try {
           const remoteMe = await http<RealMe>("/me");
           if (remoteMe && typeof remoteMe.fullName === "string") fullName = remoteMe.fullName;
           if (remoteMe && typeof remoteMe.phone === "string") phone = remoteMe.phone;
+          if (remoteMe && typeof remoteMe.createdAt === "string") createdAt = remoteMe.createdAt;
+          if (remoteMe && typeof remoteMe.verified === "boolean") verified = remoteMe.verified;
         } catch {}
         return {
           user: {
@@ -509,12 +513,16 @@ export const catalogService: CatalogService = {
             fullName,
             phone,
             role: "mutaxassis",
-            createdAt: new Date().toISOString(),
+            createdAt,
             roleChosen: true,
             profileDone: true,
-            verified: true,
+            verified,
           },
-          profile: fallbackSellerProfile(uid),
+          profile: {
+            ...fallbackSellerProfile(uid),
+            memberSince: createdAt,
+            identityVerified: verified,
+          },
         };
       }
       if (typeof window !== "undefined") {
@@ -527,12 +535,12 @@ export const catalogService: CatalogService = {
               user: {
                 id: userId,
                 fullName: p.fullName || p.displayName || "Mutaxassis",
-                phone: p.phone || "+998901110004",
+                phone: p.phone || "",
                 role: "mutaxassis",
-                createdAt: new Date().toISOString(),
+                createdAt: "",
                 roleChosen: true,
                 profileDone: true,
-                verified: true,
+                verified: Boolean(p.verified),
               },
               profile: {
                 ...fallback,
@@ -758,7 +766,7 @@ function mapJob(dto: RealJob): Model.Job {
     id: dto.id,
     buyerId: dto.buyerId,
     buyerName: dto.buyerName || "Ish beruvchi",
-    buyerRating: dto.buyerRating ?? 5.0,
+    buyerRating: dto.buyerRating ?? 0,
     title: dto.title,
     description: dto.description,
     category: (dto.category as Model.ServiceCategory) || "dasturlash",

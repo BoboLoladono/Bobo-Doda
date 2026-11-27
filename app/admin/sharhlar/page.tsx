@@ -61,7 +61,7 @@ export default function ReviewsModerationPage() {
   const reviewTotal = facets._all ?? 0;
   const stats = {
     total: reviewTotal,
-    avg: reviewTotal ? ((facets.ratingSum ?? 0) / reviewTotal).toFixed(1) : "5.0",
+    avg: reviewTotal ? ((facets.ratingSum ?? 0) / reviewTotal).toFixed(1) : null,
     lowRating: (facets["1"] ?? 0) + (facets["2"] ?? 0),
     highRating: facets["5"] ?? 0,
   };
@@ -171,7 +171,7 @@ export default function ReviewsModerationPage() {
       {/* KPI Cards */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Jami Sharhlar" value={stats.total} detail="Barcha loyihalar bo'yicha" />
-        <MetricCard label="O‘rtacha Reyting" value={`⭐ ${stats.avg}`} detail="Platforma bo'yicha o'rtacha" tone="success" />
+        <MetricCard label="O‘rtacha Reyting" value={stats.avg ? `⭐ ${stats.avg}` : "—"} detail="Platforma bo'yicha o'rtacha" tone="success" />
         <MetricCard label="A'lo Baholar (5★)" value={stats.highRating} detail="Maksimal qoniqish" tone="primary" />
         <MetricCard label="Salbiy Baholar (≤2★)" value={stats.lowRating} detail="Norozi mijozlar izohlari" tone="warning" />
       </section>

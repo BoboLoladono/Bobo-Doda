@@ -720,15 +720,7 @@ export async function getAdminCounters(): Promise<adminMock.AdminCounters> {
       .catch(() => 0);
 
   try {
-    let pendingWithdrawals = 0;
-    if (typeof window !== "undefined") {
-      try {
-        const list = JSON.parse(localStorage.getItem("sb2_withdrawal_requests") || "[]");
-        pendingWithdrawals = list.filter((w: { status?: string }) => w.status === "kutilmoqda" || w.status === "korib_chiqilmoqda").length;
-      } catch {}
-    }
-
-    const [users, services, contracts, disputesOpen, disputesReview, audit, pendingKyc, openJobs, openReports, openTickets, pendingAppeals] = await Promise.all([
+    const [users, services, contracts, disputesOpen, disputesReview, audit, pendingKyc, openJobs, openReports, openTickets, pendingAppeals, payoutsPending, payoutsProcessing] = await Promise.all([
       hasPermission("users") ? safeTotal("/staff/users?perPage=1") : Promise.resolve(0),
       hasPermission("services") ? safeTotal("/staff/services?perPage=1") : Promise.resolve(0),
       hasPermission("orders") ? safeTotal("/staff/contracts?perPage=1") : Promise.resolve(0),
@@ -740,11 +732,13 @@ export async function getAdminCounters(): Promise<adminMock.AdminCounters> {
       hasPermission("reports") ? safeTotal("/staff/reports?status=NEW&perPage=1") : Promise.resolve(0),
       hasPermission("support") ? safeTotal("/staff/tickets?status=OPEN&perPage=1") : Promise.resolve(0),
       hasPermission("appeals") ? safeTotal("/staff/appeals?status=PENDING&perPage=1") : Promise.resolve(0),
+      hasPermission("payments") ? safeTotal("/staff/payouts?status=PENDING&perPage=1") : Promise.resolve(0),
+      hasPermission("payments") ? safeTotal("/staff/payouts?status=PROCESSING&perPage=1") : Promise.resolve(0),
     ]);
     return {
       pendingKyc,
       openDisputes: disputesOpen + disputesReview,
-      pendingWithdrawals,
+      pendingWithdrawals: payoutsPending + payoutsProcessing,
       openReports,
       openTickets,
       pendingAppeals,

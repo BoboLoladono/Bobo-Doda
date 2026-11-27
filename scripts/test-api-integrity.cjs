@@ -142,3 +142,34 @@ test('seller can view another seller public service after owned endpoint NOT_FOU
   assert.equal((await api.servicesService.get('public')).id,'public');
   assert.equal(calls[calls.length-1].url,'/services/public');
 });
+
+test('public jobs and specialists never fabricate ratings, skills, location, or response times', async () => {
+  const { api } = adapter(async url => {
+    if (url === '/categories') return [{ id: 'cat-1', slug: 'dizayn' }];
+    if (url.startsWith('/jobs')) {
+      return {
+        items: [{ id: 'j1', buyerId: 'b1', title: 'Logo', description: 'Logo kerak', category: 'dizayn', budgetMin: 100000, budgetMax: 200000, status: 'OPEN' }],
+        totalPages: 1,
+      };
+    }
+    if (url.startsWith('/services')) {
+      return {
+        items: [{ id: 's1', sellerId: 'u1', categoryId: 'cat-1', title: 'UI/UX', description: 'Dizayn', price: 250000, deliveryDays: 3, createdAt: '2026-10-01T00:00:00.000Z' }],
+        totalPages: 1,
+      };
+    }
+    return {};
+  });
+  const jobs = await api.jobsService.list();
+  assert.equal(jobs.length, 1);
+  assert.equal(jobs[0].buyerRating, 0);
+
+  const specialists = await api.catalogService.listSpecialists();
+  assert.equal(specialists.length, 1);
+  assert.equal(specialists[0].user.verified, false);
+  assert.equal(specialists[0].profile.location, '');
+  assert.equal(specialists[0].profile.skills.length, 0);
+  assert.equal(specialists[0].profile.responseTimeHours, 0);
+  assert.equal(specialists[0].profile.rating, 0);
+  assert.equal(specialists[0].profile.reviewCount, 0);
+});

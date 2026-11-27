@@ -98,7 +98,7 @@ export default function ProfilPage() {
     { label: t("profile.statCompleted"), value: String(profile.completedContracts) },
     {
       label: t("profile.statResponse"),
-      value: `${profile.responseTimeHours} ${t("common.hours")}`,
+      value: profile.responseTimeHours > 0 ? `${profile.responseTimeHours} ${t("common.hours")}` : "—",
     },
     { label: t("profile.statMember"), value: memberDuration },
     ...(profile.completionRate !== undefined
