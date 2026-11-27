@@ -458,7 +458,6 @@ function fallbackSellerProfile(userId: string): Model.SellerProfile {
 export const catalogService: CatalogService = {
   listSpecialists: () =>
     call(async () => {
-      const me = sessionStore.read();
       let specialists: Model.Specialist[] = [];
       try {
         const categories = await getCategories();
@@ -490,21 +489,6 @@ export const catalogService: CatalogService = {
         specialists = Array.from(map.values());
       } catch {}
 
-      if (me && me.role === "mutaxassis" && !specialists.some((s) => s.user.id === me.userId)) {
-        specialists.unshift({
-          user: {
-            id: me.userId,
-            fullName: "Mutaxassis",
-            phone: "+998901234567",
-            role: "mutaxassis",
-            createdAt: new Date().toISOString(),
-            roleChosen: true,
-            profileDone: true,
-            verified: true,
-          },
-          profile: fallbackSellerProfile(me.userId),
-        });
-      }
       return specialists;
     }),
   getSpecialist: (userId: string) =>

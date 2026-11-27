@@ -211,8 +211,14 @@ describe('First Release Marketplace E2E (10% fee, negotiation, manual bank inflo
       .expect(200);
     expect(accepted.body.status).toBe('ACTIVE');
 
+    // Closed job disappears from public detail endpoint (404), while buyer still sees history (200)
+    await request(app!.getHttpServer())
+      .get(`/api/v1/jobs/${jobId}`)
+      .expect(404);
+
     const jobAfterAccept = await request(app!.getHttpServer())
       .get(`/api/v1/jobs/${jobId}`)
+      .set('Authorization', `Bearer ${buyer.accessToken}`)
       .expect(200);
     expect(jobAfterAccept.body.status).toBe('yopilgan');
 

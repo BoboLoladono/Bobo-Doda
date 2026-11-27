@@ -596,18 +596,29 @@ export default function BozorPage() {
             <div>
               {filteredServices.length === 0 ? (
                 <Card className="text-center py-12 flex flex-col items-center justify-center">
-                  <p className="font-heading text-base font-bold text-ink">{t("market.empty")}</p>
-                  <p className="mt-1 max-w-md text-xs text-muted">{t("market.emptyServices")}</p>
-                  <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-                    <Button variant="secondary" size="sm" onClick={clearAllFilters}>
-                      {t("market.clearFilters")}
-                    </Button>
-                    {userRole === "mutaxassis" && (
-                      <Link href="/mutaxassis/services/yangi">
-                        <Button size="sm">{t("market.createServiceCta")}</Button>
-                      </Link>
-                    )}
-                  </div>
+                  {(() => {
+                    const catalogEmpty = (services ?? []).filter((s) => !isTestService(s)).length === 0;
+                    return (
+                      <>
+                        <p className="font-heading text-base font-bold text-ink">
+                          {catalogEmpty ? t("market.noServicesYet") : t("market.empty")}
+                        </p>
+                        <p className="mt-1 max-w-md text-xs text-muted">{t("market.emptyServices")}</p>
+                        <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                          {!catalogEmpty && hasActiveFilters && (
+                            <Button variant="secondary" size="sm" onClick={clearAllFilters}>
+                              {t("market.clearFilters")}
+                            </Button>
+                          )}
+                          {userRole === "mutaxassis" && (
+                            <Link href="/mutaxassis/services/yangi">
+                              <Button size="sm">{t("market.createServiceCta")}</Button>
+                            </Link>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </Card>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -646,16 +657,29 @@ export default function BozorPage() {
             <div>
               {filteredJobs.length === 0 ? (
                 <Card className="text-center py-12 flex flex-col items-center justify-center">
-                  <p className="font-heading text-base font-bold text-ink">{t("market.empty")}</p>
-                  <p className="mt-1 max-w-md text-xs text-muted">{t("market.emptyJobs")}</p>
-                  <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-                    <Button variant="secondary" size="sm" onClick={clearAllFilters}>
-                      {t("market.clearFilters")}
-                    </Button>
-                    <Link href="/xaridor/my-jobs/yangi">
-                      <Button size="sm">{t("market.postJobCta")}</Button>
-                    </Link>
-                  </div>
+                  {(() => {
+                    const catalogEmpty = (jobs ?? []).length === 0;
+                    return (
+                      <>
+                        <p className="font-heading text-base font-bold text-ink">
+                          {catalogEmpty ? t("market.noJobsYet") : t("market.empty")}
+                        </p>
+                        <p className="mt-1 max-w-md text-xs text-muted">
+                          {catalogEmpty ? t("market.noJobsYetHint") : t("market.emptyJobs")}
+                        </p>
+                        <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                          {!catalogEmpty && hasActiveFilters && (
+                            <Button variant="secondary" size="sm" onClick={clearAllFilters}>
+                              {t("market.clearFilters")}
+                            </Button>
+                          )}
+                          <Link href="/xaridor/my-jobs/yangi">
+                            <Button size="sm">{t("market.postJobCta")}</Button>
+                          </Link>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </Card>
               ) : (
                 <div className="flex flex-col gap-4">
@@ -769,16 +793,27 @@ export default function BozorPage() {
             <div>
               {filteredSpecialists.length === 0 ? (
                 <Card className="text-center py-12 flex flex-col items-center justify-center">
-                  <p className="font-heading text-base font-bold text-ink">{t("market.empty")}</p>
-                  <p className="mt-1 max-w-md text-xs text-muted">{t("market.emptySpecialists")}</p>
-                  <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-                    <Button variant="secondary" size="sm" onClick={clearAllFilters}>
-                      {t("market.clearFilters")}
-                    </Button>
-                    <Link href="/xaridor/my-jobs/yangi">
-                      <Button size="sm">{t("market.postJobCta")}</Button>
-                    </Link>
-                  </div>
+                  {(() => {
+                    const catalogEmpty = (specialists ?? []).length === 0;
+                    return (
+                      <>
+                        <p className="font-heading text-base font-bold text-ink">
+                          {catalogEmpty ? t("market.noSpecialistsYet") : t("market.empty")}
+                        </p>
+                        <p className="mt-1 max-w-md text-xs text-muted">{t("market.emptySpecialists")}</p>
+                        <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                          {!catalogEmpty && hasActiveFilters && (
+                            <Button variant="secondary" size="sm" onClick={clearAllFilters}>
+                              {t("market.clearFilters")}
+                            </Button>
+                          )}
+                          <Link href="/xaridor/my-jobs/yangi">
+                            <Button size="sm">{t("market.postJobCta")}</Button>
+                          </Link>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </Card>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

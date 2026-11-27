@@ -21,6 +21,7 @@
 
 import * as argon2 from 'argon2';
 import { uuidv7 } from 'uuidv7';
+import { assertNonProductionSeedAllowed } from './lib/seed-safety.cjs';
 import {
   PrismaClient,
   Role,
@@ -32,6 +33,8 @@ import {
   StaffPermission,
   StaffStatus,
 } from '@prisma/client';
+
+assertNonProductionSeedAllowed('seed-test-accounts.ts');
 
 const UNIFIED_PASSWORD = process.env.TEST_ACCOUNTS_PASSWORD || 'TestPass2026!';
 

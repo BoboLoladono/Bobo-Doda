@@ -20,6 +20,9 @@
 
 const fs = require("fs");
 const path = require("path");
+const { assertNonProductionSeedAllowed } = require("./lib/seed-safety.cjs");
+
+assertNonProductionSeedAllowed("seed-boost-accounts.cjs");
 
 if (!process.env.PRISMA_QUERY_ENGINE_LIBRARY) {
   const candidates = [

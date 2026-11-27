@@ -163,7 +163,20 @@ export class JobsService {
     };
   }
 
-  async getByIdOrThrow(id: string): Promise<JobWithRelations> {
+  async isActiveSession(userId: string, familyId: string): Promise<boolean> {
+    const session = await this.prisma.refreshToken.findFirst({
+      where: {
+        userId,
+        familyId,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      select: { id: true },
+    });
+    return Boolean(session);
+  }
+
+  async getByIdOrThrow(id: string, callerUserId?: string): Promise<JobWithRelations> {
     const isUuid = UUID_REGEX.test(id);
     if (!isUuid) {
       throw new NotFoundError("E'lon topilmadi");
@@ -179,6 +192,21 @@ export class JobsService {
 
     if (!job) {
       throw new NotFoundError("E'lon topilmadi");
+    }
+
+    if (job.status !== JobStatus.OPEN) {
+      if (!callerUserId) {
+        throw new NotFoundError("E'lon topilmadi");
+      }
+      if (job.buyerId !== callerUserId) {
+        const participantProposal = await this.prisma.jobProposal.findFirst({
+          where: { jobId: job.id, sellerId: callerUserId },
+          select: { id: true },
+        });
+        if (!participantProposal) {
+          throw new NotFoundError("E'lon topilmadi");
+        }
+      }
     }
 
     return job;
