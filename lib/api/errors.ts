@@ -58,6 +58,7 @@ const LEGACY_CODES: Record<string, Pick<ApiErrorShape, "code" | "status" | "retr
   CONTRACT_NOT_FUNDED: { code: "FORBIDDEN", status: 403, retryable: false },
   REFUND_NOT_ALLOWED: { code: "FORBIDDEN", status: 403, retryable: false },
   DISPUTE_NOT_ALLOWED: { code: "FORBIDDEN", status: 403, retryable: false },
+  TEST_SIMULATION_NOT_ALLOWED: { code: "FORBIDDEN", status: 403, retryable: false },
 
   /* --- Topilmadi (404) --- */
   NOT_FOUND: { code: "NOT_FOUND", status: 404, retryable: false },
@@ -73,6 +74,8 @@ const LEGACY_CODES: Record<string, Pick<ApiErrorShape, "code" | "status" | "retr
   PAYMENT_NOT_FOUND: { code: "NOT_FOUND", status: 404, retryable: false },
   REFUND_NOT_FOUND: { code: "NOT_FOUND", status: 404, retryable: false },
   PAYOUT_NOT_FOUND: { code: "NOT_FOUND", status: 404, retryable: false },
+  PAYOUT_DESTINATION_NOT_FOUND: { code: "NOT_FOUND", status: 404, retryable: false },
+  BANK_PROOF_NOT_FOUND: { code: "NOT_FOUND", status: 404, retryable: false },
 
   /* --- Holat/konflikt (409) --- */
   BAD_STATE: { code: "INVALID_TRANSITION", status: 409, retryable: false },
@@ -94,6 +97,8 @@ const LEGACY_CODES: Record<string, Pick<ApiErrorShape, "code" | "status" | "retr
   LAST_ADMIN_PROTECTED: { code: "CONFLICT", status: 409, retryable: false },
   ALREADY_FUNDED: { code: "CONFLICT", status: 409, retryable: false },
   ALREADY_CANCELLED: { code: "CONFLICT", status: 409, retryable: false },
+  PAYOUT_DESTINATION_NOT_VERIFIED: { code: "CONFLICT", status: 409, retryable: false },
+  PAYOUT_DESTINATION_REQUIRED: { code: "VALIDATION", status: 422, retryable: false },
   NOT_PENDING: { code: "CONFLICT", status: 409, retryable: false },
   CIRCUMVENTION_DETECTED: { code: "CONFLICT", status: 409, retryable: false },
   IDEMPOTENCY_CONFLICT: { code: "CONFLICT", status: 409, retryable: false },
@@ -110,6 +115,9 @@ const LEGACY_CODES: Record<string, Pick<ApiErrorShape, "code" | "status" | "retr
   CONTRACT_REFUND_IN_PROGRESS: { code: "CONFLICT", status: 409, retryable: false },
   DISPUTE_ALREADY_OPEN: { code: "CONFLICT", status: 409, retryable: false },
   DISPUTE_IN_PROGRESS: { code: "CONFLICT", status: 409, retryable: false },
+  CONTRACT_IN_PROGRESS_FOR_JOB: { code: "CONFLICT", status: 409, retryable: false },
+  DUPLICATE_BANK_REF: { code: "CONFLICT", status: 409, retryable: false },
+  PAYOUT_ALREADY_CLAIMED: { code: "CONFLICT", status: 409, retryable: false },
 
   /* --- Validatsiya (422) --- */
   VALIDATION: { code: "VALIDATION", status: 422, retryable: false },
@@ -130,6 +138,9 @@ const LEGACY_CODES: Record<string, Pick<ApiErrorShape, "code" | "status" | "retr
   INVALID_BANK_ACCOUNT: { code: "VALIDATION", status: 422, retryable: false },
   WEAK_PASSWORD: { code: "VALIDATION", status: 422, retryable: false },
   EMPTY_MESSAGE: { code: "VALIDATION", status: 422, retryable: false },
+  EMPTY_DELIVERABLE: { code: "VALIDATION", status: 422, retryable: false },
+  PAYOUT_AMOUNT_MISMATCH: { code: "VALIDATION", status: 422, retryable: false },
+  OVERPAYMENT_DETECTED: { code: "VALIDATION", status: 422, retryable: false },
   COMMENT_REQUIRED: { code: "VALIDATION", status: 422, retryable: false },
   REASON_REQUIRED: { code: "VALIDATION", status: 422, retryable: false },
   REPLY_REQUIRED: { code: "VALIDATION", status: 422, retryable: false },

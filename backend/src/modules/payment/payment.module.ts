@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { StaffAuthModule } from '@/modules/staff-auth/staff-auth.module';
 import { GuardsModule } from '@/common/guards/guards.module';
+import { UploadsModule } from '@/modules/uploads/uploads.module';
 import { AppConfigService } from '@/config/app-config.service';
 import { PAYMENT_PROVIDER } from './providers/payment-provider.interface';
 import { TestPaymentProvider } from './providers/test/test-payment.provider';
@@ -11,9 +12,11 @@ import { PaymeMerchantService } from './providers/payme/payme-merchant.service';
 import { PaymeMerchantController } from './providers/payme/payme-merchant.controller';
 import { PAYME_MERCHANT_CONFIG, type PaymeMerchantConfig } from './providers/payme/payme-rpc.types';
 import { PaymentService } from './payment.service';
+import { ManualBankPaymentService } from './manual-bank-payment.service';
 import { PaymentController } from './payment.controller';
 import { MePaymentController } from './me-payment.controller';
 import { StaffPaymentController } from './staff-payment.controller';
+import { BankDetailsController } from './bank-details.controller';
 
 /** FAQAT dev/test — production'da hech qachon ishlatilmaydi (pastdagi fail-fast). */
 const DEV_ONLY_TEST_SECRET = 'test-only-insecure-secret-change-me';
@@ -27,15 +30,17 @@ const DEV_ONLY_TEST_SECRET = 'test-only-insecure-secret-change-me';
  * to'liq chiqarilgan va uning o'rniga faqat Payme ishlatiladi.
  */
 @Module({
-  imports: [AuthModule, StaffAuthModule, GuardsModule],
+  imports: [AuthModule, StaffAuthModule, GuardsModule, UploadsModule],
   controllers: [
     PaymentController,
     MePaymentController,
     StaffPaymentController,
+    BankDetailsController,
     PaymeMerchantController,
   ],
   providers: [
     PaymentService,
+    ManualBankPaymentService,
     PaymeMerchantService,
     {
       provide: PAYME_MERCHANT_CONFIG,

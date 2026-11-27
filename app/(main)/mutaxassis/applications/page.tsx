@@ -47,10 +47,7 @@ export default function TakliflarimPage() {
   const load = useCallback(() => {
     setLoadError(null);
     Promise.all([
-      proposalsService.listMine().catch((err) => {
-        console.warn("proposalsService.listMine failed:", err);
-        return [] as Proposal[];
-      }),
+      proposalsService.listMine(),
       jobsService.list().catch((err) => {
         console.warn("jobsService.list failed:", err);
         return [] as Job[];
@@ -223,6 +220,14 @@ export default function TakliflarimPage() {
                         {formatMoney(proposal.bidAmount, lang)}
                       </span>
                     </span>
+                    {proposal.estimatedDeliveryDays !== undefined && (
+                      <span className="text-muted">
+                        {t("prop.deliveryDays")}:{" "}
+                        <span className="font-medium text-ink">
+                          {proposal.estimatedDeliveryDays} {t("common.days")}
+                        </span>
+                      </span>
+                    )}
                     <span className="text-faint">
                       {formatDate(proposal.createdAt, lang)}
                     </span>

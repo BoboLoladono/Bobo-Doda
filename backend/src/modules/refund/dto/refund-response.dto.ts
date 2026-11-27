@@ -46,6 +46,9 @@ export class StaffRefundResponseDto extends RefundResponseDto {
   @ApiProperty() requestedByStaffId!: string;
   @ApiPropertyOptional() providerRefundId?: string | null;
   @ApiProperty() provider!: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) bankOperationRef?: string | null;
+  @ApiPropertyOptional({ type: () => Date, nullable: true }) bankReturnedAt?: Date | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) processedByStaffId?: string | null;
 }
 
 export function toStaffRefundResponseDto(refund: Refund): StaffRefundResponseDto {
@@ -54,5 +57,8 @@ export function toStaffRefundResponseDto(refund: Refund): StaffRefundResponseDto
     requestedByStaffId: refund.requestedByStaffId,
     providerRefundId: refund.providerRefundId,
     provider: refund.provider,
+    bankOperationRef: refund.bankOperationRef ?? null,
+    bankReturnedAt: refund.bankReturnedAt ?? null,
+    processedByStaffId: refund.processedByStaffId ?? null,
   };
 }

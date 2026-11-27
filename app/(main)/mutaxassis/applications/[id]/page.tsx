@@ -112,13 +112,25 @@ export default function TaklifTafsilotiPage() {
       </div>
 
       <Card padding="lg" className="flex flex-col gap-4">
-        <div>
-          <p className="text-2xs font-medium uppercase tracking-wide text-faint">
-            {t("props.bid")}
-          </p>
-          <p className="mt-1 font-heading text-lg font-bold text-ink">
-            {formatMoney(proposal.bidAmount, lang)}
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-2xs font-medium uppercase tracking-wide text-faint">
+              {t("props.bid")}
+            </p>
+            <p className="mt-1 font-heading text-lg font-bold text-ink">
+              {formatMoney(proposal.bidAmount, lang)}
+            </p>
+          </div>
+          {proposal.estimatedDeliveryDays !== undefined && (
+            <div>
+              <p className="text-2xs font-medium uppercase tracking-wide text-faint">
+                {t("prop.deliveryDays")}
+              </p>
+              <p className="mt-1 font-heading text-lg font-bold text-ink">
+                {proposal.estimatedDeliveryDays} {t("common.days")}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="border-t border-line pt-4">

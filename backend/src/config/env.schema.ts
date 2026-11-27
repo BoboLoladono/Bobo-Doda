@@ -171,14 +171,24 @@ export const envSchema = z
     CLICK_SECRET_KEY: z.string().optional(),
     CLICK_CHECKOUT_URL: z.string().url().default('https://my.click.uz/services/pay'),
 
-    // ── Payout rail (Haqiqiy pul yechish tizimi — Payme P2C / Bank kartalari) ──
-    PAYOUT_PROVIDER: z.enum(['TEST', 'PAYME', 'CLICK']).default('TEST'),
+    // ── Payout rail (Haqiqiy pul yechish tizimi — Payme P2C / Manual bank o‘tkazmasi) ──
+    PAYOUT_PROVIDER: z.enum(['TEST', 'PAYME', 'CLICK', 'MANUAL']).default('TEST'),
     PAYOUT_TEST_WEBHOOK_SECRET: z.string().min(16).optional(),
     PAYOUTS_ENABLED: booleanish.default('true'),
     PAYME_PAYOUT_ENDPOINT: z.string().url().default('https://checkout.paycom.uz/api'),
     PAYME_PAYOUT_LOGIN: z.string().optional(),
     PAYME_PAYOUT_KEY: z.string().optional(),
     PAYOUT_WEBHOOK_SECRET: z.string().min(16).optional(),
+
+    // ── Tashkilot bank rekvizitlari (faqat haqiqiy tasdiqlangan ma'lumotlar bo'lsa env orqali beriladi) ──
+    COMPANY_NAME: z.string().optional(),
+    COMPANY_BANK_NAME: z.string().optional(),
+    COMPANY_BANK_ACCOUNT: z.string().optional(),
+    COMPANY_BANK_MFO: z.string().optional(),
+    COMPANY_BANK_INN: z.string().optional(),
+    COMPANY_BANK_ADDRESS: z.string().optional(),
+    COMPANY_SUPPORT_PHONE: z.string().optional(),
+    UPLOAD_DIR: z.string().optional(),
 
     // ── Reconciliation (Bosqich 9, bo'lim 15/17/33/53) — arbitrary
     // hardcode YO'Q, hammasi konfiguratsiya orqali. Default'lar: "juda tez
@@ -247,6 +257,8 @@ export const envSchema = z
     // HAMDA SMS_PROVIDER=CONSOLE HAMDA shu bayroq — uchtasidan BIRI yolg'on
     // bo'lsa ham kod hech qachon javobga chiqmaydi (mustaqil qatlamlar).
     DEV_EXPOSE_OTP: booleanish.default('false'),
+    /** Texnik tozalash vaqtida yangi foydalanuvchi ro'yxatdan o'tishini vaqtincha to'xtatish. */
+    REGISTRATION_PAUSED: booleanish.default('false'),
 
     // ── Outbox notification delivery (Bosqich 10) ───────────────────────
     // Bo'lim 9/10 — PROCESSING holatda "qotib qolgan" qatorni boshqa worker

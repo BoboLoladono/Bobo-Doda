@@ -42,6 +42,7 @@ import { SupportModule } from '@/modules/support/support.module';
 import { ReportModule } from '@/modules/report/report.module';
 import { AppealModule } from '@/modules/appeal/appeal.module';
 import { ReviewModule } from '@/modules/review/review.module';
+import { UploadsModule } from '@/modules/uploads/uploads.module';
 
 /**
  * Ildiz modul. Domen modullari (`users`, `catalog`, `contracts`,
@@ -94,6 +95,7 @@ import { ReviewModule } from '@/modules/review/review.module';
     ReportModule,
     AppealModule,
     ReviewModule,
+    UploadsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

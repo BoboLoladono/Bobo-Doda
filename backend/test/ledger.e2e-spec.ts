@@ -134,6 +134,7 @@ describe('Ledger (e2e)', () => {
     await request(app!.getHttpServer())
       .post(`/api/v1/seller/contracts/${contractId}/milestones/${milestoneId}/submit`)
       .set('Authorization', `Bearer ${seller.accessToken}`)
+      .send({ message: 'Ledger test deliverable' })
       .expect(200);
     return request(app!.getHttpServer())
       .post(`/api/v1/me/contracts/${contractId}/milestones/${milestoneId}/approve`)
@@ -232,7 +233,8 @@ describe('Ledger (e2e)', () => {
     const { contractId, seller, milestoneIds } = await createActiveContract();
     const res = await request(app!.getHttpServer())
       .post(`/api/v1/seller/contracts/${contractId}/milestones/${milestoneIds[0]!}/submit`)
-      .set('Authorization', `Bearer ${seller.accessToken}`);
+      .set('Authorization', `Bearer ${seller.accessToken}`)
+      .send({ message: 'Unfunded deliverable test' });
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('CONTRACT_NOT_FUNDED');
 
@@ -344,6 +346,7 @@ describe('Ledger (e2e)', () => {
       await request(app!.getHttpServer())
         .post(`/api/v1/seller/contracts/${contractId}/milestones/${id}/submit`)
         .set('Authorization', `Bearer ${seller.accessToken}`)
+        .send({ message: 'Parallel approve deliverable' })
         .expect(200);
     }
     const approveResults = await Promise.all(

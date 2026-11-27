@@ -163,9 +163,11 @@ export default function MutaxassisProfiliPage() {
                       {profile.location}
                     </span>
                   )}
-                  <span>
-                    {t("profile.memberSince")} {formatDate(profile.memberSince, lang)}
-                  </span>
+                  {formatDate(profile.memberSince, lang) && (
+                    <span>
+                      {t("profile.memberSince")} {formatDate(profile.memberSince, lang)}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -457,7 +459,9 @@ export default function MutaxassisProfiliPage() {
             <div className="flex flex-col divide-y divide-line rounded-input border border-line bg-surface text-xs">
               <div className="flex items-center justify-between p-3">
                 <span className="text-muted">{t("settings.responseSpeed")}</span>
-                <span className="font-bold text-ink">{profile.responseTimeHours} {t("common.hours")}</span>
+                <span className="font-bold text-ink">
+                  {profile.responseTimeHours > 0 ? `${profile.responseTimeHours} ${t("common.hours")}` : "—"}
+                </span>
               </div>
               <div className="flex items-center justify-between p-3">
                 <span className="text-muted">Bajarilgan shartnomalar</span>

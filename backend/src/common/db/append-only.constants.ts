@@ -101,6 +101,10 @@ export const APPEND_ONLY_TABLES = {
     revoke: ['UPDATE', 'DELETE'],
     allowUpdateColumns: [],
   },
+  payout_corrections: {
+    revoke: ['UPDATE', 'DELETE'],
+    allowUpdateColumns: [],
+  },
   payout_provider_events: {
     revoke: ['UPDATE', 'DELETE'],
     allowUpdateColumns: [],

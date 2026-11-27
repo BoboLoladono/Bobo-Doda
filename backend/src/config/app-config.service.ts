@@ -200,6 +200,31 @@ export class AppConfigService {
     return this.get('PAYOUTS_ENABLED');
   }
 
+  get uploadDir(): string | undefined {
+    return this.get('UPLOAD_DIR');
+  }
+
+  get companyBankDetails(): {
+    configured: boolean;
+    companyName: string | undefined;
+    bankName: string | undefined;
+    accountNumber: string | undefined;
+    mfo: string | undefined;
+    inn: string | undefined;
+    bankAddress: string | undefined;
+    supportPhone: string | undefined;
+  } {
+    const companyName = this.get('COMPANY_NAME');
+    const bankName = this.get('COMPANY_BANK_NAME');
+    const accountNumber = this.get('COMPANY_BANK_ACCOUNT');
+    const mfo = this.get('COMPANY_BANK_MFO');
+    const inn = this.get('COMPANY_BANK_INN');
+    const bankAddress = this.get('COMPANY_BANK_ADDRESS');
+    const supportPhone = this.get('COMPANY_SUPPORT_PHONE');
+    const configured = Boolean(companyName && bankName && accountNumber && mfo && inn);
+    return { configured, companyName, bankName, accountNumber, mfo, inn, bankAddress, supportPhone };
+  }
+
   /** Bosqich 9 — `ReconciliationService`/`ReconciliationScheduler` shundan o'qiydi. */
   get reconciliation(): {
     paymentAfterSeconds: number;
@@ -223,6 +248,10 @@ export class AppConfigService {
       `isProduction` bilan birga, chaqiruvchi joyda hisoblanadi. */
   get sms(): { provider: Env['SMS_PROVIDER']; devExposeOtp: boolean } {
     return { provider: this.get('SMS_PROVIDER'), devExposeOtp: this.get('DEV_EXPOSE_OTP') };
+  }
+
+  get registrationPaused(): boolean {
+    return this.get('REGISTRATION_PAUSED');
   }
 
   /** Bosqich 13 — PlayMobile SMS-Broker. `SMS_PROVIDER=PLAYMOBILE` bo'lsa hammasi majburiy (env.schema.ts). */

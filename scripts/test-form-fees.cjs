@@ -37,5 +37,7 @@ test('immutable fee snapshot controls historical net and fee rounding', () => {
   assert.equal(sellerNet(1000,250),975);
   assert.equal(platformFee(1001,500),50.05);
   assert.equal(sellerNet(1000,0),1000);
-  assert.equal(getPlatformFeePercent(),5);
+  assert.equal(sellerNet(100000),90000);
+  assert.equal(platformFee(100000),10000);
+  assert.equal(getPlatformFeePercent(),10);
 });

@@ -1,5 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma, type Contract, type Milestone, type PaymentStatus } from '@prisma/client';
+import { Injectable, Optional } from '@nestjs/common';
+import {
+  JobStatus,
+  Prisma,
+  type BankTransferProof,
+  type Contract,
+  type Milestone,
+  type MilestoneRevisionRequest,
+  type MilestoneSubmission,
+  type PaymentStatus,
+} from '@prisma/client';
 import { PrismaService } from '@/infra/prisma/prisma.service';
 import { IdFactory } from '@/common/id/id.factory';
 import { DomainError, InvariantViolationError, NotFoundError } from '@/common/errors/domain-error';
@@ -9,6 +18,7 @@ import { somToTiyin } from '@/common/money/money.util';
 import { PLATFORM_FEE_RATE_BPS, computePlatformFee } from '@/common/money/fee.constant';
 import { buildPage, type Page } from '@/common/pagination/page-query.dto';
 import { LedgerService } from '@/modules/ledger/ledger.service';
+import { UploadsService } from '@/modules/uploads/uploads.service';
 import type { CreateContractDto } from './dto/create-contract.dto';
 import type { SubmitMilestoneDto } from './dto/submit-milestone.dto';
 import type { RequestRevisionDto } from './dto/request-revision.dto';
@@ -19,16 +29,37 @@ import {
   assertNotSelfPurchase,
 } from './contract-validation.util';
 
+type MilestoneWithHistory = Milestone & {
+  submissions?: MilestoneSubmission[];
+  revisionRequests?: MilestoneRevisionRequest[];
+};
+
 type ContractWithMilestones = Contract & {
-  milestones: Milestone[];
+  milestones: MilestoneWithHistory[];
   payments?: Array<{ id: string; status: PaymentStatus; succeededAt: Date | null; createdAt: Date }>;
+  bankTransferProofs?: BankTransferProof[];
+  disputes?: Array<{ id: string; status: string }>;
 };
 
 const MILESTONE_INCLUDE = {
-  milestones: { orderBy: { position: 'asc' as const } },
+  milestones: {
+    orderBy: { position: 'asc' as const },
+    include: {
+      submissions: { orderBy: { createdAt: 'desc' as const } },
+      revisionRequests: { orderBy: { createdAt: 'desc' as const } },
+    },
+  },
   payments: {
     where: { status: 'SUCCEEDED' as const },
     select: { id: true, status: true, succeededAt: true, createdAt: true },
+  },
+  bankTransferProofs: {
+    orderBy: { createdAt: 'desc' as const },
+    take: 1,
+  },
+  disputes: {
+    where: { status: { in: ['OPEN' as const, 'UNDER_REVIEW' as const] } },
+    select: { id: true, status: true },
   },
 };
 const SERIALIZATION_CONFLICT = 'P2034';
@@ -48,6 +79,7 @@ export class ContractService {
     private readonly audit: AuditService,
     private readonly outbox: OutboxService,
     private readonly ledger: LedgerService,
+    @Optional() private readonly uploads?: UploadsService,
   ) {}
 
   // ── Yaratish ──────────────────────────────────────────────────────────
@@ -105,6 +137,7 @@ export class ContractService {
 
     const feeAmount = computePlatformFee(targetAmount, PLATFORM_FEE_RATE_BPS);
     const contractId = this.ids.next();
+    const now = new Date();
 
     await tx.contract.create({
       data: {
@@ -121,6 +154,13 @@ export class ContractService {
         platformFeeRateBpsSnapshot: PLATFORM_FEE_RATE_BPS,
         platformFeeAmountSnapshot: feeAmount,
         deadline,
+        deliverableSummary: dto.deliverableSummary?.trim() || service.description,
+        acceptanceCriteria:
+          dto.acceptanceCriteria?.trim() ||
+          'Kelishilgan barcha bosqich natijalari topshirilgan va talablarga mos bo‘lishi',
+        revisionsIncluded: dto.revisionsIncluded ?? 2,
+        buyerConfirmedAt: now,
+        sellerConfirmedAt: null,
         status: 'PENDING_SELLER',
       },
     });
@@ -235,19 +275,75 @@ export class ContractService {
 
   async accept(contractId: string, sellerId: string, actor: AuditActor): Promise<ContractWithMilestones> {
     const existing = await this.getSellerOwnedOrThrow(contractId, sellerId);
+    const now = new Date();
     const result = await this.prisma.$transaction(async (tx) => {
       const cas = await tx.contract.updateMany({
         where: { id: contractId, sellerId, status: 'PENDING_SELLER' },
-        data: { status: 'ACTIVE' },
+        data: { status: 'ACTIVE', sellerConfirmedAt: now },
       });
       if (cas.count === 0) return null;
 
-      // Barcha bosqich birgalikda ishga tushadi — Bosqich 5/6'da bu
-      // "escrow fund" bilan almashtiriladi, hozir shunchaki ish boshlanishi.
       await tx.milestone.updateMany({
         where: { contractId, status: 'PENDING' },
         data: { status: 'IN_PROGRESS' },
       });
+
+      // Only once both sides have confirmed (ACTIVE) do we close the Job & decline competing proposals.
+      if (existing.sourceType === 'JOB' && existing.jobId) {
+        await tx.job.update({
+          where: { id: existing.jobId },
+          data: { status: JobStatus.CLOSED },
+        });
+        const remainingJobProps = await tx.jobProposal.findMany({
+          where: {
+            jobId: existing.jobId,
+            id: existing.proposalId ? { not: existing.proposalId } : undefined,
+            status: 'korib_chiqilmoqda',
+          },
+        });
+        for (const p of remainingJobProps) {
+          await tx.jobProposal.update({
+            where: { id: p.id },
+            data: {
+              status: 'rad_etilgan',
+              payload: {
+                ...(p.payload as Record<string, unknown>),
+                status: 'rad_etildi',
+                reason: 'Boshqa nomzod bilan shartnoma tasdiqlandi',
+              },
+            },
+          });
+        }
+      }
+
+      // Same-day competing open proposals for this seller are declined once contract becomes ACTIVE.
+      const dayStart = new Date(Math.floor((now.getTime() + 5 * 3600_000) / 86400_000) * 86400_000 - 5 * 3600_000);
+      const dayEnd = new Date(dayStart.getTime() + 86400_000);
+      const competingProposals = await tx.jobProposal.findMany({
+        where: {
+          sellerId,
+          id: existing.proposalId ? { not: existing.proposalId } : undefined,
+          status: 'korib_chiqilmoqda',
+          createdAt: { gte: dayStart, lt: dayEnd },
+        },
+      });
+      for (const comp of competingProposals) {
+        await tx.jobProposal.update({
+          where: { id: comp.id },
+          data: {
+            status: 'rad_etilgan',
+            payload: {
+              ...(comp.payload as Record<string, unknown>),
+              status: 'rad_etildi',
+              reason: 'Boshqa ishga yollanganligi sababli bekor qilindi',
+            },
+          },
+        });
+        await tx.job.update({
+          where: { id: comp.jobId },
+          data: { proposalsCount: { decrement: 1 } },
+        });
+      }
 
       await this.audit.record(
         {
@@ -284,6 +380,23 @@ export class ContractService {
         data: { status: 'REJECTED' },
       });
       if (cas.count === 0) return null;
+
+      if (existing.proposalId) {
+        const prop = await tx.jobProposal.findUnique({ where: { id: existing.proposalId } });
+        if (prop) {
+          await tx.jobProposal.update({
+            where: { id: prop.id },
+            data: {
+              status: 'rad_etilgan',
+              payload: {
+                ...(prop.payload as Record<string, unknown>),
+                status: 'rad_etildi',
+                reason: 'Mutaxassis shartnoma shartlarini rad etdi',
+              },
+            },
+          });
+        }
+      }
 
       await this.audit.record(
         {
@@ -329,6 +442,23 @@ export class ContractService {
         data: { status: 'CANCELLED' },
       });
       if (cas.count === 0) return null;
+
+      if (existing.proposalId) {
+        const prop = await tx.jobProposal.findUnique({ where: { id: existing.proposalId } });
+        if (prop) {
+          await tx.jobProposal.update({
+            where: { id: prop.id },
+            data: {
+              status: 'rad_etilgan',
+              payload: {
+                ...(prop.payload as Record<string, unknown>),
+                status: 'rad_etildi',
+                reason: 'Xaridor kelishuv taklifini bekor qildi',
+              },
+            },
+          });
+        }
+      }
 
       await this.audit.record(
         {
@@ -448,8 +578,17 @@ export class ContractService {
     sellerId: string,
     dto: SubmitMilestoneDto,
     actor: AuditActor,
-  ): Promise<Milestone> {
+  ): Promise<MilestoneWithHistory> {
     await this.getSellerOwnedMilestoneOrThrow(contractId, milestoneId, sellerId);
+    const trimmedMsg = dto.message?.trim() ?? '';
+    const cleanedUrls = (dto.deliverableUrls ?? []).map((u) => u.trim()).filter((u) => u.length > 0);
+    if (!trimmedMsg && cleanedUrls.length === 0) {
+      throw new DomainError(
+        'EMPTY_DELIVERABLE',
+        'Ishni topshirish uchun natija fayli, havola yoki kamida hisobot izohini kiriting',
+      );
+    }
+
     await this.assertContractFunded(contractId);
     const result = await this.prisma.$transaction(async (tx) => {
       await this.assertMilestoneMutationAllowed(tx, contractId, 'submit');
@@ -464,10 +603,19 @@ export class ContractService {
           id: this.ids.next(),
           milestoneId,
           submittedById: sellerId,
-          message: dto.message,
-          deliverableUrls: dto.deliverableUrls ?? [],
+          message: trimmedMsg || null,
+          deliverableUrls: cleanedUrls,
         },
       });
+
+      if (cleanedUrls.length > 0 && this.uploads) {
+        await this.uploads.attachDeliverableUploads(tx, {
+          deliverableUrls: cleanedUrls,
+          contractId,
+          milestoneId,
+          sellerId,
+        });
+      }
 
       await this.audit.record(
         {
@@ -476,7 +624,7 @@ export class ContractService {
           resourceType: 'MILESTONE',
           resourceId: milestoneId,
           contextId: contractId,
-          newState: { status: 'SUBMITTED' },
+          newState: { status: 'SUBMITTED', hasUrls: cleanedUrls.length > 0 },
         },
         tx,
       );
@@ -489,7 +637,13 @@ export class ContractService {
         },
         tx,
       );
-      return tx.milestone.findUniqueOrThrow({ where: { id: milestoneId } });
+      return tx.milestone.findUniqueOrThrow({
+        where: { id: milestoneId },
+        include: {
+          submissions: { orderBy: { createdAt: 'desc' } },
+          revisionRequests: { orderBy: { createdAt: 'desc' } },
+        },
+      });
     });
     if (!result) throw new DomainError('INVALID_TRANSITION', "Bu bosqichni hozir topshirib bo'lmaydi");
     return result;
@@ -501,10 +655,20 @@ export class ContractService {
     buyerId: string,
     dto: RequestRevisionDto,
     actor: AuditActor,
-  ): Promise<Milestone> {
+  ): Promise<MilestoneWithHistory> {
     await this.getBuyerOwnedMilestoneOrThrow(contractId, milestoneId, buyerId);
     const result = await this.prisma.$transaction(async (tx) => {
       await this.assertMilestoneMutationAllowed(tx, contractId, 'revision');
+      const contract = await tx.contract.findUniqueOrThrow({ where: { id: contractId } });
+      const usedRevisions = await tx.milestoneRevisionRequest.count({
+        where: { milestone: { contractId } },
+      });
+      if (usedRevisions >= contract.revisionsIncluded) {
+        throw new DomainError(
+          'REVISION_LIMIT_REACHED',
+          `Kelishilgan bepul tuzatishlar limiti (${contract.revisionsIncluded} ta) tugagan`,
+        );
+      }
       const cas = await tx.milestone.updateMany({
         where: { id: milestoneId, contractId, status: 'SUBMITTED' },
         data: { status: 'REVISION_REQUESTED' },
@@ -536,7 +700,13 @@ export class ContractService {
         },
         tx,
       );
-      return tx.milestone.findUniqueOrThrow({ where: { id: milestoneId } });
+      return tx.milestone.findUniqueOrThrow({
+        where: { id: milestoneId },
+        include: {
+          submissions: { orderBy: { createdAt: 'desc' } },
+          revisionRequests: { orderBy: { createdAt: 'desc' } },
+        },
+      });
     });
     if (!result) throw new DomainError('INVALID_TRANSITION', "Faqat topshirilgan bosqichga o'zgartirish so'ralishi mumkin");
     return result;
@@ -717,9 +887,58 @@ export class ContractService {
         }
       }
 
-      return tx.milestone.findUniqueOrThrow({ where: { id: milestoneId } });
+      return tx.milestone.findUniqueOrThrow({
+        where: { id: milestoneId },
+        include: {
+          submissions: { orderBy: { createdAt: 'desc' } },
+          revisionRequests: { orderBy: { createdAt: 'desc' } },
+        },
+      });
     });
     if (!result) throw new DomainError('INVALID_TRANSITION', "Faqat topshirilgan bosqichni tasdiqlash mumkin");
     return result;
+  }
+
+  /**
+   * Avtomatik qabul — muddati (72 soat) o‘tgan topshirilgan bosqichlarni
+   * tekshiradi. Ochiq nizo (OPEN / UNDER_REVIEW) yoki faol refund bo‘lsa
+   * taymer TO‘XTATILADI va bosqich hech qachon avtomatik tasdiqlanmaydi.
+   */
+  async autoAcceptOverdueMilestones(now: Date = new Date()): Promise<{ approvedCount: number; skippedDisputed: number }> {
+    const cutoff = new Date(now.getTime() - 72 * 3600_000);
+    const candidates = await this.prisma.milestone.findMany({
+      where: {
+        status: 'SUBMITTED',
+        submittedAt: { lte: cutoff },
+        contract: { status: 'ACTIVE' },
+      },
+      include: { contract: true },
+      orderBy: { submittedAt: 'asc' },
+      take: 50,
+    });
+
+    let approvedCount = 0;
+    let skippedDisputed = 0;
+    const systemActor: AuditActor = { id: null, type: 'SYSTEM', name: 'auto-accept' };
+
+    for (const candidate of candidates) {
+      const hasDispute = await this.prisma.dispute.findFirst({
+        where: { contractId: candidate.contractId, status: { in: ['OPEN', 'UNDER_REVIEW'] } },
+        select: { id: true },
+      });
+      if (hasDispute) {
+        skippedDisputed += 1;
+        continue;
+      }
+      try {
+        await this.approveMilestone(candidate.contractId, candidate.id, candidate.contract.buyerId, systemActor);
+        approvedCount += 1;
+      } catch (err) {
+        if (err instanceof DomainError && (err.code === 'DISPUTE_IN_PROGRESS' || err.code === 'CONTRACT_REFUND_IN_PROGRESS')) {
+          skippedDisputed += 1;
+        }
+      }
+    }
+    return { approvedCount, skippedDisputed };
   }
 }

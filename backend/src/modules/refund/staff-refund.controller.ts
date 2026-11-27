@@ -14,6 +14,7 @@ import { RefundService } from './refund.service';
 import { CreateRefundDto } from './dto/create-refund.dto';
 import { StaffRefundResponseDto, toStaffRefundResponseDto } from './dto/refund-response.dto';
 import { StaffListRefundsQueryDto } from './dto/list-refunds-query.dto';
+import { ConfirmManualBankRefundDto } from '@/modules/payment/dto/bank-proof.dto';
 import { CREATE_REFUND_ENDPOINT, REFUND_CREATE_STALE_AFTER_MS } from './refund.constants';
 
 /**
@@ -78,5 +79,18 @@ export class StaffRefundController {
   @ApiOkResponse({ type: StaffRefundResponseDto })
   async get(@Param('id') id: string): Promise<StaffRefundResponseDto> {
     return toStaffRefundResponseDto(await this.refunds.getByIdOrThrow(id));
+  }
+
+  @Post(':id/confirm-bank-return')
+  @HttpCode(200)
+  @ApiOkResponse({ type: StaffRefundResponseDto })
+  async confirmManualBankReturn(
+    @CurrentStaff() staff: StaffAccessTokenPayload,
+    @Param('id') id: string,
+    @Body() dto: ConfirmManualBankRefundDto,
+  ): Promise<StaffRefundResponseDto> {
+    const actor = await this.audit.resolveStaffActor(staff.sub);
+    const updated = await this.refunds.confirmManualBankReturn(id, staff.sub, dto, actor);
+    return toStaffRefundResponseDto(updated);
   }
 }

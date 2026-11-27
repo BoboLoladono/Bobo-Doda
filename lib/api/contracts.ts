@@ -256,7 +256,12 @@ export interface ProposalsService {
       description: string;
       amount: number;
       dueDate: string;
-    }[]
+    }[],
+    terms?: {
+      deliverableSummary?: string;
+      acceptanceCriteria?: string;
+      revisionsIncluded?: number;
+    }
   ): Promise<Model.Contract>;
   withdraw(id: string): Promise<Model.Proposal>;
 }
@@ -335,7 +340,15 @@ export interface MilestonesService {
     Mock'da fayl data-URL ga o'giriladi; backend'da `POST /files` ga
     yuboriladi va doimiy URL qaytadi — chaqiruvchi UI o'zgarmaydi. */
 export interface FilesService {
-  upload(file: File): Promise<Model.DeliverableFile>;
+  upload(
+    file: File,
+    options?: {
+      purpose?: "BANK_PROOF" | "DELIVERABLE" | "GENERAL";
+      contractId?: string;
+      milestoneId?: string;
+    },
+  ): Promise<Model.DeliverableFile>;
+  download(url: string, fileName?: string): Promise<void>;
 }
 
 export interface PaymentsService {
@@ -398,6 +411,53 @@ export interface PaymentsService {
   createContractPayment(contractId: string, idempotencyKey: string): Promise<PaymentDTO>;
   /** Shartnomaning eng so'nggi to'lovi — holat so'rash uchun (bounded polling, bo'lim 25) */
   getContractPayment(contractId: string): Promise<PaymentDTO | null>;
+  getCompanyBankDetails(): Promise<{
+    configured: boolean;
+    details: {
+      companyName: string;
+      bankName: string;
+      accountNumber: string;
+      mfo: string;
+      inn: string;
+      bankAddress?: string | null;
+      supportPhone?: string | null;
+    } | null;
+  }>;
+  submitManualBankProof(
+    contractId: string,
+    input: { declaredAmount?: number; receiptFileUrl?: string; receiptNote?: string }
+  ): Promise<Model.ManualBankProof>;
+  listManualBankProofs(contractId: string): Promise<Model.ManualBankProof[]>;
+  getBalanceBreakdown(): Promise<Model.SellerBalanceBreakdown>;
+  listPayoutDestinations(): Promise<Model.PayoutDestination[]>;
+  addPayoutDestination(input: {
+    type: "BANK_CARD" | "BANK_ACCOUNT";
+    providerLabel: string;
+    rawAccountOrCard: string;
+    holderName: string;
+    bankName?: string;
+    mfo?: string;
+    isDefault?: boolean;
+  }): Promise<Model.PayoutDestination>;
+  replacePayoutDestination(
+    id: string,
+    input: {
+      type: "BANK_CARD" | "BANK_ACCOUNT";
+      providerLabel: string;
+      rawAccountOrCard: string;
+      holderName: string;
+      bankName?: string;
+      mfo?: string;
+      isDefault?: boolean;
+    },
+  ): Promise<Model.PayoutDestination>;
+  setDefaultPayoutDestination(id: string): Promise<Model.PayoutDestination>;
+  removePayoutDestination(id: string): Promise<void>;
+  requestPayout(input: {
+    amount: number;
+    destinationId: string;
+    idempotencyKey: string;
+  }): Promise<Model.WithdrawalRequest>;
 }
 
 /**

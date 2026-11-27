@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Optional, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Roles } from '@/modules/auth/decorators/roles.decorator';
@@ -6,6 +6,7 @@ import { RolesGuard } from '@/modules/auth/guards/roles.guard';
 import { SellerEligibilityGuard } from '@/common/guards/seller-eligibility.guard';
 import { Public } from '@/modules/auth/decorators/public.decorator';
 import { CurrentUser } from '@/modules/auth/decorators/current-user.decorator';
+import { TokenService } from '@/modules/auth/token.service';
 import type { AccessTokenPayload } from '@/modules/auth/types/token-payload';
 import { AccountStatusGuard } from '@/common/guards/account-status.guard';
 import { Page } from '@/common/pagination/page-query.dto';
@@ -19,7 +20,10 @@ import { JobResponseDto, toJobResponseDto } from './dto/job-response.dto';
 @ApiTags('jobs')
 @Controller('jobs')
 export class JobsController {
-  constructor(private readonly jobs: JobsService) {}
+  constructor(
+    private readonly jobs: JobsService,
+    @Optional() private readonly tokens?: TokenService,
+  ) {}
 
   @Public()
   @Get()
@@ -117,8 +121,26 @@ export class JobsController {
   @Public()
   @Get(':id')
   @ApiOkResponse({ type: JobResponseDto })
-  async get(@Param('id') id: string): Promise<JobResponseDto> {
-    const job = await this.jobs.getByIdOrThrow(id);
+  async get(
+    @Param('id') id: string,
+    @Headers('authorization') authorization?: string,
+  ): Promise<JobResponseDto> {
+    let callerUserId: string | undefined;
+    const token = authorization?.startsWith('Bearer ')
+      ? authorization.slice('Bearer '.length).trim()
+      : undefined;
+    if (token && this.tokens) {
+      try {
+        const payload = this.tokens.verifyAccessToken(token);
+        if (payload.sub && payload.familyId) {
+          const active = await this.jobs.isActiveSession(payload.sub, payload.familyId);
+          if (active) callerUserId = payload.sub;
+        }
+      } catch {
+        // Yaroqsiz yoki muddati o'tgan ixtiyoriy token — anonim kabi ko'riladi
+      }
+    }
+    const job = await this.jobs.getByIdOrThrow(id, callerUserId);
     return toJobResponseDto(job);
   }
 

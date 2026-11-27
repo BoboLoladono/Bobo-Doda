@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Button } from "@/components/ui/Button";
@@ -12,10 +13,12 @@ import { Input } from "@/components/ui/Input";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/components/ui/Toast";
-import { jobsService, proposalsService, servicesService } from "@/lib/api";
-import type { Job } from "@/lib/types";
+import { authService, jobsService, proposalsService, sellerApplicationService, servicesService } from "@/lib/api";
+import { ApiError } from "@/lib/api/errors";
+import type { Job, VerificationStatus } from "@/lib/types";
 import { formatMoney } from "@/lib/format";
 import { useT } from "@/lib/i18n";
+import { useFormDraft } from "@/lib/hooks/useFormDraft";
 import { trackProposalSubmit } from "@/lib/analytics";
 
 export default function TaklifYuborishPage() {
@@ -27,6 +30,8 @@ export default function TaklifYuborishPage() {
   const [job, setJob] = useState<Job | null | undefined>(undefined);
   const [alreadySent, setAlreadySent] = useState(false);
   const [serviceImages, setServiceImages] = useState<string[]>([]);
+  const [sellerAppStatus, setSellerAppStatus] = useState<VerificationStatus | null | undefined>(undefined);
+  const [roleBlocked, setRoleBlocked] = useState(false);
 
   const [bid, setBid] = useState("");
   const [deliveryDays, setDeliveryDays] = useState("");
@@ -35,38 +40,111 @@ export default function TaklifYuborishPage() {
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitDuplicate, setSubmitDuplicate] = useState(false);
   const [sending, setSending] = useState(false);
   const [loadError, setLoadError] = useState<unknown>(null);
 
+  const draftValue = useMemo(
+    () => ({ bid, deliveryDays, cover, answers }),
+    [bid, deliveryDays, cover, answers]
+  );
+  const clearDraft = useFormDraft(
+    `draft:seller:proposal:${params.id}`,
+    draftValue,
+    (draft) => {
+      if (draft.bid) setBid(draft.bid);
+      if (draft.deliveryDays) setDeliveryDays(draft.deliveryDays);
+      if (draft.cover) setCover(draft.cover);
+      if (Array.isArray(draft.answers) && draft.answers.length) setAnswers(draft.answers);
+    },
+    Boolean(bid || deliveryDays || cover || answers.some(Boolean))
+  );
+
   const load = useCallback(() => {
+    let active = true;
     setLoadError(null);
-    Promise.all([
-      jobsService.get(params.id),
-      proposalsService.listMine(),
-      servicesService.listMine(),
-    ])
-      .then(([found, proposals, services]) => {
-        setJob(found);
-        if (found) setAnswers(found.screeningQuestions.map(() => ""));
-        setAlreadySent(
-          proposals.some(
-            (p) => p.jobId === params.id && p.status !== "qaytarib_olingan"
-          )
+
+    async function run() {
+      let session = authService.getSession();
+      if (!session) {
+        session = await authService.refresh();
+      }
+      if (!active) return;
+      if (!session) {
+        router.replace("/kirish");
+        return;
+      }
+      if (session.role !== "mutaxassis") {
+        setRoleBlocked(true);
+        setJob(null);
+        return;
+      }
+
+      const [found, proposals, services, app] = await Promise.all([
+        jobsService.get(params.id),
+        proposalsService.listMine(),
+        servicesService.listMine().catch(() => []),
+        sellerApplicationService.getCurrent().catch(() => null),
+      ]);
+      if (!active) return;
+      setJob(found);
+      if (found) {
+        setAnswers((prev) =>
+          prev.length === found.screeningQuestions.length
+            ? prev
+            : found.screeningQuestions.map((_, i) => prev[i] ?? "")
         );
-        setServiceImages(services.flatMap((s) => s.images));
-      })
-      .catch(setLoadError);
-  }, [params.id]);
+      }
+      setAlreadySent(
+        proposals.some(
+          (p) => p.jobId === params.id && p.status !== "qaytarib_olingan"
+        )
+      );
+      setServiceImages(services.flatMap((s) => s.images));
+      setSellerAppStatus(app?.status ?? null);
+    }
+
+    void run().catch((err) => {
+      if (active) setLoadError(err);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [params.id, router]);
 
   useEffect(load, [load]);
 
   if (loadError) return <ErrorState error={loadError} onRetry={load} />;
+  if (roleBlocked) {
+    return (
+      <EmptyState
+        title="Faqat mutaxassislar taklif yubora oladi"
+        description="Ish e'loniga taklif yuborish uchun mutaxassis hisobi bilan kiring."
+        action={
+          <Link href={`/bozor/ish-elonlari/${params.id}`}>
+            <Button size="sm">E&apos;longa qaytish</Button>
+          </Link>
+        }
+      />
+    );
+  }
   if (job === undefined) return <SkeletonCard />;
   if (job === null || job.status !== "ochiq") {
     return <EmptyState title={job === null ? t("job.notFound") : t("job.closedNote")} />;
   }
   if (alreadySent) {
-    return <EmptyState title={t("job.alreadySent")} />;
+    return (
+      <EmptyState
+        title={t("job.alreadySent")}
+        action={
+          <Link href="/mutaxassis/applications">
+            <Button size="sm">{t("nav.applications")}</Button>
+          </Link>
+        }
+      />
+    );
   }
 
   function toggleImage(src: string) {
@@ -77,14 +155,22 @@ export default function TaklifYuborishPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!job) return;
+    if (!job || sending) return;
+    setSubmitError(null);
+    setSubmitDuplicate(false);
+
+    const parsedBid = Number(bid);
+    const parsedDays = Number(deliveryDays);
     const next: Record<string, string> = {};
-    if (!bid || Number(bid) < 1_000) {
-      next.bid = Number(bid) > 0 ? "Taklif summasi kamida 1 000 so‘m bo‘lishi kerak" : t("prop.errBid");
+    if (!bid || !Number.isSafeInteger(parsedBid) || parsedBid < 1_000) {
+      next.bid =
+        parsedBid > 0
+          ? "Taklif summasi kamida 1 000 so‘m (butun son) bo‘lishi kerak"
+          : t("prop.errBid");
     }
-    if (!deliveryDays || Number(deliveryDays) < 1) {
+    if (!deliveryDays || !Number.isSafeInteger(parsedDays) || parsedDays < 1) {
       next.deliveryDays = t("prop.errDelivery");
-    } else if (Number(deliveryDays) > 365) {
+    } else if (parsedDays > 365) {
       next.deliveryDays = t("wizard.errDaysMax");
     }
     if (cover.trim().length < 50) next.cover = t("prop.errCover");
@@ -98,23 +184,43 @@ export default function TaklifYuborishPage() {
     try {
       await proposalsService.create({
         jobId: job.id,
-        bidAmount: Number(bid),
+        bidAmount: parsedBid,
         coverLetter: cover.trim(),
         screeningAnswers: job.screeningQuestions.map((question, i) => ({
           question,
           answer: answers[i].trim(),
         })),
         attachedImages: [...selectedImages, ...uploadedImages],
-        estimatedDeliveryDays: Number(deliveryDays),
+        estimatedDeliveryDays: parsedDays,
       });
-      trackProposalSubmit({ jobId: job.id, amount: Number(bid) });
+      trackProposalSubmit({ jobId: job.id, amount: parsedBid });
+      clearDraft();
       toast(t("prop.sent"));
       router.push("/mutaxassis/applications");
     } catch (err) {
-      if (err instanceof Error && err.message === "DUPLICATE_PROPOSAL") {
-        setAlreadySent(true);
+      const msg = err instanceof Error ? err.message : "";
+      const code = err instanceof ApiError ? err.code : "";
+      if (msg === "DUPLICATE" || msg === "DUPLICATE_PROPOSAL" || code === "CONFLICT") {
+        setSubmitDuplicate(true);
+        setSubmitError(t("job.alreadySent"));
         toast(t("job.alreadySent"), "error");
+      } else if (msg === "SELLER_NOT_APPROVED") {
+        setSubmitError(
+          "Taklif yuborish uchun mutaxassis arizangiz tasdiqlangan bo'lishi kerak."
+        );
+        toast("Mutaxassis profilingiz hali tasdiqlanmagan", "error");
+      } else if (msg === "FORBIDDEN" || code === "FORBIDDEN") {
+        setSubmitError("Bu e'longa taklif yuborishga ruxsat yo'q.");
+        toast("Ruxsat berilmadi", "error");
+      } else if (code === "NETWORK" || code === "UNKNOWN" || (err instanceof ApiError && err.retryable)) {
+        setSubmitError(
+          "Server bilan aloqada xatolik yuz berdi. Kiritilgan ma'lumotlaringiz saqlandi — qayta urinib ko'ring."
+        );
+        toast(t("common.error"), "error");
       } else {
+        setSubmitError(
+          "Taklif yuborib bo'lmadi. Ma'lumotlarni tekshirib, qayta urinib ko'ring."
+        );
         toast(t("common.error"), "error");
       }
       setSending(false);
@@ -174,6 +280,15 @@ export default function TaklifYuborishPage() {
               </span>
             </p>
           )}
+        </div>
+      )}
+
+      {sellerAppStatus !== undefined && sellerAppStatus !== "tasdiqlangan" && (
+        <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-xs text-warning-deep">
+          Mutaxassis sifatida ariza topshirish uchun profilingiz moderatsiyadan o&apos;tgan bo&apos;lishi kerak.{" "}
+          <Link href="/mutaxassis/settings/royxat" className="font-semibold underline">
+            Ariza holatini ko&apos;rish
+          </Link>
         </div>
       )}
 
@@ -295,6 +410,20 @@ export default function TaklifYuborishPage() {
 
           <FileUpload value={uploadedImages} onChange={setUploadedImages} max={5} acceptDocs />
         </Card>
+
+        {submitError && (
+          <div
+            role="alert"
+            className="rounded-xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger-deep flex flex-col gap-2"
+          >
+            <p>{submitError}</p>
+            {submitDuplicate && (
+              <Link href="/mutaxassis/applications" className="text-xs font-semibold underline">
+                Yuborgan takliflarimni ko&apos;rish →
+              </Link>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button

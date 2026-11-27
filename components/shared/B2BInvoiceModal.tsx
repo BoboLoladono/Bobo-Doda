@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/Badge";
 import { formatDate, formatMoney } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import {
-  COMPANY_BANK_DETAILS,
+  getEnvCompanyBankDetails,
   generatePaymentReference,
   getPaymentPurpose,
+  type CompanyBankDetails,
 } from "@/lib/company-bank-details";
 import type { Contract, Milestone } from "@/lib/types";
 
@@ -17,6 +18,7 @@ interface B2BInvoiceModalProps {
   onClose: () => void;
   contract: Contract;
   milestones?: Milestone[];
+  bankDetails?: CompanyBankDetails | null;
 }
 
 export function B2BInvoiceModal({
@@ -24,15 +26,17 @@ export function B2BInvoiceModal({
   onClose,
   contract,
   milestones = [],
+  bankDetails,
 }: B2BInvoiceModalProps) {
   const { lang } = useT();
 
   if (!contract) return null;
 
+  const resolvedBank = bankDetails ?? getEnvCompanyBankDetails();
   const isRu = lang === "ru";
-  const invoiceNo = `BD-INV-2026-${(contract.id || "1").replace(/\D/g, "").padStart(4, "0") || "0108"}`;
+  const invoiceNo = `BD-INV-2026-${(contract.id || "1").replace(/\D/g, "").slice(0, 6).padStart(4, "0")}`;
   const invoiceDate = formatDate(contract.createdAt || new Date().toISOString(), lang);
-  const paymentRef = contract.paymentReference || generatePaymentReference(contract.id);
+  const paymentRef = contract.paymentPurposeCode || contract.paymentReference || generatePaymentReference(contract.id);
   const paymentPurpose = getPaymentPurpose(paymentRef);
 
   function handlePrint() {
@@ -109,31 +113,41 @@ export function B2BInvoiceModal({
             <span className="text-3xs uppercase font-extrabold text-muted tracking-wider">
               {isRu ? "Поставщик (Исполнитель):" : "Yetkazib beruvchi (Ijrochi):"}
             </span>
-            <strong className="text-xs sm:text-sm font-black text-ink">
-              {COMPANY_BANK_DETAILS.companyName}
-            </strong>
-            <div className="text-2xs sm:text-xs text-muted space-y-0.5">
-              <div>
-                <span className="font-semibold text-ink">Hisob raqam:</span>{" "}
-                <span className="font-mono font-bold text-ink">{COMPANY_BANK_DETAILS.accountNumber}</span>
-              </div>
-              <div>
-                <span className="font-semibold text-ink">Bank:</span> {COMPANY_BANK_DETAILS.bankName}
-              </div>
-              <div className="flex gap-4">
-                <span>
-                  <span className="font-semibold text-ink">MFO:</span>{" "}
-                  <strong className="font-mono">{COMPANY_BANK_DETAILS.mfo}</strong>
-                </span>
-                <span>
-                  <span className="font-semibold text-ink">INN:</span>{" "}
-                  <strong className="font-mono">{COMPANY_BANK_DETAILS.inn}</strong>
-                </span>
-              </div>
-              <div>
-                <span className="font-semibold text-ink">Manzil:</span> {COMPANY_BANK_DETAILS.bankAddress}
-              </div>
-            </div>
+            {resolvedBank ? (
+              <>
+                <strong className="text-xs sm:text-sm font-black text-ink">
+                  {resolvedBank.companyName}
+                </strong>
+                <div className="text-2xs sm:text-xs text-muted space-y-0.5">
+                  <div>
+                    <span className="font-semibold text-ink">Hisob raqam:</span>{" "}
+                    <span className="font-mono font-bold text-ink">{resolvedBank.accountNumber}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-ink">Bank:</span> {resolvedBank.bankName}
+                  </div>
+                  <div className="flex gap-4">
+                    <span>
+                      <span className="font-semibold text-ink">MFO:</span>{" "}
+                      <strong className="font-mono">{resolvedBank.mfo}</strong>
+                    </span>
+                    <span>
+                      <span className="font-semibold text-ink">INN:</span>{" "}
+                      <strong className="font-mono">{resolvedBank.inn}</strong>
+                    </span>
+                  </div>
+                  {resolvedBank.bankAddress && (
+                    <div>
+                      <span className="font-semibold text-ink">Manzil:</span> {resolvedBank.bankAddress}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-warning-deep">
+                Tashkilotning rasmiy bank rekvizitlari hali kiritilmagan. Hisob-faktura rekvizitlar tasdiqlangach chiqariladi.
+              </p>
+            )}
           </div>
 
           {/* Buyer */}

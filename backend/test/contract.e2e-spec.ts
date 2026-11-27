@@ -118,8 +118,8 @@ describe('Contract + Milestone (e2e)', () => {
     expect(res.body.buyerId).toBe(buyer.userId);
     expect(res.body.sellerId).toBe(seller.userId);
     expect(res.body.agreedAmount).toBe(priceSom);
-    expect(res.body.platformFeeRateBps).toBe(500);
-    expect(res.body.platformFeeAmount).toBe(Math.floor((priceSom * 500) / 10000));
+    expect(res.body.platformFeeRateBps).toBe(1000);
+    expect(res.body.platformFeeAmount).toBe(Math.floor((priceSom * 1000) / 10000));
     expect(res.body.milestones).toHaveLength(2);
     expect(res.body.milestones[0].position).toBe(1);
     expect(res.body.milestones[1].position).toBe(2);
@@ -493,13 +493,28 @@ describe('Contract + Milestone (e2e)', () => {
       request(app!.getHttpServer())
         .post(`/api/v1/seller/contracts/${contractId}/milestones/${milestoneId}/submit`)
         .set('Authorization', `Bearer ${seller.accessToken}`)
-        .send({}),
+        .send({ message: 'Parallel topshirish 1' }),
       request(app!.getHttpServer())
         .post(`/api/v1/seller/contracts/${contractId}/milestones/${milestoneId}/submit`)
         .set('Authorization', `Bearer ${seller.accessToken}`)
-        .send({}),
+        .send({ message: 'Parallel topshirish 2' }),
     ]);
     expect([r1.status, r2.status].sort()).toEqual([200, 409]);
+  });
+
+  t('Bo‘sh deliverable topshirish rad etiladi (422 EMPTY_DELIVERABLE)', async () => {
+    const { buyer, seller, contractId, milestoneId, priceSom } = await createPendingContract();
+    await request(app!.getHttpServer())
+      .post(`/api/v1/seller/contracts/${contractId}/accept`)
+      .set('Authorization', `Bearer ${seller.accessToken}`)
+      .expect(200);
+    await fundContract(contractId, buyer, priceSom);
+    const emptyRes = await request(app!.getHttpServer())
+      .post(`/api/v1/seller/contracts/${contractId}/milestones/${milestoneId}/submit`)
+      .set('Authorization', `Bearer ${seller.accessToken}`)
+      .send({});
+    expect(emptyRes.status).toBe(422);
+    expect(emptyRes.body.code).toBe('EMPTY_DELIVERABLE');
   });
 
   t('Parallel approve vs request-revision (bir xil milestone) — faqat BITTASI g‘olib chiqadi', async () => {
@@ -512,7 +527,7 @@ describe('Contract + Milestone (e2e)', () => {
     await request(app!.getHttpServer())
       .post(`/api/v1/seller/contracts/${contractId}/milestones/${milestoneId}/submit`)
       .set('Authorization', `Bearer ${seller.accessToken}`)
-      .send({})
+      .send({ message: 'Tayyor natija' })
       .expect(200);
 
     const [approveRes, revisionRes] = await Promise.all([
@@ -556,12 +571,12 @@ describe('Contract + Milestone (e2e)', () => {
     await request(app!.getHttpServer())
       .post(`/api/v1/seller/contracts/${contractId}/milestones/${mA.id}/submit`)
       .set('Authorization', `Bearer ${seller.accessToken}`)
-      .send({})
+      .send({ message: 'A bosqich natijasi' })
       .expect(200);
     await request(app!.getHttpServer())
       .post(`/api/v1/seller/contracts/${contractId}/milestones/${mB.id}/submit`)
       .set('Authorization', `Bearer ${seller.accessToken}`)
-      .send({})
+      .send({ message: 'B bosqich natijasi' })
       .expect(200);
 
     const [approveA, approveB] = await Promise.all([

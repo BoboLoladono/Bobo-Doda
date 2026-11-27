@@ -54,6 +54,7 @@ describe('durable proposal authorization and lifecycle', () => {
       },
       contract: {
         create: jest.fn().mockResolvedValue(contractResult),
+        findFirst: jest.fn().mockResolvedValue(null),
         findUnique: jest.fn().mockResolvedValue(null),
         findUniqueOrThrow: jest.fn().mockResolvedValue(contractResult),
       },
@@ -109,7 +110,8 @@ describe('durable proposal authorization and lifecycle', () => {
     const contract = await service.hireProposal('prop_1', 'buyer-1');
     expect(contract).toMatchObject({ id: 'contract-id', sourceType: 'JOB' });
     expect(tx.contract.create).toHaveBeenCalled();
-    expect(tx.job.update).toHaveBeenCalledWith(expect.objectContaining({ data: { status: 'CLOSED' } }));
+    // Job remains OPEN until specialist confirms (ACTIVE), so buyer can pick another candidate if rejected.
+    expect(tx.job.update).not.toHaveBeenCalled();
   });
   it('rejects withdrawal by another seller without mutating data', async () => {
     const { service, tx } = setup();

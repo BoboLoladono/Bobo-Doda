@@ -2429,9 +2429,9 @@ export default function LandingPage() {
                   </div>
                   <p style={{ color: "var(--n500)", fontSize: 13, marginTop: 16, textAlign: "center", borderTop: "1px dashed var(--hair)", paddingTop: 14 }}>
                     {tr(
-                      "To'lovlar Payme, Click va Uzum orqali xavfsiz qabul qilinadi. Escrow depoziti ish qabul qilinguncha kafolatlanadi.",
-                      "Платежи безопасно проводятся через Payme, Click и Uzum. Депозит застрахован до полного приема работы.",
-                      "Payments are securely processed via Payme, Click, and Uzum. Escrow deposits are held safely until completion."
+                      "To'lovlar rasmiy Payme yoki bank o'tkazmasi orqali qabul qilinadi. Escrow depoziti ish qabul qilinguncha kafolatlanadi.",
+                      "Платежи безопасно проводятся через Payme или банковский перевод. Депозит удерживается до полной приемки работы.",
+                      "Payments are processed securely via Payme or bank transfer. Escrow deposits are held safely until completion."
                     )}
                   </p>
                 </div>

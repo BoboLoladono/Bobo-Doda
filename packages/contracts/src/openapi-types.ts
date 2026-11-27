@@ -100,6 +100,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/google": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AuthController_googleAuth"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/password-reset/request-otp": {
         parameters: {
             query?: never;
@@ -1172,6 +1188,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["UploadsController_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/uploads/{storedName}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["UploadsController_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/contracts/{contractId}/payment": {
         parameters: {
             query?: never;
@@ -1182,6 +1230,38 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["PaymentController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/contracts/{contractId}/payment/manual-proof": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PaymentController_submitManualProof"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/contracts/{contractId}/payment/manual-proofs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PaymentController_listManualProofs"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1252,6 +1332,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff/payments/bank-proofs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffPaymentController_listBankProofs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/payments/bank-proofs/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffPaymentController_verifyBankProof"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/payments/bank-proofs/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffPaymentController_rejectBankProof"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/staff/payments": {
         parameters: {
             query?: never;
@@ -1276,6 +1404,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["StaffPaymentController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/bank-details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["BankDetailsController_getCompanyBankDetails"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1332,6 +1476,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/seller/balance/breakdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SellerBalanceController_getBreakdown"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/staff/refunds": {
         parameters: {
             query?: never;
@@ -1358,6 +1518,22 @@ export interface paths {
         get: operations["StaffRefundController_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/refunds/{id}/confirm-bank-return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffRefundController_confirmManualBankReturn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1428,6 +1604,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/seller/payout-destinations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SellerPayoutDestinationController_list"];
+        put?: never;
+        post: operations["SellerPayoutDestinationController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/seller/payout-destinations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["SellerPayoutDestinationController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["SellerPayoutDestinationController_replace"];
+        trace?: never;
+    };
+    "/api/v1/seller/payout-destinations/{id}/default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["SellerPayoutDestinationController_setDefault"];
+        trace?: never;
+    };
+    "/api/v1/staff/payout-destinations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffPayoutDestinationController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/payout-destinations/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffPayoutDestinationController_verify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/payout-destinations/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffPayoutDestinationController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/staff/payouts": {
         parameters: {
             query?: never;
@@ -1436,6 +1708,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["StaffPayoutController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/payouts/specialists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffPayoutController_listSpecialistsSummary"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1454,6 +1742,70 @@ export interface paths {
         get: operations["StaffPayoutController_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/payouts/{id}/start-processing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffPayoutController_startProcessing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/payouts/{id}/mark-paid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffPayoutController_markPaid"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/payouts/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffPayoutController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/payouts/{id}/correct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffPayoutController_correct"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2775,6 +3127,7 @@ export interface components {
             phone: string;
             password: string;
         };
+        GoogleAuthDto: Record<string, never>;
         CompletePasswordResetDto: {
             /** @description `verify-otp` javobidagi qisqa umrli token */
             resetToken: string;
@@ -3051,7 +3404,44 @@ export interface components {
             agreedAmount?: number;
             /** @description ISO 8601 — kelajakda bo‘lishi shart */
             deadline: string;
+            /** @description Topshiriladigan natija tavsifi */
+            deliverableSummary?: string;
+            /** @description Qabul mezoni */
+            acceptanceCriteria?: string;
+            /** @description Kiritilgan tuzatishlar soni */
+            revisionsIncluded?: number;
             milestones: components["schemas"]["CreateMilestoneInputDto"][];
+        };
+        ContractBankProofSummaryDto: {
+            id: string;
+            status: string;
+            paymentPurposeCode: string;
+            declaredAmount: number;
+            receivedAmount?: number | null;
+            mismatchAmount: number;
+            receiptFileUrl?: string | null;
+            receiptNote?: string | null;
+            bankOperationRef?: string | null;
+            rejectionReason?: string | null;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        MilestoneSubmissionItemDto: {
+            id: string;
+            submittedById: string;
+            message?: Record<string, never> | null;
+            deliverableUrls: string[];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        MilestoneRevisionItemDto: {
+            id: string;
+            requestedById: string;
+            reason: string;
+            /** Format: date-time */
+            createdAt: string;
         };
         MilestoneResponseDto: {
             id: string;
@@ -3066,6 +3456,12 @@ export interface components {
             dueAt?: Record<string, never> | null;
             submittedAt?: Record<string, never> | null;
             approvedAt?: Record<string, never> | null;
+            submissions: components["schemas"]["MilestoneSubmissionItemDto"][];
+            revisionRequests: components["schemas"]["MilestoneRevisionItemDto"][];
+            revisionCount: number;
+            autoAcceptPaused: boolean;
+            /** Format: date-time */
+            reviewDeadline?: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -3092,12 +3488,22 @@ export interface components {
             platformFeeAmount: number;
             /** Format: date-time */
             deadline: string;
+            deliverableSummary?: string | null;
+            acceptanceCriteria?: string | null;
+            revisionsIncluded: number;
+            /** Format: date-time */
+            buyerConfirmedAt?: string | null;
+            /** Format: date-time */
+            sellerConfirmedAt?: string | null;
             /** @enum {string} */
             status: "PENDING_SELLER" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "REJECTED";
             /** @description To‘lov (escrow) muvaffaqiyatli moliyalashtirilganmi */
             isFunded: boolean;
             /** Format: date-time */
             fundedAt?: string | null;
+            paymentPurposeCode: string;
+            autoAcceptPaused: boolean;
+            latestBankProof?: components["schemas"]["ContractBankProofSummaryDto"] | null;
             milestones: components["schemas"]["MilestoneResponseDto"][];
             /** Format: date-time */
             createdAt: string;
@@ -3110,6 +3516,28 @@ export interface components {
         SubmitMilestoneDto: {
             message?: string;
             deliverableUrls?: string[];
+        };
+        UploadFileDto: {
+            /** @example receipt.pdf */
+            fileName: string;
+            /** @example application/pdf */
+            mimeType?: string;
+            /** @description Base64 string or data: URL */
+            dataBase64: string;
+            /** @enum {string} */
+            purpose?: "BANK_PROOF" | "DELIVERABLE" | "GENERAL";
+            contractId?: string;
+            milestoneId?: string;
+        };
+        UploadFileResponseDto: {
+            id: string;
+            storedName: string;
+            originalName: string;
+            mimeType: string;
+            size: number;
+            url: string;
+            /** @enum {string} */
+            purpose: "BANK_PROOF" | "DELIVERABLE" | "GENERAL";
         };
         PaymentResponseDto: {
             id: string;
@@ -3130,6 +3558,52 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        SubmitBankProofDto: {
+            /** @description Yuborilgan summa (butun so‘mda) */
+            declaredAmount?: number;
+            /** @description Yuklangan chek/kvitansiya fayl manzili */
+            receiptFileUrl?: string;
+            /** @description Chek raqami yoki izoh */
+            receiptNote?: string;
+        };
+        BankTransferProofResponseDto: {
+            id: string;
+            contractId: string;
+            paymentId?: string | null;
+            buyerId: string;
+            paymentPurposeCode: string;
+            declaredAmount: number;
+            receivedAmount?: number | null;
+            mismatchAmount: number;
+            bankOperationRef?: string | null;
+            receiptFileUrl?: string | null;
+            receiptNote?: string | null;
+            /** @enum {string} */
+            status: "PENDING_REVIEW" | "UNDERPAID" | "OVERPAID_REVIEW" | "APPROVED" | "REJECTED";
+            rejectionReason?: string | null;
+            reviewedByStaffId?: string | null;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            contractTitle?: string | null;
+            contractAgreedAmount?: number;
+            buyerName?: string | null;
+        };
+        VerifyBankProofDto: {
+            /** @description Bank hisobiga haqiqatda tushgan summa (butun so‘m) */
+            receivedAmount: number;
+            /** @description Bank operatsiya / to‘lov hujjati raqami (unikal) */
+            bankOperationRef: string;
+            /** @description Ortiqcha to‘lovni ortig‘ini qaytarish sharti bilan qabul qilish */
+            allowOverpaymentSurplus?: boolean;
+            note?: string;
+        };
+        RejectBankProofDto: {
+            reason: string;
         };
         StaffPaymentResponseDto: {
             id: string;
@@ -3152,6 +3626,19 @@ export interface components {
             updatedAt: string;
             payerUserId: string;
             providerPaymentId?: Record<string, never>;
+        };
+        CompanyBankDetailsDto: {
+            companyName: string;
+            bankName: string;
+            accountNumber: string;
+            mfo: string;
+            inn: string;
+            bankAddress?: string | null;
+            supportPhone?: string | null;
+        };
+        CompanyBankDetailsResponseDto: {
+            configured: boolean;
+            details?: components["schemas"]["CompanyBankDetailsDto"] | null;
         };
         LedgerEntryResponseDto: {
             id: string;
@@ -3186,10 +3673,64 @@ export interface components {
         };
         SellerBalanceResponseDto: {
             currency: string;
-            /** @description Butun so‘m — SELLER_PAYABLE hisobidagi joriy qoldiq */
+            /** @description Yechish mumkin bo‘lgan qoldiq (butun so‘m) */
             available: number;
-            /** @description Exact signed integer tiyin as a decimal string; 100 tiyin = 1 UZS */
             availableTiyin: string;
+            /** @description Escrowda kutilayotgan summa (funded, hali qabul qilinmagan, nizosiz) */
+            pending: number;
+            pendingTiyin: string;
+            /** @description Pul yechishga so‘ralgan va band qilingan summa (PAYOUT_CLEARING) */
+            reserved: number;
+            reservedTiyin: string;
+            /** @description Nizo sababli muzlatilgan summa */
+            disputedHeld: number;
+            disputedHeldTiyin: string;
+            /** @description Bank orqali to‘langan jami summa (SUCCEEDED payouts) */
+            paid: number;
+            paidTiyin: string;
+            /** @description Qabul qilingan ishlar umumiy qiymati (brutto) */
+            grossEarned: number;
+            grossEarnedTiyin: string;
+            /** @description Ushlangan platforma komissiyasi */
+            commissionWithheld: number;
+            commissionWithheldTiyin: string;
+            /** @description Mutaxassisning jami sof daromadi */
+            netEarned: number;
+            netEarnedTiyin: string;
+        };
+        SellerContractBreakdownItemDto: {
+            contractId: string;
+            title: string;
+            contractStatus: string;
+            stage: string;
+            grossAmount: number;
+            platformFeeRateBps: number;
+            commissionAmount: number;
+            netAmount: number;
+            funded: boolean;
+            /** Format: date-time */
+            fundedAt?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        SellerPayoutBreakdownItemDto: {
+            payoutId: string;
+            amount: number;
+            status: string;
+            destinationReference: string;
+            bankOperationRef?: string | null;
+            /** Format: date-time */
+            bankTransferredAt?: string | null;
+            failureReason?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            succeededAt?: string | null;
+        };
+        SellerBalanceBreakdownResponseDto: {
+            summary: components["schemas"]["SellerBalanceResponseDto"];
+            contracts: components["schemas"]["SellerContractBreakdownItemDto"][];
+            payouts: components["schemas"]["SellerPayoutBreakdownItemDto"][];
         };
         CreateRefundDto: {
             contractId: string;
@@ -3222,6 +3763,16 @@ export interface components {
             requestedByStaffId: string;
             providerRefundId?: Record<string, never>;
             provider: string;
+            bankOperationRef?: string | null;
+            /** Format: date-time */
+            bankReturnedAt?: string | null;
+            processedByStaffId?: string | null;
+        };
+        ConfirmManualBankRefundDto: {
+            bankOperationRef: string;
+            /** @description ISO 8601 bank qaytarish sanasi */
+            bankReturnedAt?: string;
+            note?: string;
         };
         RefundResponseDto: {
             id: string;
@@ -3251,7 +3802,9 @@ export interface components {
         CreatePayoutDto: {
             /** @description Butun so‘m */
             amount: number;
-            destinationReference: string;
+            /** @description Saqlangan to‘lov rekviziti ID (tavsiya etiladi) */
+            destinationId?: string;
+            destinationReference?: string;
         };
         PayoutResponseDto: {
             id: string;
@@ -3266,13 +3819,111 @@ export interface components {
             amountTiyin: string;
             currency: string;
             destinationReference: string;
+            destinationId?: string | null;
+            destinationSnapshot?: Record<string, never> | null;
+            bankOperationRef?: string | null;
+            /** Format: date-time */
+            bankTransferredAt?: string | null;
             failureReason?: Record<string, never>;
+            processingAt?: Record<string, never>;
             succeededAt?: Record<string, never>;
             failedAt?: Record<string, never>;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        CreatePayoutDestinationDto: {
+            /** @enum {string} */
+            type: "BANK_CARD" | "BANK_ACCOUNT";
+            /** @example Uzcard */
+            providerLabel: string;
+            /**
+             * @description 16 xonali karta raqami yoki 20 xonali bank hisob raqami — saqlashdan oldin maskalanadi (CVV/PIN qabul qilinmaydi)
+             * @example 8600123456789012
+             */
+            rawAccountOrCard: string;
+            holderName: string;
+            bankName?: string;
+            mfo?: string;
+            isDefault?: boolean;
+        };
+        PayoutDestinationResponseDto: {
+            id: string;
+            /** @enum {string} */
+            type: "BANK_CARD" | "BANK_ACCOUNT";
+            providerLabel: string;
+            maskedValue: string;
+            holderName: string;
+            bankName?: string | null;
+            mfo?: string | null;
+            isDefault: boolean;
+            isVerified: boolean;
+            /** @enum {string} */
+            verificationStatus: "PENDING_REVIEW" | "VERIFIED" | "REJECTED";
+            bankRecipientId?: string | null;
+            verificationMethod?: string | null;
+            verificationEvidenceRef?: string | null;
+            verificationNote?: string | null;
+            rejectionReason?: string | null;
+            verifiedByStaffId?: string | null;
+            /** Format: date-time */
+            verifiedAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        VerifyPayoutDestinationDto: {
+            /** @enum {string} */
+            verificationMethod: "BANK_PORTAL_BENEFICIARY" | "BANK_DOCUMENT_AND_MICRO_TRANSFER";
+            /** @description Tashkilot bank kabinetida saqlangan oluvchi/shablon identifikatori */
+            bankRecipientId?: string;
+            /** @description Mikro-o‘tkazma yoki bank ko‘chirmasi/shartnoma tasdiq hujjati raqami */
+            verificationEvidenceRef?: string;
+            /** @description Egalik qanday tekshirilgani haqida izoh */
+            verificationNote: string;
+        };
+        StaffPayoutDestinationResponseDto: {
+            id: string;
+            /** @enum {string} */
+            type: "BANK_CARD" | "BANK_ACCOUNT";
+            providerLabel: string;
+            maskedValue: string;
+            holderName: string;
+            bankName?: string | null;
+            mfo?: string | null;
+            isDefault: boolean;
+            isVerified: boolean;
+            /** @enum {string} */
+            verificationStatus: "PENDING_REVIEW" | "VERIFIED" | "REJECTED";
+            bankRecipientId?: string | null;
+            verificationMethod?: string | null;
+            verificationEvidenceRef?: string | null;
+            verificationNote?: string | null;
+            rejectionReason?: string | null;
+            verifiedByStaffId?: string | null;
+            /** Format: date-time */
+            verifiedAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            sellerId: string;
+            sellerName?: string | null;
+            sellerPhone?: string | null;
+        };
+        RejectPayoutDestinationDto: {
+            reason: string;
+        };
+        PayoutCorrectionItemDto: {
+            id: string;
+            staffId: string;
+            previousBankRef?: string | null;
+            newBankRef?: string | null;
+            /** Format: date-time */
+            previousTransferredAt?: string | null;
+            /** Format: date-time */
+            newTransferredAt?: string | null;
+            reason: string;
+            /** Format: date-time */
+            createdAt: string;
         };
         StaffPayoutResponseDto: {
             id: string;
@@ -3287,7 +3938,13 @@ export interface components {
             amountTiyin: string;
             currency: string;
             destinationReference: string;
+            destinationId?: string | null;
+            destinationSnapshot?: Record<string, never> | null;
+            bankOperationRef?: string | null;
+            /** Format: date-time */
+            bankTransferredAt?: string | null;
             failureReason?: Record<string, never>;
+            processingAt?: Record<string, never>;
             succeededAt?: Record<string, never>;
             failedAt?: Record<string, never>;
             /** Format: date-time */
@@ -3295,8 +3952,30 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             sellerId: string;
+            sellerName?: string | null;
+            sellerPhone?: string | null;
             providerPayoutId?: Record<string, never>;
             provider: string;
+            transferredAmount?: number | null;
+            processedByStaffId?: string | null;
+            corrections?: components["schemas"]["PayoutCorrectionItemDto"][];
+        };
+        MarkPayoutPaidDto: {
+            bankOperationRef: string;
+            /** @description O‘tkazilgan summa (butun so‘m) */
+            transferredAmount: number;
+            /** @description ISO 8601 bank o‘tkazmasi sanasi */
+            bankTransferredAt?: string;
+            note?: string;
+        };
+        RejectPayoutDto: {
+            reason: string;
+        };
+        CorrectPayoutDto: {
+            bankOperationRef?: string;
+            /** @description ISO 8601 bank o‘tkazmasi sanasi */
+            bankTransferredAt?: string;
+            reason: string;
         };
         OpenDisputeDto: {
             /** @enum {string} */
@@ -3598,6 +4277,12 @@ export interface components {
             dueDate?: string;
         };
         HireProposalDto: {
+            /** @description Topshiriladigan natija tavsifi */
+            deliverableSummary?: string;
+            /** @description Qabul mezoni */
+            acceptanceCriteria?: string;
+            /** @description Kelishilgan tuzatishlar soni */
+            revisionsIncluded?: number;
             milestones?: components["schemas"]["HireMilestoneDto"][];
         };
         CreateProposalDto: {
@@ -3958,6 +4643,29 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["LoginDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthSessionDto"];
+                };
+            };
+        };
+    };
+    AuthController_googleAuth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoogleAuthDto"];
             };
         };
         responses: {
@@ -5555,6 +6263,48 @@ export interface operations {
             };
         };
     };
+    UploadsController_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadFileDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadFileResponseDto"];
+                };
+            };
+        };
+    };
+    UploadsController_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                storedName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     PaymentController_create: {
         parameters: {
             query?: never;
@@ -5575,6 +6325,50 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PaymentResponseDto"];
                 };
+            };
+        };
+    };
+    PaymentController_submitManualProof: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitBankProofDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankTransferProofResponseDto"];
+                };
+            };
+        };
+    };
+    PaymentController_listManualProofs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5663,6 +6457,77 @@ export interface operations {
             };
         };
     };
+    StaffPaymentController_listBankProofs: {
+        parameters: {
+            query: {
+                contractId: string;
+                page: number;
+                perPage: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StaffPaymentController_verifyBankProof: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyBankProofDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankTransferProofResponseDto"];
+                };
+            };
+        };
+    };
+    StaffPaymentController_rejectBankProof: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectBankProofDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankTransferProofResponseDto"];
+                };
+            };
+        };
+    };
     StaffPaymentController_list: {
         parameters: {
             query?: {
@@ -5704,6 +6569,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StaffPaymentResponseDto"];
+                };
+            };
+        };
+    };
+    BankDetailsController_getCompanyBankDetails: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyBankDetailsResponseDto"];
                 };
             };
         };
@@ -5771,6 +6655,25 @@ export interface operations {
             };
         };
     };
+    SellerBalanceController_getBreakdown: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SellerBalanceBreakdownResponseDto"];
+                };
+            };
+        };
+    };
     StaffRefundController_list: {
         parameters: {
             query?: {
@@ -5829,6 +6732,31 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffRefundResponseDto"];
+                };
+            };
+        };
+    };
+    StaffRefundController_confirmManualBankReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmManualBankRefundDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -5949,6 +6877,182 @@ export interface operations {
             };
         };
     };
+    SellerPayoutDestinationController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SellerPayoutDestinationController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePayoutDestinationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutDestinationResponseDto"];
+                };
+            };
+        };
+    };
+    SellerPayoutDestinationController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SellerPayoutDestinationController_replace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePayoutDestinationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutDestinationResponseDto"];
+                };
+            };
+        };
+    };
+    SellerPayoutDestinationController_setDefault: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutDestinationResponseDto"];
+                };
+            };
+        };
+    };
+    StaffPayoutDestinationController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                perPage?: number;
+                status?: "PENDING_REVIEW" | "VERIFIED" | "REJECTED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StaffPayoutDestinationController_verify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyPayoutDestinationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffPayoutDestinationResponseDto"];
+                };
+            };
+        };
+    };
+    StaffPayoutDestinationController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectPayoutDestinationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffPayoutDestinationResponseDto"];
+                };
+            };
+        };
+    };
     StaffPayoutController_list: {
         parameters: {
             query?: {
@@ -5957,6 +7061,23 @@ export interface operations {
                 status?: "PENDING" | "PROCESSING" | "SUCCEEDED" | "FAILED";
                 sellerId?: string;
             };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StaffPayoutController_listSpecialistsSummary: {
+        parameters: {
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -5981,6 +7102,102 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffPayoutResponseDto"];
+                };
+            };
+        };
+    };
+    StaffPayoutController_startProcessing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffPayoutResponseDto"];
+                };
+            };
+        };
+    };
+    StaffPayoutController_markPaid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkPayoutPaidDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffPayoutResponseDto"];
+                };
+            };
+        };
+    };
+    StaffPayoutController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectPayoutDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffPayoutResponseDto"];
+                };
+            };
+        };
+    };
+    StaffPayoutController_correct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorrectPayoutDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -7028,7 +8245,9 @@ export interface operations {
     JobsController_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                authorization: string;
+            };
             path: {
                 id: string;
             };

@@ -45,8 +45,13 @@ export function ProposalChat({
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const myId = authService.getSession()?.userId ?? null;
+  const isMockMessaging = process.env.NEXT_PUBLIC_DEMO_WORKSPACE === "1";
 
   const load = useCallback(() => {
+    if (!isMockMessaging) {
+      setMessages([]);
+      return;
+    }
     messagesService
       .list(proposalId)
       .then((list) => {
@@ -59,9 +64,12 @@ export function ProposalChat({
         void messagesService.markRead(proposalId);
       })
       .catch((err) => {
-        if (!messages) setLoadError(err);
+        setMessages((prev) => {
+          if (!prev) setLoadError(err);
+          return prev;
+        });
       });
-  }, [proposalId, messages]);
+  }, [proposalId, isMockMessaging]);
 
   useEffect(() => {
     load();
@@ -202,7 +210,11 @@ export function ProposalChat({
         <div ref={chatEndRef} />
       </div>
 
-      {open ? (
+      {!isMockMessaging ? (
+        <p className="border-t border-line bg-surface p-3 text-center text-2xs text-muted">
+          Shaxsiy xabarlar xizmati ushbu relizda o&apos;chirilgan. Taklif shartlari shartnoma orqali kelishiladi.
+        </p>
+      ) : open ? (
         <form
           onSubmit={handleSend}
           className="flex items-end gap-2 border-t border-line p-3"

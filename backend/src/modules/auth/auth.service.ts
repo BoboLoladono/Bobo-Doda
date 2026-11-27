@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { Prisma, type Role } from '@prisma/client';
+import { AppConfigService } from '@/config/app-config.service';
 import { PrismaService } from '@/infra/prisma/prisma.service';
 import { IdFactory } from '@/common/id/id.factory';
 import { HashService } from '@/common/security/hash.service';
@@ -71,7 +72,17 @@ export class AuthService {
     private readonly grants: AuthGrantService,
     private readonly tokens: TokenService,
     private readonly refreshTokens: RefreshTokenService,
+    @Optional() private readonly config?: AppConfigService,
   ) {}
+
+  private assertRegistrationOpen(): void {
+    if (this.config?.registrationPaused) {
+      throw new DomainError(
+        'REGISTRATION_PAUSED',
+        'Texnik tozalash vaqtida ro‘yxatdan o‘tish vaqtincha to‘xtatilgan',
+      );
+    }
+  }
 
   private getDummyHash(): Promise<string> {
     this.dummyHash ??= this.hash.hash(generateOpaqueToken());
@@ -92,12 +103,14 @@ export class AuthService {
   /* ── REGISTER — telefon → SMS OTP → grant → parol → User ────────────── */
 
   async requestRegisterOtp(phone: string, ip?: string): Promise<{ devOtp?: string }> {
+    this.assertRegistrationOpen();
     return this.otp.requestOtp(phone, 'REGISTER', { ip });
   }
 
   /** OTP valid bo'lsa User DARHOL yaratilmaydi — o'rniga qisqa umrli
       `registrationToken` (bo'lim 4). */
   async verifyRegisterOtp(rawPhone: string, code: string, ip?: string): Promise<{ registrationToken: string }> {
+    this.assertRegistrationOpen();
     await this.enforceVerifyOtpIpLimit(ip);
     const { phone } = await this.otp.verifyOtp(rawPhone, code, 'REGISTER');
     const registrationToken = await this.grants.issue('REGISTER', phone);
@@ -120,6 +133,7 @@ export class AuthService {
     confirmPassword: string,
     meta?: RequestMeta,
   ): Promise<AuthResult> {
+    this.assertRegistrationOpen();
     assertPasswordsMatch(password, confirmPassword);
     const { phone } = await this.grants.consume(registrationToken, 'REGISTER');
     const passwordHash = await this.hash.hash(password);
@@ -303,6 +317,7 @@ export class AuthService {
     }
 
     // 3. Yangi foydalanuvchi yaratish (Google orqali ro'yxatdan o'tish)
+    this.assertRegistrationOpen();
     const id = this.ids.next();
     const phoneSuffix = (googleId || id).replace(/\D/g, '').slice(-10).padEnd(10, '0');
     const phone = `+000${phoneSuffix}`;

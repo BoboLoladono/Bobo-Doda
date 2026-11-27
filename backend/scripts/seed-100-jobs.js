@@ -4,6 +4,9 @@
  */
 const { PrismaClient } = require('@prisma/client');
 const crypto = require('crypto');
+const { assertNonProductionSeedAllowed } = require('./lib/seed-safety.cjs');
+
+assertNonProductionSeedAllowed('seed-100-jobs.js');
 
 const prisma = new PrismaClient();
 

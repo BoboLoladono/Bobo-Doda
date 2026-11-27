@@ -1790,13 +1790,29 @@ export const dictionary: Record<string, Entry> = {
     uz: "Birinchi xizmatingizni yarating va uni mijozlarga taklif qiling.",
     ru: "Создайте свою первую услугу и предложите её клиентам.",
   },
+  "market.noServicesYet": {
+    uz: "Hozircha xizmatlar yo'q",
+    ru: "Пока нет услуг",
+  },
   "market.emptyJobs": {
     uz: "Hozircha ish topilmadi. Filtrlarni o'zgartirib ko'ring.",
     ru: "Пока нет заказов. Попробуйте изменить фильтры.",
   },
+  "market.noJobsYet": {
+    uz: "Hozircha ish e'lonlari yo'q",
+    ru: "Пока нет объявлений о работе",
+  },
+  "market.noJobsYetHint": {
+    uz: "Birinchi ish e'lonini joylang va mutaxassislardan takliflar qabul qiling.",
+    ru: "Разместите первое объявление и получайте предложения от специалистов.",
+  },
   "market.emptySpecialists": {
     uz: "Hozircha mutaxassis topilmadi. Filtrlarni tozalab ko'ring.",
     ru: "Пока нет специалистов. Попробуйте сбросить фильтры.",
+  },
+  "market.noSpecialistsYet": {
+    uz: "Hozircha mutaxassislar yo'q",
+    ru: "Пока нет специалистов",
   },
   "market.createServiceCta": { uz: "+ Xizmat yaratish", ru: "+ Создать услугу" },
   "market.postJobCta": { uz: "+ Ish e'lon qilish", ru: "+ Разместить заказ" },

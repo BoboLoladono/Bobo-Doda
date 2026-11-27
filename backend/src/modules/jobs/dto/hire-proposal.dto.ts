@@ -5,12 +5,15 @@ import {
   ArrayMinSize,
   IsArray,
   IsDateString,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsPositive,
   IsString,
+  Max,
   MaxLength,
+  Min,
   ValidateNested,
 } from 'class-validator';
 
@@ -39,6 +42,25 @@ export class HireMilestoneDto {
 }
 
 export class HireProposalDto {
+  @ApiPropertyOptional({ description: 'Topshiriladigan natija tavsifi', maxLength: 2000 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  deliverableSummary?: string;
+
+  @ApiPropertyOptional({ description: 'Qabul mezoni', maxLength: 2000 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  acceptanceCriteria?: string;
+
+  @ApiPropertyOptional({ description: 'Kelishilgan tuzatishlar soni', minimum: 0, maximum: 20 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(20)
+  revisionsIncluded?: number;
+
   @ApiPropertyOptional({ type: [HireMilestoneDto] })
   @IsOptional()
   @IsArray()

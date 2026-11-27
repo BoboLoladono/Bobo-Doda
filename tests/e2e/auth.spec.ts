@@ -17,13 +17,15 @@ test("login sahifasi telefon+parol bilan render bo'ladi, OTP formasi YO'Q @block
   await expect(page.getByRole("button", { name: /^Kirish$/i })).toBeVisible();
   // Bosqich 20'dagi "Kod yuborish" tugmasi endi login sahifasida YO'Q.
   await expect(page.getByRole("button", { name: /Kod yuborish/i })).toHaveCount(0);
-  await expect(page.getByText(/Google|Telegram|Email/i)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Google/i })).toBeVisible();
+  await expect(page.getByText(/Telegram|Email/i)).toHaveCount(0);
 });
 
 test("register sahifasi to'g'ri render bo'ladi @blocking", async ({ page }) => {
   await page.goto("/royxatdan-otish");
   await expect(page.getByRole("button", { name: /Kod yuborish/i })).toBeVisible();
-  await expect(page.getByText(/Google|Telegram|Email/i)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Google/i })).toBeVisible();
+  await expect(page.getByText(/Telegram|Email/i)).toHaveCount(0);
 });
 
 /* Bug fix regressiyasi — OTP input state HAR DOIM string (JS number emas):

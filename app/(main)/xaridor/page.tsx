@@ -57,7 +57,7 @@ export default function XaridorDashboardPage() {
             return list.map((p) => ({
               ...p,
               jobTitle: j.title,
-              specialistName: specMap.get(p.sellerId) || "Mutaxassis",
+              specialistName: p.sellerName?.trim() || specMap.get(p.sellerId) || "Mutaxassis",
             }));
           })
         );

@@ -13,7 +13,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { RatingStars } from "@/components/ui/RatingStars";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { JobStatusBadge } from "@/components/shared/StatusBadge";
-import { jobsService, proposalsService, savedService } from "@/lib/api";
+import { authService, jobsService, proposalsService, savedService } from "@/lib/api";
 import type { Job } from "@/lib/types";
 import { formatDate, formatMoney } from "@/lib/format";
 import { useT } from "@/lib/i18n";
@@ -25,13 +25,20 @@ export default function IshEloniPage() {
   const [alreadySent, setAlreadySent] = useState(false);
   const [saved, setSaved] = useState(false);
   const [buyerJobsCount, setBuyerJobsCount] = useState(0);
+  const [sessionRole, setSessionRole] = useState<"xaridor" | "mutaxassis" | null>(null);
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
 
   const load = useCallback(() => {
     setLoadError(null);
+    const session = authService.getSession();
+    setSessionRole(session?.role ?? null);
+    setSessionUserId(session?.userId ?? null);
+    const isSeller = session?.role === "mutaxassis";
+
     Promise.all([
       jobsService.get(params.id),
-      proposalsService.listMine(),
+      isSeller ? proposalsService.listMine().catch(() => []) : Promise.resolve([]),
       savedService.listJobIds(),
     ])
       .then(([found, proposals, ids]) => {
@@ -189,13 +196,13 @@ export default function IshEloniPage() {
                 {formatMoney(job.budgetMax, lang)}
               </p>
             </div>
-            {job.deadline && (
+            {job.deadline && formatDate(job.deadline, lang) && (
               <div>
                 <p className="text-2xs font-medium uppercase tracking-wide text-faint">
                   {t("job.deadline")}
                 </p>
                 <p className="mt-1 text-sm font-medium text-ink">
-                  {formatDate(new Date(job.deadline).toISOString(), lang)}
+                  {formatDate(job.deadline, lang)}
                 </p>
               </div>
             )}
@@ -203,7 +210,17 @@ export default function IshEloniPage() {
               {job.proposalsCount} {t("jobs.proposalsCount")}
             </p>
 
-            {canApply ? (
+            {sessionUserId && job.buyerId === sessionUserId ? (
+              <Link href={`/xaridor/my-jobs/${job.id}`}>
+                <Button variant="secondary" className="w-full">
+                  E&apos;lonimni boshqarish
+                </Button>
+              </Link>
+            ) : sessionRole === "xaridor" ? (
+              <p className="rounded-input border border-line bg-surface p-3 text-xs text-faint">
+                Taklif yuborish uchun mutaxassis hisobi bilan kiring.
+              </p>
+            ) : canApply ? (
               <Link href={`/bozor/ish-elonlari/${job.id}/taklif`}>
                 <Button className="w-full">{t("job.sendProposal")}</Button>
               </Link>
