@@ -115,9 +115,6 @@ export class StaffAuthService {
         candidates.push(normalizedEmail.replace('finance@', 'moliya@'));
         candidates.push('moliya@bobododa.uz');
       }
-      if (normalizedEmail.includes('901110007')) candidates.push('superadmin@bobododa.uz', 'superadmin@bobololadono.uz');
-      if (normalizedEmail.includes('901110008')) candidates.push('moderator@bobododa.uz', 'moderator@bobololadono.uz');
-      if (normalizedEmail.includes('901110009')) candidates.push('moliya@bobododa.uz', 'finance@bobololadono.uz', 'finance@bobododa.uz');
 
       for (const candidate of candidates) {
         member = await this.prisma.staffMember.findUnique({ where: { email: candidate } });

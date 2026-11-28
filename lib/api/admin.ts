@@ -148,24 +148,15 @@ async function applySession(res: StaffSessionResponse): Promise<AdminAccount> {
  */
 export async function adminLogin(email: string, password: string, totpCode?: string, expectedRole?: AdminRole): Promise<AdminAccount> {
   let normalized = email.trim();
-  const phoneToEmail: Record<string, string> = {
-    "+998901110007": "superadmin@bobododa.uz",
-    "998901110007": "superadmin@bobododa.uz",
-    "901110007": "superadmin@bobododa.uz",
-    "+998901110008": "moderator@bobododa.uz",
-    "998901110008": "moderator@bobododa.uz",
-    "901110008": "moderator@bobododa.uz",
-    "+998901110009": "moliya@bobododa.uz",
-    "998901110009": "moliya@bobododa.uz",
-    "901110009": "moliya@bobododa.uz",
+  const aliasToEmail: Record<string, string> = {
     "superadmin@bobololadono.uz": "superadmin@bobododa.uz",
     "moderator@bobololadono.uz": "moderator@bobododa.uz",
     "finance@bobododa.uz": "moliya@bobododa.uz",
     "finance@bobololadono.uz": "moliya@bobododa.uz",
   };
   const lower = normalized.toLowerCase();
-  if (phoneToEmail[lower]) {
-    normalized = phoneToEmail[lower];
+  if (aliasToEmail[lower]) {
+    normalized = aliasToEmail[lower];
   }
 
   try {
@@ -193,60 +184,7 @@ export async function adminLogin(email: string, password: string, totpCode?: str
     }
     return account;
   } catch (error) {
-    const apiErr = normalizeApiError(error);
-    if (apiErr.message === "MFA_REQUIRED") {
-      throw apiErr;
-    }
-    // Agar server 401 INVALID_CREDENTIALS qaytarsa, avval mock credentials bilan solishtiramiz (offline/mock hisob bo'lsa)
-    if (apiErr.status === 401 && apiErr.message === "INVALID_CREDENTIALS") {
-      try {
-        const session = await adminMock.adminLogin(email, password, expectedRole);
-        const mockAccount = adminMock.getCurrentAdmin() ?? adminMock.getAdminAccounts().find((a) => a.id === session.adminId);
-        if (mockAccount) {
-          const account: AdminAccount = {
-            ...mockAccount,
-            permissions: mockAccount.permissions as AdminPermission[],
-          };
-          staffAccountStore.write(account);
-          staffSessionStore.write({
-            adminId: account.id,
-            role: account.role,
-            expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-          });
-          setStaffAccessToken("mock-staff-token");
-          return account;
-        }
-      } catch {
-        // Mock ham mos kelmasa server xatosini tashlaymiz
-      }
-      throw apiErr;
-    }
-
-    // Tarmoq, CORS yoki server xatosi (NETWORK, status 0 yoki >= 500) bo'lganda mock auth fallback
-    if (apiErr.code === "NETWORK" || apiErr.status === 0 || apiErr.status >= 500 || !process.env.NEXT_PUBLIC_API_URL) {
-      try {
-        const session = await adminMock.adminLogin(email, password, expectedRole);
-        const mockAccount = adminMock.getCurrentAdmin() ?? adminMock.getAdminAccounts().find((a) => a.id === session.adminId);
-        if (mockAccount) {
-          const account: AdminAccount = {
-            ...mockAccount,
-            permissions: mockAccount.permissions as AdminPermission[],
-          };
-          staffAccountStore.write(account);
-          staffSessionStore.write({
-            adminId: account.id,
-            role: account.role,
-            expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-          });
-          setStaffAccessToken("mock-staff-token");
-          return account;
-        }
-      } catch {
-        // Mock ham muvaffaqiyatsiz bo'lsa
-      }
-    }
-
-    throw apiErr;
+    throw normalizeApiError(error);
   }
 }
 

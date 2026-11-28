@@ -318,32 +318,8 @@ function accounts(): AdminAccount[] {
   return seedAdmins;
 }
 
-function credentials() {
-  const seed: Record<string, string> = {
-    "ceo@bobololadono.uz": "CEOsecure2026",
-    "admin@bobololadono.uz": "Adminsecure2026",
-    "superadmin@bobololadono.uz": "TestPass2026!",
-    "superadmin@bobododa.uz": "TestPass2026!",
-    "moderator@bobololadono.uz": "TestPass2026!",
-    "moderator@bobododa.uz": "TestPass2026!",
-    "finance@bobololadono.uz": "TestPass2026!",
-    "finance@bobododa.uz": "TestPass2026!",
-    "moliya@bobododa.uz": "TestPass2026!",
-    "moliya@bobololadono.uz": "TestPass2026!",
-    "+998901110007": "TestPass2026!",
-    "998901110007": "TestPass2026!",
-    "901110007": "TestPass2026!",
-    "+998901110008": "TestPass2026!",
-    "998901110008": "TestPass2026!",
-    "901110008": "TestPass2026!",
-    "+998901110009": "TestPass2026!",
-    "998901110009": "TestPass2026!",
-    "901110009": "TestPass2026!",
-  };
-  const value = read<Record<string, string>>(CREDENTIALS, {});
-  if (Object.keys(value).length) return { ...seed, ...value };
-  write(CREDENTIALS, seed);
-  return seed;
+function credentials(): Record<string, string> {
+  return {};
 }
 
 export function getAdminSession(): AdminSession | null {
@@ -392,20 +368,6 @@ export async function adminLogin(
 ) {
   await new Promise((resolve) => setTimeout(resolve, 300));
   let normalized = email.trim().toLowerCase();
-  const phoneToEmail: Record<string, string> = {
-    "+998901110007": "superadmin@bobododa.uz",
-    "998901110007": "superadmin@bobododa.uz",
-    "901110007": "superadmin@bobododa.uz",
-    "+998901110008": "moderator@bobododa.uz",
-    "998901110008": "moderator@bobododa.uz",
-    "901110008": "moderator@bobododa.uz",
-    "+998901110009": "moliya@bobododa.uz",
-    "998901110009": "moliya@bobododa.uz",
-    "901110009": "moliya@bobododa.uz",
-  };
-  if (phoneToEmail[normalized]) {
-    normalized = phoneToEmail[normalized];
-  }
   let account = accounts().find(
     (item) => item.email.toLowerCase() === normalized && item.active
   );
